@@ -23,6 +23,8 @@ export default function Timer() {
 
   const [currentTime, setCurrentTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [pausedTime, setPausedTime] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -132,35 +134,64 @@ export default function Timer() {
 
   // Timer functions
   const startTimer = () => {
-    if (!isRunning) {
+    if (!isRunning && !isPaused) {
+      // Starting fresh
       const now = Date.now();
       setStartTime(now);
-      setIsRunning(true);
-      
-      const id = setInterval(() => {
-        setCurrentTime(Date.now() - now);
-      }, 10);
-      setIntervalId(id);
+      setCurrentTime(0);
+      setPausedTime(0);
+    } else if (isPaused) {
+      // Resuming from pause
+      const now = Date.now();
+      setStartTime(now - pausedTime);
+    }
+    
+    setIsRunning(true);
+    setIsPaused(false);
+    
+    const id = setInterval(() => {
+      if (startTime) {
+        setCurrentTime(Date.now() - startTime);
+      }
+    }, 10);
+    setIntervalId(id);
 
+    toast({
+      title: isPaused ? "타이머 재시작" : "측정 시작",
+      description: isPaused ? "타이머가 재시작되었습니다." : "타이머가 시작되었습니다.",
+    });
+  };
+
+  const pauseTimer = () => {
+    if (isRunning && intervalId) {
+      setIsRunning(false);
+      setIsPaused(true);
+      setPausedTime(currentTime);
+      clearInterval(intervalId);
+      setIntervalId(null);
+      
       toast({
-        title: "측정 시작",
-        description: "타이머가 시작되었습니다.",
+        title: "타이머 일시정지",
+        description: "재시작 버튼을 눌러 계속하거나 깃발 버튼으로 측정하세요.",
       });
     }
   };
 
   const stopTimer = () => {
-    if (isRunning && intervalId) {
-      setIsRunning(false);
+    if (intervalId) {
       clearInterval(intervalId);
       setIntervalId(null);
-      
-      // Don't automatically save when stopping - only save when lap button is pressed
-      toast({
-        title: "타이머 일시정지",
-        description: "측정을 기록하려면 깃발 버튼을 눌러주세요.",
-      });
     }
+    setIsRunning(false);
+    setIsPaused(false);
+    setCurrentTime(0);
+    setPausedTime(0);
+    setStartTime(null);
+    
+    toast({
+      title: "타이머 정지",
+      description: "타이머가 초기화되었습니다.",
+    });
   };
 
   const lapTimer = () => {
@@ -363,7 +394,9 @@ export default function Timer() {
               {/* Timer Controls */}
               <TimerControls
                 isRunning={isRunning}
+                isPaused={isPaused}
                 onStart={startTimer}
+                onPause={pauseTimer}
                 onStop={stopTimer}
                 onLap={lapTimer}
                 onReset={resetTimer}
@@ -408,7 +441,7 @@ export default function Timer() {
             <Link href="/analysis">
               <Button 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center space-x-2"
-                disabled={measurements.length < 3}
+                disabled={!Array.isArray(measurements) || measurements.length < 3}
               >
                 <BarChart3 className="h-4 w-4" />
                 <span>Gage R&R 분석</span>
