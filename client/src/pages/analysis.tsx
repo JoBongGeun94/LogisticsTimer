@@ -39,7 +39,7 @@ export default function Analysis() {
 
   // Fetch measurements for active session
   const { data: measurements = [] } = useQuery({
-    queryKey: ["/api/measurements/session", activeSession?.id],
+    queryKey: [`/api/measurements/session/${activeSession?.id}`],
     enabled: !!activeSession?.id,
     retry: false,
   });

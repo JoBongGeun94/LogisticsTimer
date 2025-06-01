@@ -75,22 +75,36 @@ function calculateStandardDeviation(numbers: number[]): number {
 }
 
 export function downloadExcelFile(data: any): void {
-  // Placeholder for actual Excel file download
-  // In a real implementation, this would generate and download the actual Excel file
   console.log("Downloading Excel file:", data);
   
-  // Create a blob URL and trigger download
-  const jsonData = JSON.stringify(data, null, 2);
-  const blob = new Blob([jsonData], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = data.filename.replace('.xlsx', '.json'); // For demo purposes
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Import xlsx library dynamically
+  import('xlsx').then((XLSX) => {
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    
+    // Add each sheet to the workbook
+    data.sheets.forEach((sheet: any) => {
+      const worksheet = XLSX.utils.aoa_to_sheet(sheet.data);
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+    });
+    
+    // Generate and download the file
+    XLSX.writeFile(workbook, data.filename);
+  }).catch((error) => {
+    console.error("Failed to load xlsx library:", error);
+    // Fallback to JSON download
+    const jsonData = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.filename.replace('.xlsx', '.json');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
 }
 
 export function emailExcelFile(data: any, recipientEmail: string): Promise<void> {
