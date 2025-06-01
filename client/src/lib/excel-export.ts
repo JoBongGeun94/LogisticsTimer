@@ -36,13 +36,31 @@ export function generateExcelData(data: ExcelData): any {
       ["대상자", data.sessionInfo?.targetName || "", ""],
       ["시작 시간", data.sessionInfo?.createdAt ? new Date(data.sessionInfo.createdAt).toLocaleString('ko-KR') : "", ""],
       ["", "", ""],
-      ["분석 항목", "값", "단위"],
+      ["Gage R&R 분석 결과", "", ""],
       ["반복성 (Repeatability)", data.analysis?.repeatability?.toFixed(2) || "N/A", "%"],
       ["재현성 (Reproducibility)", data.analysis?.reproducibility?.toFixed(2) || "N/A", "%"],
       ["GRR", data.analysis?.grr?.toFixed(2) || "N/A", "%"],
       ["부품별 기여도", data.analysis?.partContribution?.toFixed(2) || "N/A", "%"],
       ["측정자별 기여도", data.analysis?.operatorContribution?.toFixed(2) || "N/A", "%"],
       ["수용성", data.analysis?.isAcceptable ? "합격" : "부적합", ""],
+      ["", "", ""],
+      ["평가 기준", "", ""],
+      ["GRR < 10%", "우수 (측정시스템 수용가능)", ""],
+      ["10% ≤ GRR < 30%", "양호 (조건부 수용가능)", ""],
+      ["GRR ≥ 30%", "부적합 (측정시스템 개선필요)", ""],
+      ["", "", ""],
+      ["개선 권고사항", "", ""],
+      ...(data.analysis?.grr >= 30 ? [
+        ["- 측정 장비 정밀도 점검", "", ""],
+        ["- 측정 방법 표준화", "", ""],
+        ["- 작업자 교육 강화", "", ""]
+      ] : data.analysis?.grr >= 10 ? [
+        ["- 측정 방법 일관성 유지", "", ""],
+        ["- 정기적 보정 실시", "", ""]
+      ] : [
+        ["- 현재 측정시스템 유지", "", ""],
+        ["- 지속적 모니터링", "", ""]
+      ]),
       ["", "", ""],
       ["통계 정보", "", ""],
       ["총 측정 횟수", data.measurements?.length || 0, "회"],
@@ -51,11 +69,13 @@ export function generateExcelData(data: ExcelData): any {
         ["최소 시간", Math.min(...data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
         ["최대 시간", Math.max(...data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
         ["표준편차", calculateStandardDeviation(data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
+        ["변동계수(CV)", (calculateStandardDeviation(data.measurements.map(m => m.timeInMs)) / calculateAverage(data.measurements.map(m => m.timeInMs)) * 100).toFixed(2), "%"],
       ] : [
         ["평균 시간", "데이터 없음", "ms"],
         ["최소 시간", "데이터 없음", "ms"],
         ["최대 시간", "데이터 없음", "ms"],
         ["표준편차", "데이터 없음", "ms"],
+        ["변동계수(CV)", "데이터 없음", "%"],
       ]),
     ],
   };
@@ -79,8 +99,51 @@ export function generateExcelData(data: ExcelData): any {
   const partNumber = data.sessionInfo?.partNumber || '';
   const filename = `${taskTypeName} ${partNumber} 측정 결과(${dateTimeStr}).xlsx`;
 
+  // Create detailed analysis sheet
+  const analysisSheet = {
+    name: "Analysis Details",
+    data: [
+      ["Gage R&R 상세 분석", "", ""],
+      ["", "", ""],
+      ["변동성 분해", "", ""],
+      ["전체 변동", "100.00", "%"],
+      ["┣ 측정시스템 변동 (GRR)", data.analysis?.grr?.toFixed(2) || "N/A", "%"],
+      ["┃ ┣ 반복성 (Equipment Variation)", data.analysis?.repeatability?.toFixed(2) || "N/A", "%"],
+      ["┃ ┗ 재현성 (Appraiser Variation)", data.analysis?.reproducibility?.toFixed(2) || "N/A", "%"],
+      ["┗ 부품간 변동 (Part-to-Part)", data.analysis?.partContribution?.toFixed(2) || "N/A", "%"],
+      ["", "", ""],
+      ["측정 능력 평가", "", ""],
+      ["구분", "기준", "결과"],
+      ["반복성", "< 15%", data.analysis?.repeatability < 15 ? "양호" : "개선필요"],
+      ["재현성", "< 15%", data.analysis?.reproducibility < 15 ? "양호" : "개선필요"],
+      ["전체 GRR", "< 10% (우수), < 30% (수용가능)", 
+       data.analysis?.grr < 10 ? "우수" : data.analysis?.grr < 30 ? "수용가능" : "부적합"],
+      ["", "", ""],
+      ["분산 분석 정보", "", ""],
+      ["계산 방법", "Range Method (범위법)", ""],
+      ["d2 상수", "1.693 (n=3)", ""],
+      ["신뢰도", "99%", ""],
+      ["", "", ""],
+      ["개선 방향", "", ""],
+      ...(data.analysis?.grr >= 30 ? [
+        ["우선순위 1", "측정 장비 점검 및 보정", ""],
+        ["우선순위 2", "측정 방법 표준화", ""],
+        ["우선순위 3", "작업자 교육 강화", ""],
+        ["우선순위 4", "환경 요인 통제", ""]
+      ] : data.analysis?.grr >= 10 ? [
+        ["우선순위 1", "측정 절차 일관성 유지", ""],
+        ["우선순위 2", "정기적 시스템 점검", ""],
+        ["우선순위 3", "지속적 모니터링", ""]
+      ] : [
+        ["현재 상태", "측정시스템 우수", ""],
+        ["권장사항", "현재 방법 유지", ""],
+        ["모니터링", "주기적 재평가 실시", ""]
+      ])
+    ],
+  };
+
   return {
-    sheets: [rawDataSheet, summarySheet],
+    sheets: [rawDataSheet, summarySheet, analysisSheet],
     filename: filename,
     metadata: {
       title: "Gage R&R 분석 리포트",
