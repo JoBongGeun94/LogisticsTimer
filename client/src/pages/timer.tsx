@@ -24,8 +24,8 @@ export default function Timer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [pausedTime, setPausedTime] = useState(0);
-  const [startTime, setStartTime] = useState<number | null>(null);
+  const [accumulatedTime, setAccumulatedTime] = useState(0);
+  const [lastStartTime, setLastStartTime] = useState<number | null>(null);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -134,25 +134,21 @@ export default function Timer() {
 
   // Timer functions
   const startTimer = () => {
+    const now = Date.now();
+    
     if (!isRunning && !isPaused) {
       // Starting fresh
-      const now = Date.now();
-      setStartTime(now);
+      setAccumulatedTime(0);
       setCurrentTime(0);
-      setPausedTime(0);
-    } else if (isPaused) {
-      // Resuming from pause
-      const now = Date.now();
-      setStartTime(now - pausedTime);
     }
     
+    setLastStartTime(now);
     setIsRunning(true);
     setIsPaused(false);
     
     const id = setInterval(() => {
-      const now = Date.now();
-      const elapsed = now - (startTime || now);
-      setCurrentTime(elapsed);
+      const elapsed = Date.now() - now;
+      setCurrentTime(accumulatedTime + elapsed);
     }, 10);
     setIntervalId(id);
 
@@ -164,11 +160,11 @@ export default function Timer() {
 
   const pauseTimer = () => {
     if (isRunning && intervalId) {
-      setIsRunning(false);
-      setIsPaused(true);
-      setPausedTime(currentTime);
       clearInterval(intervalId);
       setIntervalId(null);
+      setIsRunning(false);
+      setIsPaused(true);
+      setAccumulatedTime(currentTime);
       
       toast({
         title: "타이머 일시정지",
@@ -185,8 +181,8 @@ export default function Timer() {
     setIsRunning(false);
     setIsPaused(false);
     setCurrentTime(0);
-    setPausedTime(0);
-    setStartTime(null);
+    setAccumulatedTime(0);
+    setLastStartTime(null);
     
     toast({
       title: "타이머 정지",
@@ -197,14 +193,17 @@ export default function Timer() {
   const lapTimer = () => {
     if ((isRunning || isPaused) && activeSession && currentTime > 0) {
       saveMeasurement();
-      // Reset current time for next measurement
+      // Reset timer for next measurement
       setCurrentTime(0);
-      setPausedTime(0);
-      const now = Date.now();
-      setStartTime(now);
+      setAccumulatedTime(0);
       
-      // If was paused, stay paused; if running, keep running
       if (isRunning) {
+        // If running, restart the timer
+        const now = Date.now();
+        setLastStartTime(now);
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
         const id = setInterval(() => {
           const elapsed = Date.now() - now;
           setCurrentTime(elapsed);
@@ -217,11 +216,13 @@ export default function Timer() {
   const resetTimer = () => {
     if (intervalId) {
       clearInterval(intervalId);
+      setIntervalId(null);
     }
     setIsRunning(false);
+    setIsPaused(false);
     setCurrentTime(0);
-    setStartTime(null);
-    setIntervalId(null);
+    setAccumulatedTime(0);
+    setLastStartTime(null);
   };
 
   const saveMeasurement = () => {
@@ -516,8 +517,8 @@ export default function Timer() {
                   setIsRunning(false);
                   setIsPaused(false);
                   setCurrentTime(0);
-                  setPausedTime(0);
-                  setStartTime(null);
+                  setAccumulatedTime(0);
+                  setLastStartTime(null);
                   
                   toast({
                     title: "전체 초기화 완료",
