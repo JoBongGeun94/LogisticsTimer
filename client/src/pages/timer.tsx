@@ -193,23 +193,17 @@ export default function Timer() {
   const lapTimer = () => {
     if ((isRunning || isPaused) && activeSession && currentTime > 0) {
       saveMeasurement();
-      // Reset timer for next measurement
+      
+      // Stop the timer completely (like pressing stop button)
+      if (intervalId) {
+        clearInterval(intervalId);
+        setIntervalId(null);
+      }
+      setIsRunning(false);
+      setIsPaused(false);
       setCurrentTime(0);
       setAccumulatedTime(0);
-      
-      if (isRunning) {
-        // If running, restart the timer
-        const now = Date.now();
-        setLastStartTime(now);
-        if (intervalId) {
-          clearInterval(intervalId);
-        }
-        const id = setInterval(() => {
-          const elapsed = Date.now() - now;
-          setCurrentTime(elapsed);
-        }, 10);
-        setIntervalId(id);
-      }
+      setLastStartTime(null);
     }
   };
 
