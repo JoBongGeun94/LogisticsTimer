@@ -49,28 +49,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+    // This method requires an ID, so it's not suitable for the current auth flow
+    // Use upsertUserWithId instead
+    throw new Error("Use upsertUserWithId method for user creation with ID");
   }
 
   async upsertUserWithId(id: string, userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values({ id, ...userData })
+      .values({ 
+        id,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        profileImageUrl: userData.profileImageUrl,
+        workerId: userData.workerId,
+        role: userData.role,
+      })
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          ...userData,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
+          workerId: userData.workerId,
+          role: userData.role,
           updatedAt: new Date(),
         },
       })
