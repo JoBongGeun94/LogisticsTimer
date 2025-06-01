@@ -60,9 +60,28 @@ export function generateExcelData(data: ExcelData): any {
     ],
   };
 
+  // Generate filename with work type and part number
+  const now = new Date();
+  const dateTimeStr = now.getFullYear().toString() + 
+                     (now.getMonth() + 1).toString().padStart(2, '0') + 
+                     now.getDate().toString().padStart(2, '0') + 
+                     now.getHours().toString().padStart(2, '0') + 
+                     now.getMinutes().toString().padStart(2, '0');
+  
+  const taskTypeMap: { [key: string]: string } = {
+    'picking': '피킹작업',
+    'sorting': '분류작업',
+    'packing': '포장작업',
+    'loading': '적재작업'
+  };
+  
+  const taskTypeName = taskTypeMap[data.sessionInfo?.taskType || ''] || data.sessionInfo?.taskType || '작업';
+  const partNumber = data.sessionInfo?.partNumber || '';
+  const filename = `${taskTypeName} ${partNumber} 측정 결과(${dateTimeStr}).xlsx`;
+
   return {
     sheets: [rawDataSheet, summarySheet],
-    filename: `Gage_RR_Analysis_${new Date().toISOString().split('T')[0]}.xlsx`,
+    filename: filename,
     metadata: {
       title: "Gage R&R 분석 리포트",
       subject: "물류 작업 인시수 측정 분석",
