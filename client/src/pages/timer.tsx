@@ -102,10 +102,12 @@ export default function Timer() {
       return response.json();
     },
     onSuccess: () => {
+      // Force refresh measurements data
+      queryClient.invalidateQueries({ queryKey: [`/api/measurements/session/${activeSession?.id}`] });
       refetchMeasurements();
       toast({
         title: "측정 기록",
-        description: `${measurements.length + 1}번째 측정이 기록되었습니다.`,
+        description: `${Array.isArray(measurements) ? measurements.length + 1 : 1}번째 측정이 기록되었습니다.`,
       });
     },
     onError: (error) => {
@@ -300,7 +302,7 @@ export default function Timer() {
               className="text-white hover:bg-blue-700"
               title="도움말"
             >
-              <Settings className="h-4 w-4" />
+              <HelpCircle className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
