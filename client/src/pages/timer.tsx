@@ -259,12 +259,24 @@ export default function Timer() {
       });
       const data = await response.json();
       
-      // In a real implementation, this would trigger file download
-      console.log("Export data:", data);
+      // Create and download Excel file
+      const { generateExcelData, downloadExcelFile } = await import("@/lib/excel-export");
+      const excelData = generateExcelData({
+        measurements: data.measurements,
+        analysis: data.analysis,
+        sessionInfo: {
+          taskType: activeSession.taskType,
+          partNumber: activeSession.partNumber,
+          userId: activeSession.userId,
+          exportedAt: data.exportedAt
+        }
+      });
+      
+      downloadExcelFile(excelData);
       
       toast({
-        title: "데이터 내보내기",
-        description: "Excel 파일이 생성되었습니다.",
+        title: "Excel 다운로드 완료",
+        description: "측정 데이터가 브라우저 다운로드 폴더에 저장되었습니다.",
       });
     } catch (error) {
       if (isUnauthorizedError(error)) {
