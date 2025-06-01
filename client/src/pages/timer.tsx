@@ -153,14 +153,10 @@ export default function Timer() {
       clearInterval(intervalId);
       setIntervalId(null);
       
-      // Save measurement if there's an active session
-      if (activeSession && currentTime > 0) {
-        saveMeasurement();
-      }
-
+      // Don't automatically save when stopping - only save when lap button is pressed
       toast({
-        title: "측정 완료",
-        description: "타이머가 정지되었습니다.",
+        title: "타이머 일시정지",
+        description: "측정을 기록하려면 깃발 버튼을 눌러주세요.",
       });
     }
   };

@@ -67,7 +67,21 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: M
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.location.reload()}
+                onClick={async () => {
+                  try {
+                    // Complete current session to enable creating a new one
+                    await fetch(`/api/work-sessions/${activeSession.id}/complete`, {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                    });
+                    // Refresh the page to show session creation form
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Error completing session:', error);
+                  }
+                }}
                 className="text-xs"
               >
                 작업 변경
