@@ -1,19 +1,52 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertWorkSessionSchema, insertMeasurementSchema, insertAnalysisResultSchema } from "@shared/schema";
 import { z } from "zod";
 
+// Simple demo authentication middleware
+const demoAuth = (req: any, res: any, next: any) => {
+  // Create a demo user session
+  req.user = {
+    claims: {
+      sub: "demo-user-001",
+      email: "demo@company.com",
+      first_name: "데모",
+      last_name: "사용자",
+      profile_image_url: null
+    }
+  };
+  next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // Demo auth routes
+  app.get('/api/login', (req, res) => {
+    res.redirect('/');
+  });
+
+  app.get('/api/logout', (req, res) => {
+    res.redirect('/');
+  });
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      let user = await storage.getUser(userId);
+      
+      // Create demo user if doesn't exist
+      if (!user) {
+        user = await storage.upsertUserWithId(userId, {
+          email: req.user.claims.email,
+          firstName: req.user.claims.first_name,
+          lastName: req.user.claims.last_name,
+          profileImageUrl: req.user.claims.profile_image_url,
+          workerId: "W001",
+          role: "worker",
+        });
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -22,7 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Work session routes
-  app.post('/api/work-sessions', isAuthenticated, async (req: any, res) => {
+  app.post('/api/work-sessions', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const sessionData = insertWorkSessionSchema.parse(req.body);
@@ -35,7 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/work-sessions/active', isAuthenticated, async (req: any, res) => {
+  app.get('/api/work-sessions/active', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const session = await storage.getActiveWorkSession(userId);
@@ -46,7 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/work-sessions/:id/complete', isAuthenticated, async (req: any, res) => {
+  app.put('/api/work-sessions/:id/complete', demoAuth, async (req: any, res) => {
     try {
       const sessionId = parseInt(req.params.id);
       const session = await storage.completeWorkSession(sessionId);
@@ -57,7 +90,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/work-sessions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/work-sessions', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
@@ -70,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Measurement routes
-  app.post('/api/measurements', isAuthenticated, async (req: any, res) => {
+  app.post('/api/measurements', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { sessionId, ...measurementData } = req.body;
@@ -84,7 +117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/measurements/session/:sessionId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/measurements/session/:sessionId', demoAuth, async (req: any, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
       const measurements = await storage.getMeasurementsBySession(sessionId);
@@ -95,7 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/measurements/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/measurements/:id', demoAuth, async (req: any, res) => {
     try {
       const measurementId = parseInt(req.params.id);
       await storage.deleteMeasurement(measurementId);
@@ -106,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/measurements/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/measurements/user', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
@@ -119,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analysis routes
-  app.post('/api/analysis', isAuthenticated, async (req: any, res) => {
+  app.post('/api/analysis', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { sessionId, ...analysisData } = req.body;
@@ -133,7 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/analysis/session/:sessionId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/analysis/session/:sessionId', demoAuth, async (req: any, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
       const analysis = await storage.getAnalysisResult(sessionId);
@@ -145,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Excel export route
-  app.post('/api/export/excel', isAuthenticated, async (req: any, res) => {
+  app.post('/api/export/excel', demoAuth, async (req: any, res) => {
     try {
       const { sessionId } = req.body;
       const measurements = await storage.getMeasurementsBySession(sessionId);
