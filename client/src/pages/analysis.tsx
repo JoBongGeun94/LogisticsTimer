@@ -7,7 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { calculateGageRR } from "@/lib/statistics";
+import { calculateGageRR, performANOVA } from "@/lib/statistics";
+import { validateMeasurementAccuracy } from "@/lib/timer-utils";
 import { generateExcelData, downloadExcelFile } from "@/lib/excel-export";
 import { Link } from "wouter";
 import { ArrowLeft, FileText, Share2, CheckCircle, XCircle, AlertTriangle, Download } from "lucide-react";
@@ -95,8 +96,36 @@ export default function Analysis() {
     },
   });
 
-  // Calculate Gage R&R if we have measurements but no existing analysis
-  const analysis = existingAnalysis || (measurements.length >= 3 ? calculateGageRR(measurements.map(m => m.timeInMs)) : null);
+  // Calculate comprehensive analysis
+  const times = measurements.map((m: any) => m.timeInMs);
+  let analysis = existingAnalysis;
+  let accuracyValidation = null;
+  let anovaAnalysis = null;
+  
+  if (!existingAnalysis && times.length >= 3) {
+    analysis = calculateGageRR(times);
+  }
+  
+  if (times.length >= 3) {
+    accuracyValidation = validateMeasurementAccuracy(times);
+    
+    // Perform ANOVA if we have sufficient data (simulate multiple groups from single operator data)
+    if (times.length >= 6) {
+      const groups = [];
+      const groupSize = Math.ceil(times.length / 2);
+      for (let i = 0; i < times.length; i += groupSize) {
+        const group = times.slice(i, i + groupSize);
+        if (group.length > 0) groups.push(group);
+      }
+      if (groups.length >= 2) {
+        try {
+          anovaAnalysis = performANOVA(groups);
+        } catch (err) {
+          console.log("ANOVA calculation error:", err);
+        }
+      }
+    }
+  }
 
   // Reset creation flag when session changes
   useEffect(() => {
@@ -339,6 +368,90 @@ export default function Analysis() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Measurement Accuracy Validation */}
+          {accuracyValidation && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  측정 정확도 검증
+                  <Badge 
+                    className={`ml-2 ${
+                      accuracyValidation.accuracy === 'high' ? 'bg-green-100 text-green-800' :
+                      accuracyValidation.accuracy === 'medium' ? 'bg-blue-100 text-blue-800' :
+                      'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    {accuracyValidation.accuracy === 'high' ? '높음' : 
+                     accuracyValidation.accuracy === 'medium' ? '보통' : '낮음'}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {(accuracyValidation.reliability * 100).toFixed(0)}%
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">신뢰성</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      0.{accuracyValidation.resolution.toString().padStart(2, '0')}s
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">해상도</div>
+                  </div>
+                </div>
+                {accuracyValidation.recommendations.length > 0 && (
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-medium">개선 권장사항:</h4>
+                    {accuracyValidation.recommendations.map((rec, index) => (
+                      <p key={index} className="text-xs text-gray-600 dark:text-gray-400">• {rec}</p>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ANOVA Analysis */}
+          {anovaAnalysis && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  ANOVA 분석
+                  <Badge 
+                    className={`ml-2 ${
+                      anovaAnalysis.isSignificant ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                    }`}
+                  >
+                    {anovaAnalysis.isSignificant ? '유의함' : '비유의함'}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {anovaAnalysis.fStatistic.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">F-통계량</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {anovaAnalysis.pValue.toFixed(3)}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">p-값</div>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  <p>• 그룹 수: {anovaAnalysis.groups}개</p>
+                  <p>• 총 샘플: {anovaAnalysis.totalSamples}개</p>
+                  <p>• 측정자 간 변동: {anovaAnalysis.varianceComponents.operator.toFixed(1)}%</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Detailed Metrics */}
           <Card>
