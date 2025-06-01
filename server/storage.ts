@@ -24,6 +24,7 @@ export interface IStorage {
   // Work session operations
   createWorkSession(userId: string, session: InsertWorkSession): Promise<WorkSession>;
   getActiveWorkSession(userId: string): Promise<WorkSession | undefined>;
+  getWorkSessionById(id: number): Promise<WorkSession | undefined>;
   updateWorkSession(id: number, updates: Partial<WorkSession>): Promise<WorkSession>;
   completeWorkSession(id: number): Promise<WorkSession>;
   
@@ -100,6 +101,15 @@ export class DatabaseStorage implements IStorage {
       .from(workSessions)
       .where(and(eq(workSessions.userId, userId), eq(workSessions.isActive, true)))
       .orderBy(desc(workSessions.createdAt))
+      .limit(1);
+    return session;
+  }
+
+  async getWorkSessionById(id: number): Promise<WorkSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(workSessions)
+      .where(eq(workSessions.id, id))
       .limit(1);
     return session;
   }

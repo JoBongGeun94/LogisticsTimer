@@ -184,9 +184,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const measurements = await storage.getMeasurementsBySession(sessionId);
       const analysis = await storage.getAnalysisResult(sessionId);
       
+      // Get session info to include operator and target names
+      const session = await storage.getWorkSessionById(sessionId);
+      
       res.json({
         measurements,
         analysis,
+        sessionInfo: session,
         exportedAt: new Date().toISOString(),
       });
     } catch (error) {

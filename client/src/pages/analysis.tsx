@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { calculateGageRR } from "@/lib/statistics";
+import { generateExcelData, downloadExcelFile } from "@/lib/excel-export";
 import { Link } from "wouter";
-import { ArrowLeft, FileText, Share2, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, FileText, Share2, CheckCircle, XCircle, AlertTriangle, Download } from "lucide-react";
 
 export default function Analysis() {
   const { user, isLoading } = useAuth();
@@ -406,16 +407,36 @@ export default function Analysis() {
           {/* Export Options */}
           <div className="grid grid-cols-2 gap-3">
             <Button 
-              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center space-x-2"
-              onClick={() => {
-                toast({
-                  title: "리포트 생성",
-                  description: "분석 리포트가 생성되었습니다.",
-                });
+              className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center space-x-2"
+              onClick={async () => {
+                try {
+                  const response = await apiRequest('POST', '/api/export/excel', {
+                    sessionId: activeSession?.id
+                  });
+                  
+                  const excelData = generateExcelData({
+                    measurements: response.measurements || [],
+                    analysis: response.analysis || analysis,
+                    sessionInfo: response.sessionInfo || activeSession
+                  });
+                  
+                  downloadExcelFile(excelData);
+                  
+                  toast({
+                    title: "리포트 다운로드 완료",
+                    description: "Excel 파일이 다운로드되었습니다.",
+                  });
+                } catch (error) {
+                  toast({
+                    title: "다운로드 오류",
+                    description: "리포트 다운로드에 실패했습니다.",
+                    variant: "destructive",
+                  });
+                }
               }}
             >
-              <FileText className="h-4 w-4" />
-              <span>리포트 생성</span>
+              <Download className="h-4 w-4" />
+              <span>리포트 다운로드</span>
             </Button>
             
             <Button 
