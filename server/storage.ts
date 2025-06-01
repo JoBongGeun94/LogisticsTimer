@@ -19,6 +19,7 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  upsertUserWithId(id: string, userData: UpsertUser): Promise<User>;
   
   // Work session operations
   createWorkSession(userId: string, session: InsertWorkSession): Promise<WorkSession>;
@@ -51,6 +52,21 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .insert(users)
       .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async upsertUserWithId(id: string, userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({ id, ...userData })
       .onConflictDoUpdate({
         target: users.id,
         set: {

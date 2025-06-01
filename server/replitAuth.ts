@@ -14,10 +14,19 @@ if (!process.env.REPLIT_DOMAINS) {
 
 const getOidcConfig = memoize(
   async () => {
-    return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
-    );
+    try {
+      return await client.discovery(
+        new URL("https://replit.com/oidc"),
+        process.env.REPL_ID!,
+        { 
+          timeout: 30000,
+          userinfo_endpoint: "https://replit.com/oidc/userinfo"
+        }
+      );
+    } catch (error) {
+      console.error("OIDC Discovery error:", error);
+      throw error;
+    }
   },
   { maxAge: 3600 * 1000 }
 );
@@ -57,13 +66,17 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
-  await storage.upsertUser({
-    id: claims["sub"],
+  const userData = {
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
-  });
+    workerId: claims["sub"], // Use sub as workerId
+    role: "worker",
+  };
+  
+  // Need to handle the user ID separately for upsert
+  return await storage.upsertUserWithId(claims["sub"], userData);
 }
 
 export async function setupAuth(app: Express) {
@@ -78,10 +91,17 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    try {
+      const user = {};
+      updateUserSession(user, tokens);
+      const claims = tokens.claims();
+      console.log("User claims:", claims);
+      await upsertUser(claims);
+      verified(null, user);
+    } catch (error) {
+      console.error("Verification error:", error);
+      verified(error);
+    }
   };
 
   for (const domain of process.env

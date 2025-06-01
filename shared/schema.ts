@@ -118,6 +118,16 @@ export const analysisResultsRelations = relations(analysisResults, ({ one }) => 
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).pick({
+  id: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  profileImageUrl: true,
+  workerId: true,
+  role: true,
+});
+
+export const upsertUserSchema = createInsertSchema(users).pick({
   email: true,
   firstName: true,
   lastName: true,
