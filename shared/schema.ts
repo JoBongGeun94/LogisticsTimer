@@ -44,6 +44,8 @@ export const workSessions = pgTable("work_sessions", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   taskType: varchar("task_type").notNull(),
   partNumber: varchar("part_number"),
+  operatorName: varchar("operator_name"),
+  targetName: varchar("target_name"),
   startedAt: timestamp("started_at").defaultNow(),
   completedAt: timestamp("completed_at"),
   isActive: boolean("is_active").default(true),
@@ -139,6 +141,8 @@ export const upsertUserSchema = createInsertSchema(users).pick({
 export const insertWorkSessionSchema = createInsertSchema(workSessions).pick({
   taskType: true,
   partNumber: true,
+  operatorName: true,
+  targetName: true,
 });
 
 export const insertMeasurementSchema = createInsertSchema(measurements).pick({

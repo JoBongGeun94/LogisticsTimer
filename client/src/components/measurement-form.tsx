@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ClipboardList } from "lucide-react";
 
 interface MeasurementFormProps {
-  onSessionCreate: (sessionData: { taskType: string; partNumber?: string }) => void;
+  onSessionCreate: (sessionData: { taskType: string; partNumber?: string; operatorName?: string; targetName?: string }) => void;
   activeSession?: any;
   isLoading?: boolean;
 }
@@ -15,16 +15,22 @@ interface MeasurementFormProps {
 export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: MeasurementFormProps) {
   const [taskType, setTaskType] = useState("");
   const [partNumber, setPartNumber] = useState("");
+  const [operatorName, setOperatorName] = useState("");
+  const [targetName, setTargetName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (taskType) {
+    if (taskType && operatorName && targetName) {
       onSessionCreate({
         taskType,
         partNumber: partNumber || undefined,
+        operatorName,
+        targetName,
       });
       setTaskType("");
       setPartNumber("");
+      setOperatorName("");
+      setTargetName("");
     }
   };
 
@@ -54,7 +60,7 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: M
                 </div>
                 {activeSession.partNumber && (
                   <div className="text-sm text-green-600 dark:text-green-300">
-                    부품번호: {activeSession.partNumber}
+                    공정세부번호: {activeSession.partNumber}
                   </div>
                 )}
               </div>
@@ -110,7 +116,7 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: M
 
             <div>
               <Label htmlFor="partNumber" className="text-sm font-medium">
-                부품/샘플 번호 (선택사항)
+                공정세부번호 (선택사항)
               </Label>
               <Input
                 id="partNumber"
@@ -122,10 +128,40 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: M
               />
             </div>
 
+            <div>
+              <Label htmlFor="operatorName" className="text-sm font-medium">
+                측정자 이름
+              </Label>
+              <Input
+                id="operatorName"
+                type="text"
+                placeholder="측정자 이름을 입력하세요"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                className="mt-1"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="targetName" className="text-sm font-medium">
+                대상자 이름
+              </Label>
+              <Input
+                id="targetName"
+                type="text"
+                placeholder="대상자 이름을 입력하세요"
+                value={targetName}
+                onChange={(e) => setTargetName(e.target.value)}
+                className="mt-1"
+                required
+              />
+            </div>
+
             <Button 
               type="submit" 
               className="w-full bg-blue-600 hover:bg-blue-700"
-              disabled={!taskType || isLoading}
+              disabled={!taskType || !operatorName || !targetName || isLoading}
             >
               {isLoading ? "생성 중..." : "작업 세션 시작"}
             </Button>
