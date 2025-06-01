@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { ArrowLeft, FileText, Share2, CheckCircle, XCircle, AlertTriangle } from
 export default function Analysis() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
+  const [hasCreatedAnalysis, setHasCreatedAnalysis] = useState(false);
 
   // Redirect to login if unauthorized
   useEffect(() => {
@@ -89,12 +90,19 @@ export default function Analysis() {
   // Calculate Gage R&R if we have measurements but no existing analysis
   const analysis = existingAnalysis || (measurements.length >= 3 ? calculateGageRR(measurements.map(m => m.timeInMs)) : null);
 
+  // Reset creation flag when session changes
+  useEffect(() => {
+    setHasCreatedAnalysis(false);
+  }, [activeSession?.id]);
+
   // Save analysis if calculated but not saved
   useEffect(() => {
-    if (analysis && !existingAnalysis && measurements.length >= 3 && !createAnalysisMutation.isPending) {
-      createAnalysisMutation.mutate(analysis);
+    if (!existingAnalysis && !hasCreatedAnalysis && measurements.length >= 3 && !createAnalysisMutation.isPending) {
+      const calculatedAnalysis = calculateGageRR(measurements.map(m => m.timeInMs));
+      createAnalysisMutation.mutate(calculatedAnalysis);
+      setHasCreatedAnalysis(true);
     }
-  }, [analysis, existingAnalysis, measurements.length, createAnalysisMutation]);
+  }, [existingAnalysis, hasCreatedAnalysis, measurements.length, createAnalysisMutation]);
 
   const getResultStatus = (grr: number) => {
     if (grr < 10) return { status: "excellent", label: "우수", color: "green", icon: CheckCircle };
