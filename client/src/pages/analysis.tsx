@@ -228,10 +228,14 @@ export default function Analysis() {
               <CardContent className="p-6 text-center">
                 <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">측정 데이터 부족</h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Gage R&R 분석을 위해 최소 3회 이상의 측정이 필요합니다.
-                  현재 측정 횟수: {measurements.length}회
-                </p>
+                <div className="text-gray-600 dark:text-gray-400 mb-4 space-y-2">
+                  <p>통계적으로 신뢰할 수 있는 Gage R&R 분석을 위해서는:</p>
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg text-sm">
+                    <p><strong>권장 측정 횟수:</strong> 최소 10회 (현재: {measurements.length}회)</p>
+                    <p><strong>권장 측정자 수:</strong> 2-3명 (서로 다른 작업자)</p>
+                  </div>
+                  <p className="text-sm">현재는 기본 분석만 가능합니다.</p>
+                </div>
                 <Link href="/">
                   <Button className="bg-blue-600 hover:bg-blue-700">
                     측정 계속하기
@@ -277,6 +281,29 @@ export default function Analysis() {
 
         {/* Analysis Content */}
         <div className="p-4 space-y-4">
+          
+          {/* Statistical Reliability Warning */}
+          {measurements.length < 10 && (
+            <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
+              <CardContent className="p-4">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+                      통계적 신뢰성 주의
+                    </p>
+                    <p className="text-yellow-700 dark:text-yellow-300 mb-2">
+                      현재 {measurements.length}회 측정으로 기본 분석만 제공됩니다.
+                    </p>
+                    <div className="text-xs text-yellow-600 dark:text-yellow-400">
+                      <p>• 권장 측정 횟수: 최소 10회 (신뢰도 향상을 위해)</p>
+                      <p>• 권장 측정자 수: 2-3명 (재현성 평가를 위해)</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           
           {/* Overall Result */}
           <Card>

@@ -415,6 +415,31 @@ export default function Timer() {
                 disabled={!activeSession}
               />
 
+              {/* Measurement Progress */}
+              {measurements.length > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      측정 진행도
+                    </span>
+                    <span className="text-xs text-blue-600 dark:text-blue-400">
+                      {measurements.length}/10 (권장)
+                    </span>
+                  </div>
+                  <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min(100, (measurements.length / 10) * 100)}%` }}
+                    ></div>
+                  </div>
+                  <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                    {measurements.length < 3 ? "분석을 위해 최소 3회 측정이 필요합니다" :
+                     measurements.length < 10 ? "신뢰성 향상을 위해 10회 측정을 권장합니다" :
+                     "통계적으로 신뢰할 수 있는 데이터입니다"}
+                  </div>
+                </div>
+              )}
+
               {/* Timer Stats */}
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>

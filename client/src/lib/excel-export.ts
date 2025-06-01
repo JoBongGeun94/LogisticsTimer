@@ -120,9 +120,10 @@ export function generateExcelData(data: ExcelData): any {
        data.analysis?.grr < 10 ? "우수" : data.analysis?.grr < 30 ? "수용가능" : "부적합"],
       ["", "", ""],
       ["분산 분석 정보", "", ""],
-      ["계산 방법", "Range Method (범위법)", ""],
-      ["d2 상수", "1.693 (n=3)", ""],
-      ["신뢰도", "99%", ""],
+      ["계산 방법", data.analysis?.analysisData?.calculationMethod || "Range Method", ""],
+      ["통계적 신뢰도", data.analysis?.analysisData?.statisticalConfidence || "낮음", ""],
+      ["신뢰성 계수", (data.analysis?.analysisData?.reliabilityFactor * 100)?.toFixed(0) + "%" || "60%", ""],
+      ["표본 크기 평가", data.measurements?.length >= 10 ? "충분함" : data.measurements?.length >= 6 ? "보통" : "부족함", ""],
       ["", "", ""],
       ["개선 방향", "", ""],
       ...(data.analysis?.grr >= 30 ? [

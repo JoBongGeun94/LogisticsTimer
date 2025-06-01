@@ -22,29 +22,44 @@ export function calculateGageRR(measurements: number[]): GageRRResult {
   const n = validMeasurements.length;
   const mean = validMeasurements.reduce((sum, val) => sum + val, 0) / n;
   
+  // Enhanced statistical reliability assessment based on sample size
+  const reliabilityFactor = n >= 10 ? 1.0 : n >= 6 ? 0.8 : 0.6;
+  
   // Calculate variance components with safety checks
   const totalVariance = Math.max(1, validMeasurements.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (n - 1));
   const range = Math.max(...validMeasurements) - Math.min(...validMeasurements);
   
-  // Use more conservative constants for Korean logistics timing
-  const d2 = n === 3 ? 1.693 : n === 4 ? 2.059 : 2.326; // Standard d2 constants
+  // Use appropriate d2 constants based on sample size
+  const d2 = n <= 3 ? 1.693 : n <= 4 ? 2.059 : n <= 5 ? 2.326 : n <= 6 ? 2.534 : 2.704;
   const equipmentVariation = Math.max(1, range / d2);
   
-  // Calculate variance components with bounds
+  // Calculate variance components with improved estimation for small samples
   const repeatabilityVariance = Math.pow(equipmentVariation, 2);
-  const reproducibilityVariance = Math.max(0, totalVariance * 0.1); // Conservative estimate
-  const partVariance = Math.max(totalVariance * 0.3, totalVariance - repeatabilityVariance - reproducibilityVariance);
+  
+  // Adjust reproducibility estimation based on sample size
+  // For single operator (current limitation), estimate based on measurement variation
+  const reproducibilityVariance = n < 10 ? 
+    Math.max(0, totalVariance * 0.15) : // Higher uncertainty for small samples
+    Math.max(0, totalVariance * 0.05);  // More confident with larger samples
+  
+  const partVariance = Math.max(totalVariance * 0.2, totalVariance - repeatabilityVariance - reproducibilityVariance);
   
   const totalGRRVariance = repeatabilityVariance + reproducibilityVariance;
   const totalStudyVariance = Math.max(1, totalGRRVariance + partVariance);
   
-  // Calculate percentages with safety bounds
-  const repeatability = Math.min(100, Math.sqrt(repeatabilityVariance / totalStudyVariance) * 100);
-  const reproducibility = Math.min(100, Math.sqrt(reproducibilityVariance / totalStudyVariance) * 100);
-  const grr = Math.min(100, Math.sqrt(totalGRRVariance / totalStudyVariance) * 100);
-  const partContribution = Math.min(100, Math.sqrt(partVariance / totalStudyVariance) * 100);
-  const operatorContribution = reproducibility;
+  // Calculate percentages with reliability adjustment
+  let repeatability = Math.min(100, Math.sqrt(repeatabilityVariance / totalStudyVariance) * 100);
+  let reproducibility = Math.min(100, Math.sqrt(reproducibilityVariance / totalStudyVariance) * 100);
+  let grr = Math.min(100, Math.sqrt(totalGRRVariance / totalStudyVariance) * 100);
+  let partContribution = Math.min(100, Math.sqrt(partVariance / totalStudyVariance) * 100);
   
+  // Apply confidence penalty for small sample sizes
+  if (n < 10) {
+    grr = grr * (1 + (0.1 * (10 - n))); // Penalty increases uncertainty
+    grr = Math.min(100, grr);
+  }
+  
+  const operatorContribution = reproducibility;
   const isAcceptable = grr < 30; // AIAG MSA standard
   
   return {
@@ -60,7 +75,9 @@ export function calculateGageRR(measurements: number[]): GageRRResult {
       totalVariance,
       range,
       n,
-      calculationMethod: "improved_range",
+      reliabilityFactor,
+      calculationMethod: n >= 10 ? "enhanced_range" : "basic_range",
+      statisticalConfidence: n >= 10 ? "high" : n >= 6 ? "medium" : "low",
       timestamp: new Date().toISOString(),
     },
   };
