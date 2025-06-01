@@ -11,16 +11,17 @@ export function generateExcelData(data: ExcelData): any {
   const rawDataSheet = {
     name: "Raw Data",
     data: [
-      ["시도 번호", "측정 시간(ms)", "측정 시간(형식)", "작업 유형", "공정세부번호", "측정자", "대상자", "측정 일시"],
-      ...data.measurements.map((m, index) => [
-        m.attemptNumber,
-        m.timeInMs,
-        formatTimeForExcel(m.timeInMs),
-        m.taskType,
-        m.partNumber || "",
+      ["시도 번호", "측정 시간(ms)", "측정 시간(형식)", "작업 유형", "공정세부번호", "측정자", "대상자", "측정 일시", "비고"],
+      ...(data.measurements || []).map((m, index) => [
+        m.attemptNumber || (index + 1),
+        m.timeInMs || 0,
+        formatTimeForExcel(m.timeInMs || 0),
+        data.sessionInfo?.taskType || m.taskType || "",
+        data.sessionInfo?.partNumber || m.partNumber || "",
         data.sessionInfo?.operatorName || "",
         data.sessionInfo?.targetName || "",
-        new Date(m.timestamp).toLocaleString('ko-KR'),
+        new Date(m.timestamp || new Date()).toLocaleString('ko-KR'),
+        m.timeInMs < 1000 ? "매우 빠름" : m.timeInMs > 10000 ? "느림" : "정상"
       ]),
     ],
   };
@@ -28,6 +29,13 @@ export function generateExcelData(data: ExcelData): any {
   const summarySheet = {
     name: "Summary",
     data: [
+      ["작업 정보", "", ""],
+      ["작업 유형", data.sessionInfo?.taskType || "", ""],
+      ["공정세부번호", data.sessionInfo?.partNumber || "", ""],
+      ["측정자", data.sessionInfo?.operatorName || "", ""],
+      ["대상자", data.sessionInfo?.targetName || "", ""],
+      ["시작 시간", data.sessionInfo?.createdAt ? new Date(data.sessionInfo.createdAt).toLocaleString('ko-KR') : "", ""],
+      ["", "", ""],
       ["분석 항목", "값", "단위"],
       ["반복성 (Repeatability)", data.analysis?.repeatability?.toFixed(2) || "N/A", "%"],
       ["재현성 (Reproducibility)", data.analysis?.reproducibility?.toFixed(2) || "N/A", "%"],
@@ -37,11 +45,18 @@ export function generateExcelData(data: ExcelData): any {
       ["수용성", data.analysis?.isAcceptable ? "합격" : "부적합", ""],
       ["", "", ""],
       ["통계 정보", "", ""],
-      ["총 측정 횟수", data.measurements.length, "회"],
-      ["평균 시간", calculateAverage(data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
-      ["최소 시간", Math.min(...data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
-      ["최대 시간", Math.max(...data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
-      ["표준편차", calculateStandardDeviation(data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
+      ["총 측정 횟수", data.measurements?.length || 0, "회"],
+      ...(data.measurements?.length > 0 ? [
+        ["평균 시간", calculateAverage(data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
+        ["최소 시간", Math.min(...data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
+        ["최대 시간", Math.max(...data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
+        ["표준편차", calculateStandardDeviation(data.measurements.map(m => m.timeInMs)).toFixed(2), "ms"],
+      ] : [
+        ["평균 시간", "데이터 없음", "ms"],
+        ["최소 시간", "데이터 없음", "ms"],
+        ["최대 시간", "데이터 없음", "ms"],
+        ["표준편차", "데이터 없음", "ms"],
+      ]),
     ],
   };
 

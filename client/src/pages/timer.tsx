@@ -269,12 +269,7 @@ export default function Timer() {
       const excelData = generateExcelData({
         measurements: data.measurements,
         analysis: data.analysis,
-        sessionInfo: {
-          taskType: activeSession.taskType,
-          partNumber: activeSession.partNumber,
-          userId: activeSession.userId,
-          exportedAt: data.exportedAt
-        }
+        sessionInfo: data.sessionInfo || activeSession
       });
       
       downloadExcelFile(excelData);

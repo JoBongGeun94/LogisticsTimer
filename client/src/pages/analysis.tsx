@@ -414,10 +414,12 @@ export default function Analysis() {
                     sessionId: activeSession?.id
                   });
                   
+                  const responseData = await response.json();
+                  
                   const excelData = generateExcelData({
-                    measurements: response.measurements || [],
-                    analysis: response.analysis || analysis,
-                    sessionInfo: response.sessionInfo || activeSession
+                    measurements: responseData.measurements || [],
+                    analysis: responseData.analysis || analysis,
+                    sessionInfo: responseData.sessionInfo || activeSession
                   });
                   
                   downloadExcelFile(excelData);
