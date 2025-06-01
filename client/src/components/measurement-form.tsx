@@ -60,9 +60,19 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: M
               </div>
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              현재 활성 세션입니다. 타이머를 사용하여 측정을 진행하세요.
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                현재 활성 세션입니다. 타이머를 사용하여 측정을 진행하세요.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.reload()}
+                className="text-xs"
+              >
+                작업 변경
+              </Button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">

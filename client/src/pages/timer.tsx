@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -11,7 +12,7 @@ import { MeasurementForm } from "@/components/measurement-form";
 import { TimerControls } from "@/components/timer-controls";
 import { LapHistory } from "@/components/lap-history";
 import { Link } from "wouter";
-import { BarChart3, Download, LogOut, Moon, Sun, Settings } from "lucide-react";
+import { BarChart3, Download, LogOut, Moon, Sun, Settings, HelpCircle, Play, Pause, Flag } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 
 export default function Timer() {
@@ -24,6 +25,7 @@ export default function Timer() {
   const [isRunning, setIsRunning] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Redirect to login if unauthorized
   useEffect(() => {
@@ -166,6 +168,10 @@ export default function Timer() {
   const lapTimer = () => {
     if (isRunning && activeSession && currentTime > 0) {
       saveMeasurement();
+      // Reset current time for next measurement
+      setCurrentTime(0);
+      const now = Date.now();
+      setStartTime(now);
     }
   };
 
@@ -294,8 +300,18 @@ export default function Timer() {
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => setShowHelp(true)}
+              className="text-white hover:bg-blue-700"
+              title="도움말"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={toggleTheme}
               className="text-white hover:bg-blue-700"
+              title="테마 변경"
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -304,6 +320,7 @@ export default function Timer() {
               size="sm"
               onClick={handleLogout}
               className="text-white hover:bg-blue-700"
+              title="로그아웃"
             >
               <LogOut className="h-4 w-4" />
             </Button>
@@ -411,6 +428,67 @@ export default function Timer() {
             </Button>
           </div>
         </main>
+
+        {/* Help Dialog */}
+        <Dialog open={showHelp} onOpenChange={setShowHelp}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5" />
+                사용법 도움말
+              </DialogTitle>
+              <DialogDescription>
+                물류 작업 측정 타이머 사용 방법을 안내해드립니다.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 text-sm">
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Play className="h-4 w-4 text-green-600" />
+                  1. 작업 시작하기
+                </h4>
+                <p className="text-gray-600 dark:text-gray-400">
+                  작업 유형을 선택하고 부품번호를 입력한 후 "세션 시작" 버튼을 눌러주세요.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Pause className="h-4 w-4 text-blue-600" />
+                  2. 타이머 사용하기
+                </h4>
+                <p className="text-gray-600 dark:text-gray-400">
+                  "시작" 버튼으로 타이머를 시작하고, 작업이 끝나면 "중지" 버튼을 눌러주세요.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Flag className="h-4 w-4 text-orange-600" />
+                  3. 측정 기록하기
+                </h4>
+                <p className="text-gray-600 dark:text-gray-400">
+                  타이머가 실행 중일 때 깃발 버튼을 누르면 현재 시간이 측정값으로 기록되고 타이머가 리셋됩니다.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">4. 작업 변경하기</h4>
+                <p className="text-gray-600 dark:text-gray-400">
+                  현재 활성 세션에서 "작업 변경" 버튼을 눌러 새로운 작업을 선택할 수 있습니다.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">5. 분석 및 내보내기</h4>
+                <p className="text-gray-600 dark:text-gray-400">
+                  측정이 완료되면 "Gage R&R 분석"에서 통계 분석 결과를 확인하고 Excel로 내보낼 수 있습니다.
+                </p>
+              </div>
+            </div>
+            <div className="pt-4">
+              <Button onClick={() => setShowHelp(false)} className="w-full">
+                확인
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
