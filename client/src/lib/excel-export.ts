@@ -11,13 +11,15 @@ export function generateExcelData(data: ExcelData): any {
   const rawDataSheet = {
     name: "Raw Data",
     data: [
-      ["시도 번호", "측정 시간(ms)", "측정 시간(형식)", "작업 유형", "부품 번호", "측정 일시"],
+      ["시도 번호", "측정 시간(ms)", "측정 시간(형식)", "작업 유형", "공정세부번호", "측정자", "대상자", "측정 일시"],
       ...data.measurements.map((m, index) => [
         m.attemptNumber,
         m.timeInMs,
         formatTimeForExcel(m.timeInMs),
         m.taskType,
         m.partNumber || "",
+        data.sessionInfo?.operatorName || "",
+        data.sessionInfo?.targetName || "",
         new Date(m.timestamp).toLocaleString('ko-KR'),
       ]),
     ],

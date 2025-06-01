@@ -61,10 +61,17 @@ export default function Analysis() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Refetch existing analysis
+      queryClient.invalidateQueries({ queryKey: ["/api/analysis/session", activeSession?.id] });
+      
+      const grr = data?.grr || 0;
+      const status = grr < 10 ? "우수" : grr < 30 ? "양호" : "부적합";
+      
       toast({
-        title: "분석 완료",
-        description: "Gage R&R 분석이 완료되었습니다.",
+        title: "Gage R&R 분석 완료",
+        description: `리포트가 생성되었습니다. 측정 시스템 상태: ${status} (GRR: ${grr.toFixed(1)}%)`,
+        duration: 5000,
       });
     },
     onError: (error) => {
