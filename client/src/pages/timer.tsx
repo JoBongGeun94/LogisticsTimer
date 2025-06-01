@@ -12,7 +12,7 @@ import { MeasurementForm } from "@/components/measurement-form";
 import { TimerControls } from "@/components/timer-controls";
 import { LapHistory } from "@/components/lap-history";
 import { Link } from "wouter";
-import { BarChart3, Download, LogOut, Moon, Sun, Settings, HelpCircle, Play, Pause, Flag } from "lucide-react";
+import { BarChart3, Download, LogOut, Moon, Sun, Settings, HelpCircle, Play, Pause, Flag, RotateCcw } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 
 export default function Timer() {
@@ -150,9 +150,9 @@ export default function Timer() {
     setIsPaused(false);
     
     const id = setInterval(() => {
-      if (startTime) {
-        setCurrentTime(Date.now() - startTime);
-      }
+      const now = Date.now();
+      const elapsed = now - (startTime || now);
+      setCurrentTime(elapsed);
     }, 10);
     setIntervalId(id);
 
@@ -195,12 +195,22 @@ export default function Timer() {
   };
 
   const lapTimer = () => {
-    if (isRunning && activeSession && currentTime > 0) {
+    if ((isRunning || isPaused) && activeSession && currentTime > 0) {
       saveMeasurement();
       // Reset current time for next measurement
       setCurrentTime(0);
+      setPausedTime(0);
       const now = Date.now();
       setStartTime(now);
+      
+      // If was paused, stay paused; if running, keep running
+      if (isRunning) {
+        const id = setInterval(() => {
+          const elapsed = Date.now() - now;
+          setCurrentTime(elapsed);
+        }, 10);
+        setIntervalId(id);
+      }
     }
   };
 
@@ -442,9 +452,22 @@ export default function Timer() {
           {/* Lap History */}
           <LapHistory
             measurements={Array.isArray(measurements) ? measurements : []}
-            onDelete={(id) => {
-              // Handle delete measurement
-              console.log("Delete measurement:", id);
+            onDelete={async (id) => {
+              try {
+                await apiRequest('DELETE', `/api/measurements/${id}`);
+                queryClient.invalidateQueries({ queryKey: [`/api/measurements/session/${activeSession?.id}`] });
+                refetchMeasurements();
+                toast({
+                  title: "측정값 삭제",
+                  description: "선택한 측정값이 삭제되었습니다.",
+                });
+              } catch (error) {
+                toast({
+                  title: "삭제 실패",
+                  description: "측정값을 삭제할 수 없습니다.",
+                  variant: "destructive",
+                });
+              }
             }}
           />
 
@@ -464,10 +487,56 @@ export default function Timer() {
               onClick={handleExport}
               variant="outline"
               className="w-full flex items-center justify-center space-x-2"
-              disabled={measurements.length === 0}
+              disabled={!Array.isArray(measurements) || measurements.length === 0}
             >
               <Download className="h-4 w-4" />
-              <span>데이터 내보내기</span>
+              <span>Excel로 내보내기</span>
+            </Button>
+            
+            <Button 
+              onClick={async () => {
+                if (!activeSession) return;
+                
+                try {
+                  // Delete all measurements for this session
+                  if (Array.isArray(measurements)) {
+                    for (const measurement of measurements) {
+                      await apiRequest('DELETE', `/api/measurements/${measurement.id}`);
+                    }
+                  }
+                  
+                  queryClient.invalidateQueries({ queryKey: [`/api/measurements/session/${activeSession.id}`] });
+                  refetchMeasurements();
+                  
+                  // Reset timer state
+                  if (intervalId) {
+                    clearInterval(intervalId);
+                    setIntervalId(null);
+                  }
+                  setIsRunning(false);
+                  setIsPaused(false);
+                  setCurrentTime(0);
+                  setPausedTime(0);
+                  setStartTime(null);
+                  
+                  toast({
+                    title: "전체 초기화 완료",
+                    description: "모든 측정 기록이 삭제되고 타이머가 초기화되었습니다.",
+                  });
+                } catch (error) {
+                  toast({
+                    title: "초기화 실패",
+                    description: "측정 기록을 삭제할 수 없습니다.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              variant="destructive"
+              className="w-full flex items-center justify-center space-x-2"
+              disabled={!Array.isArray(measurements) || measurements.length === 0}
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span>전체 초기화</span>
             </Button>
           </div>
         </main>

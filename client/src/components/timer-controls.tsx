@@ -63,9 +63,9 @@ export function TimerControls({
 
       <Button
         onClick={onLap}
-        disabled={!isRunning || disabled}
+        disabled={(!isRunning && !isPaused) || disabled}
         className={`w-16 h-16 text-white rounded-full flex items-center justify-center text-xl shadow-lg transition-all ${
-          !isRunning || disabled 
+          (!isRunning && !isPaused) || disabled 
             ? 'bg-gray-400 cursor-not-allowed' 
             : 'bg-orange-600 hover:bg-orange-700'
         }`}
