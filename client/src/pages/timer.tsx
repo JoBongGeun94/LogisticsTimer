@@ -51,7 +51,7 @@ export default function Timer() {
 
   // Fetch measurements for active session
   const { data: measurements = [], refetch: refetchMeasurements } = useQuery({
-    queryKey: ["/api/measurements/session", activeSession?.id],
+    queryKey: [`/api/measurements/session/${activeSession?.id}`],
     enabled: !!activeSession?.id,
     retry: false,
   });
@@ -396,7 +396,7 @@ export default function Timer() {
 
           {/* Lap History */}
           <LapHistory
-            measurements={measurements}
+            measurements={Array.isArray(measurements) ? measurements : []}
             onDelete={(id) => {
               // Handle delete measurement
               console.log("Delete measurement:", id);
