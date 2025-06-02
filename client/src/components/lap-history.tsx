@@ -1,7 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { formatTime } from "@/lib/timer-utils";
-import { History, Trash2, Clock } from "lucide-react";
+import { History, Trash2, Clock, Filter, ArrowUpDown, Search } from "lucide-react";
+import { useState, useMemo } from "react";
 
 interface LapHistoryProps {
   measurements: any[];
@@ -9,6 +12,58 @@ interface LapHistoryProps {
 }
 
 export function LapHistory({ measurements, onDelete }: LapHistoryProps) {
+  const [sortBy, setSortBy] = useState<'time' | 'timestamp' | 'operator'>('timestamp');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [filterOperator, setFilterOperator] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Get unique operators for filtering
+  const uniqueOperators = useMemo(() => {
+    const operators = measurements
+      .map(m => m.operatorName)
+      .filter(Boolean)
+      .filter((operator, index, arr) => arr.indexOf(operator) === index);
+    return operators;
+  }, [measurements]);
+
+  // Filter and sort measurements
+  const filteredAndSortedMeasurements = useMemo(() => {
+    let filtered = measurements;
+
+    // Filter by operator
+    if (filterOperator !== 'all') {
+      filtered = filtered.filter(m => m.operatorName === filterOperator);
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(m => 
+        m.operatorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.partName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.partNumber?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Sort measurements
+    return filtered.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'time':
+          comparison = a.timeInMs - b.timeInMs;
+          break;
+        case 'timestamp':
+          comparison = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+          break;
+        case 'operator':
+          comparison = (a.operatorName || '').localeCompare(b.operatorName || '');
+          break;
+      }
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [measurements, sortBy, sortOrder, filterOperator, searchTerm]);
+
   if (measurements.length === 0) {
     return (
       <Card>

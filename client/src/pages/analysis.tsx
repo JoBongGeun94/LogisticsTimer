@@ -57,6 +57,12 @@ interface GageRRResult {
   partContribution: number;
   operatorContribution: number;
   isAcceptable: boolean;
+  coefficientOfVariation?: number;
+  processCapabilityIndex?: number;
+  outlierCount?: number;
+  confidenceInterval?: { lower: number; upper: number };
+  normalityTest?: { isNormal: boolean; pValue: number };
+  analysisData?: any;
 }
 
 export default function Analysis() {
@@ -642,7 +648,7 @@ export default function Analysis() {
           </Card>
 
           {/* Advanced Statistical Analysis */}
-          {(analysis.coefficientOfVariation !== undefined || analysis.processCapabilityIndex !== undefined) && (
+          {((analysis as any).coefficientOfVariation !== undefined || (analysis as any).processCapabilityIndex !== undefined) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -653,23 +659,23 @@ export default function Analysis() {
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Coefficient of Variation */}
-                  {analysis.coefficientOfVariation !== undefined && (
+                  {(analysis as any).coefficientOfVariation !== undefined && (
                     <div className="border-l-4 border-orange-500 pl-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium text-gray-900 dark:text-gray-100">변동계수 (CV)</h4>
                         <span className="text-2xl font-bold text-orange-600">
-                          {analysis.coefficientOfVariation.toFixed(1)}%
+                          {(analysis as any).coefficientOfVariation.toFixed(1)}%
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                         측정값의 상대적 변동성 (표준편차/평균 × 100)
                       </div>
                       <div className="text-xs">
-                        {analysis.coefficientOfVariation < 5 ? (
+                        {(analysis as any).coefficientOfVariation < 5 ? (
                           <span className="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
                             ✓ 매우 일관된 측정
                           </span>
-                        ) : analysis.coefficientOfVariation < 15 ? (
+                        ) : (analysis as any).coefficientOfVariation < 15 ? (
                           <span className="text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
                             ● 적절한 일관성
                           </span>
@@ -683,23 +689,23 @@ export default function Analysis() {
                   )}
 
                   {/* Process Capability Index */}
-                  {analysis.processCapabilityIndex !== undefined && (
+                  {(analysis as any).processCapabilityIndex !== undefined && (
                     <div className="border-l-4 border-emerald-500 pl-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium text-gray-900 dark:text-gray-100">공정능력지수 (Cpk)</h4>
                         <span className="text-2xl font-bold text-emerald-600">
-                          {analysis.processCapabilityIndex.toFixed(2)}
+                          {(analysis as any).processCapabilityIndex.toFixed(2)}
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                         측정 시스템의 공정 요구사항 충족 능력
                       </div>
                       <div className="text-xs">
-                        {analysis.processCapabilityIndex >= 1.33 ? (
+                        {(analysis as any).processCapabilityIndex >= 1.33 ? (
                           <span className="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
                             ✓ 우수한 공정 능력
                           </span>
-                        ) : analysis.processCapabilityIndex >= 1.0 ? (
+                        ) : (analysis as any).processCapabilityIndex >= 1.0 ? (
                           <span className="text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
                             ● 적절한 공정 능력
                           </span>
@@ -713,23 +719,23 @@ export default function Analysis() {
                   )}
 
                   {/* Outlier Analysis */}
-                  {analysis.outlierCount !== undefined && (
+                  {(analysis as any).outlierCount !== undefined && (
                     <div className="border-l-4 border-red-500 pl-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium text-gray-900 dark:text-gray-100">이상치 개수</h4>
                         <span className="text-2xl font-bold text-red-600">
-                          {analysis.outlierCount}개
+                          {(analysis as any).outlierCount}개
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                         통계적 범위를 벗어난 측정값 (IQR 방법)
                       </div>
                       <div className="text-xs">
-                        {analysis.outlierCount === 0 ? (
+                        {(analysis as any).outlierCount === 0 ? (
                           <span className="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
                             ✓ 이상치 없음
                           </span>
-                        ) : analysis.outlierCount <= 2 ? (
+                        ) : (analysis as any).outlierCount <= 2 ? (
                           <span className="text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 rounded">
                             ● 소수 이상치 발견
                           </span>
@@ -743,12 +749,12 @@ export default function Analysis() {
                   )}
 
                   {/* Confidence Interval */}
-                  {analysis.confidenceInterval && (
+                  {(analysis as any).confidenceInterval && (
                     <div className="border-l-4 border-blue-500 pl-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium text-gray-900 dark:text-gray-100">95% 신뢰구간</h4>
                         <span className="text-sm font-bold text-blue-600">
-                          [{analysis.confidenceInterval.lower.toFixed(1)}, {analysis.confidenceInterval.upper.toFixed(1)}]ms
+                          [{(analysis as any).confidenceInterval.lower.toFixed(1)}, {(analysis as any).confidenceInterval.upper.toFixed(1)}]ms
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -756,26 +762,26 @@ export default function Analysis() {
                       </div>
                       <div className="text-xs">
                         <span className="text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
-                          범위: {(analysis.confidenceInterval.upper - analysis.confidenceInterval.lower).toFixed(1)}ms
+                          범위: {((analysis as any).confidenceInterval.upper - (analysis as any).confidenceInterval.lower).toFixed(1)}ms
                         </span>
                       </div>
                     </div>
                   )}
 
                   {/* Normality Test */}
-                  {analysis.normalityTest && (
+                  {(analysis as any).normalityTest && (
                     <div className="border-l-4 border-purple-500 pl-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium text-gray-900 dark:text-gray-100">정규성 검정</h4>
                         <span className="text-2xl font-bold text-purple-600">
-                          {analysis.normalityTest.isNormal ? "정규분포" : "비정규분포"}
+                          {(analysis as any).normalityTest.isNormal ? "정규분포" : "비정규분포"}
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        데이터가 정규분포를 따르는지 검정 (p = {analysis.normalityTest.pValue.toFixed(3)})
+                        데이터가 정규분포를 따르는지 검정 (p = {(analysis as any).normalityTest.pValue.toFixed(3)})
                       </div>
                       <div className="text-xs">
-                        {analysis.normalityTest.isNormal ? (
+                        {(analysis as any).normalityTest.isNormal ? (
                           <span className="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
                             ✓ 정규분포 가정 만족
                           </span>
