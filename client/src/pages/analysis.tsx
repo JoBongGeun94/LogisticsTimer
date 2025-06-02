@@ -11,7 +11,7 @@ import { calculateGageRR, performANOVA } from "@/lib/statistics";
 import { validateMeasurementAccuracy } from "@/lib/timer-utils";
 import { generateExcelData, downloadExcelFile } from "@/lib/excel-export";
 import { Link } from "wouter";
-import { ArrowLeft, FileText, Share2, CheckCircle, XCircle, AlertTriangle, Download } from "lucide-react";
+import { ArrowLeft, FileText, Share2, CheckCircle, XCircle, AlertTriangle, Download, FileSpreadsheet } from "lucide-react";
 
 export default function Analysis() {
   const { user, isLoading } = useAuth();
@@ -756,100 +756,18 @@ export default function Analysis() {
             <Button 
               variant="outline"
               className="flex items-center justify-center space-x-2"
-              onClick={async () => {
-                try {
-                  const response = await apiRequest('POST', '/api/export/excel', {
-                    sessionId: activeSession?.id
-                  });
-                  
-                  const responseData = await response.json();
-                  
-                  const excelData = generateExcelData({
-                    measurements: responseData.measurements || [],
-                    analysis: responseData.analysis || analysis,
-                    sessionInfo: responseData.sessionInfo || activeSession
-                  });
-                  
-                  // Check if Web Share API is available (mainly on mobile)
-                  if (navigator.share) {
-                    // Create text summary for sharing
-                    const textData = `측정 분석 리포트
-작업: ${activeSession?.taskType || '미지정'}
-공정: ${activeSession?.partNumber || '미지정'}
-측정자: ${activeSession?.operatorName || '미지정'}
-대상자: ${activeSession?.targetName || '미지정'}
-
-분석 결과:
-- 반복성: ${analysis?.repeatability?.toFixed(1) || '0.0'}%
-- 재현성: ${analysis?.reproducibility?.toFixed(1) || '0.0'}%
-- GRR: ${analysis?.grr?.toFixed(1) || '0.0'}%
-- 수용성: ${(analysis?.grr || 100) < 30 ? '양호' : '부적합'}
-
-측정 횟수: ${measurements.length}회`;
-                    
-                    await navigator.share({
-                      title: '측정 분석 리포트',
-                      text: textData
-                    });
-                    
-                    toast({
-                      title: "공유 완료",
-                      description: "분석 결과가 공유되었습니다.",
-                    });
-                  } else {
-                    // Fallback for desktop browsers
-                    const textData = `측정 분석 리포트
-
-작업: ${activeSession?.taskType || '미지정'}
-공정: ${activeSession?.partNumber || '미지정'}
-측정자: ${activeSession?.operatorName || '미지정'}
-대상자: ${activeSession?.targetName || '미지정'}
-
-분석 결과:
-- 반복성: ${analysis?.repeatability?.toFixed(1) || '0.0'}%
-- 재현성: ${analysis?.reproducibility?.toFixed(1) || '0.0'}%
-- GRR: ${analysis?.grr?.toFixed(1) || '0.0'}%
-- 수용성: ${(analysis?.grr || 100) < 30 ? '양호' : '부적합'}
-
-측정 데이터 (${measurements.length}개):
-${measurements.slice(0, 10).map((m: any, i: number) => `${i+1}. ${(m.timeInMs/1000).toFixed(2)}초`).join('\n')}${measurements.length > 10 ? '\n...' : ''}`;
-                    
-                    if (navigator.clipboard) {
-                      await navigator.clipboard.writeText(textData);
-                      toast({
-                        title: "클립보드에 복사됨",
-                        description: "분석 결과가 클립보드에 복사되었습니다.",
-                      });
-                    } else {
-                      // Create a text file for download
-                      const blob = new Blob([textData], { type: 'text/plain;charset=utf-8' });
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement('a');
-                      link.href = url;
-                      link.download = `측정분석리포트_${new Date().toISOString().slice(0, 10)}.txt`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      URL.revokeObjectURL(url);
-                      
-                      toast({
-                        title: "텍스트 파일 다운로드",
-                        description: "분석 결과가 텍스트 파일로 다운로드되었습니다.",
-                      });
-                    }
-                  }
-                } catch (error) {
-                  console.error('Share error:', error);
-                  toast({
-                    title: "공유 오류",
-                    description: "데이터 공유에 실패했습니다.",
-                    variant: "destructive",
-                  });
-                }
+              onClick={() => {
+                const downloadUrl = `/api/export/excel/${activeSession?.id}/download`;
+                window.location.href = downloadUrl;
+                
+                toast({
+                  title: "Excel 파일 다운로드",
+                  description: "Excel 파일 다운로드가 시작됩니다.",
+                });
               }}
             >
-              <Share2 className="h-4 w-4" />
-              <span>결과 공유</span>
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>Excel 내보기</span>
             </Button>
           </div>
         </div>
