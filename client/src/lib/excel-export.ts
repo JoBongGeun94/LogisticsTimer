@@ -253,17 +253,35 @@ export function downloadExcelFile(data: any): void {
           const link = document.createElement('a');
           link.href = url;
           link.download = data.filename;
-          link.style.display = 'none';
+          link.style.cssText = 'display: none; position: absolute; top: -1000px;';
+          
+          // Add explicit MIME type for better compatibility
+          link.type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
           
           // Use click() with user interaction context
           document.body.appendChild(link);
           
-          // Force immediate click
-          setTimeout(() => {
+          // Try multiple download methods for better compatibility
+          try {
+            // Method 1: Direct click
             link.click();
-            document.body.removeChild(link);
+          } catch (e) {
+            // Method 2: Dispatch click event
+            const clickEvent = new MouseEvent('click', {
+              view: window,
+              bubbles: true,
+              cancelable: true
+            });
+            link.dispatchEvent(clickEvent);
+          }
+          
+          // Cleanup after a delay
+          setTimeout(() => {
+            if (document.body.contains(link)) {
+              document.body.removeChild(link);
+            }
             URL.revokeObjectURL(url);
-          }, 0);
+          }, 1000);
         }
       } catch (error) {
         console.error('Mobile download error:', error);

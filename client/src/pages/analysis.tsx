@@ -634,34 +634,34 @@ export default function Analysis() {
               className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center space-x-2"
               onClick={async () => {
                 try {
-                  const response = await apiRequest('POST', '/api/export/excel', {
-                    sessionId: activeSession?.id
-                  });
-                  
-                  const responseData = await response.json();
-                  
-                  const excelData = generateExcelData({
-                    measurements: responseData.measurements || [],
-                    analysis: responseData.analysis || analysis,
-                    sessionInfo: responseData.sessionInfo || activeSession
-                  });
-                  
                   // Check if we're on mobile
                   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                   
                   if (isMobile) {
-                    // For mobile, show additional guidance
+                    // For mobile, use direct server download link
+                    const downloadUrl = `/api/export/excel/${activeSession?.id}/download`;
+                    window.open(downloadUrl, '_blank');
+                    
                     toast({
-                      title: "모바일 다운로드 시작",
-                      description: "파일이 다운로드됩니다. 브라우저의 다운로드 폴더를 확인해주세요.",
+                      title: "모바일 다운로드",
+                      description: "새 탭에서 파일이 다운로드됩니다. 다운로드 폴더를 확인해주세요.",
+                    });
+                  } else {
+                    // Desktop: use client-side Excel generation
+                    const response = await apiRequest('POST', '/api/export/excel', {
+                      sessionId: activeSession?.id
                     });
                     
-                    // Wait a moment then trigger download
-                    setTimeout(() => {
-                      downloadExcelFile(excelData);
-                    }, 500);
-                  } else {
+                    const responseData = await response.json();
+                    
+                    const excelData = generateExcelData({
+                      measurements: responseData.measurements || [],
+                      analysis: responseData.analysis || analysis,
+                      sessionInfo: responseData.sessionInfo || activeSession
+                    });
+                    
                     downloadExcelFile(excelData);
+                    
                     toast({
                       title: "리포트 다운로드 완료",
                       description: "Excel 파일이 다운로드되었습니다.",
