@@ -301,8 +301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `${Math.floor(m.timeInMs / 60000).toString().padStart(2, '0')}:${(Math.floor((m.timeInMs % 60000) / 1000)).toString().padStart(2, '0')}.${(m.timeInMs % 1000).toString().padStart(2, '0').slice(0, 2)}`,
           taskTypeName,
           session.partNumber || "",
-          session.operatorName || "",
-          session.targetName || "",
+          m.operatorName || session.operatorName || "",
+          m.partName || session.targetName || "",
           m.timestamp ? new Date(m.timestamp).toLocaleString('ko-KR') : new Date().toLocaleString('ko-KR'),
           m.timeInMs < 1000 ? "매우 빠름" : m.timeInMs > 10000 ? "느림" : "정상"
         ]),
