@@ -296,18 +296,25 @@ export function MeasurementForm({
                   </div>
                   {/* GRR 모드일 때 측정자 선택 드롭다운 */}
                   {activeSession?.operators && (
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-600">현재 측정자 선택</Label>
+                    <div className="space-y-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <Label className="text-sm font-medium text-blue-800 dark:text-blue-200">🧑‍🔬 현재 측정자 선택</Label>
                       <Select value={selectedOperator} onValueChange={onOperatorSelect}>
-                        <SelectTrigger className="h-8">
+                        <SelectTrigger className="h-10 bg-white dark:bg-gray-800 border-blue-300">
                           <SelectValue placeholder="측정자를 선택하세요" />
                         </SelectTrigger>
                         <SelectContent>
                           {activeSession.operators.map((op: any) => (
-                            <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
+                            <SelectItem key={op.id} value={op.id}>
+                              <span className="font-medium">{op.name}</span>
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {selectedOperator && (
+                        <div className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                          선택됨: {activeSession.operators.find((op: any) => op.id === selectedOperator)?.name || "미선택"}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -392,18 +399,25 @@ export function MeasurementForm({
                   </div>
                   {/* GRR 모드일 때 대상자 선택 드롭다운 */}
                   {activeSession?.parts && (
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-600">현재 대상자 선택</Label>
+                    <div className="space-y-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <Label className="text-sm font-medium text-green-800 dark:text-green-200">🎯 현재 대상자 선택</Label>
                       <Select value={selectedPart} onValueChange={onPartSelect}>
-                        <SelectTrigger className="h-8">
+                        <SelectTrigger className="h-10 bg-white dark:bg-gray-800 border-green-300">
                           <SelectValue placeholder="대상자를 선택하세요" />
                         </SelectTrigger>
                         <SelectContent>
                           {activeSession.parts.map((part: any) => (
-                            <SelectItem key={part.id} value={part.id}>{part.name}</SelectItem>
+                            <SelectItem key={part.id} value={part.id}>
+                              <span className="font-medium">{part.name}</span>
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {selectedPart && (
+                        <div className="text-xs text-green-700 dark:text-green-300 font-medium">
+                          선택됨: {activeSession.parts.find((part: any) => part.id === selectedPart)?.name || "미선택"}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -411,6 +425,38 @@ export function MeasurementForm({
             </div>
 
 
+
+            {/* 현재 선택된 조합 표시 */}
+            {activeSession?.operators && activeSession?.parts && (
+              <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                <h3 className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">📊 현재 측정 조합</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <div className="text-xs text-gray-600 dark:text-gray-400">측정자</div>
+                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                      {selectedOperator ? 
+                        activeSession.operators.find((op: any) => op.id === selectedOperator)?.name : 
+                        "미선택"
+                      }
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-600 dark:text-gray-400">대상자</div>
+                    <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                      {selectedPart ? 
+                        activeSession.parts.find((part: any) => part.id === selectedPart)?.name : 
+                        "미선택"
+                      }
+                    </div>
+                  </div>
+                </div>
+                {(!selectedOperator || !selectedPart) && (
+                  <div className="mt-2 text-xs text-orange-600 dark:text-orange-400 text-center">
+                    측정하기 전에 측정자와 대상자를 모두 선택해주세요
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 dark:text-gray-400">
