@@ -73,7 +73,7 @@ export default function Timer() {
         setSelectedPart(activeSession.parts[0].id);
       }
     }
-  }, [activeSession, selectedOperator, selectedPart]);
+  }, [activeSession]);
 
   // Create work session mutation
   const createSessionMutation = useMutation({
