@@ -50,6 +50,50 @@ const demoAuth = (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoints for deployment monitoring
+  app.get('/health', (req, res) => {
+    res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV,
+      version: '1.0.0'
+    });
+  });
+
+  app.get('/ready', async (req, res) => {
+    try {
+      await storage.getUserWorkSessions('health-check', 1);
+      res.status(200).json({
+        status: 'ready',
+        database: 'connected',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: 'not ready',
+        database: 'disconnected',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Error reporting endpoint
+  app.post('/api/errors', async (req, res) => {
+    try {
+      console.error('Client Error Report:', {
+        timestamp: new Date().toISOString(),
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+        ...req.body
+      });
+      res.status(200).json({ received: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to log error' });
+    }
+  });
+
   // Demo auth routes
   app.get('/api/login', (req, res) => {
     res.redirect('/');
