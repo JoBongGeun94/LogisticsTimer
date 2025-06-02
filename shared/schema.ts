@@ -66,6 +66,7 @@ export const measurements = pgTable("measurements", {
   partNumber: varchar("part_number"),
   operatorName: varchar("operator_name"), // 측정자 이름
   partId: varchar("part_id"), // 부품 ID (같은 부품을 여러 측정자가 측정)
+  partName: varchar("part_name"), // 부품/대상자 이름
   trialNumber: integer("trial_number").default(1), // 시행 번호 (각 측정자가 같은 부품을 여러 번 측정)
   timestamp: timestamp("timestamp").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -159,6 +160,10 @@ export const insertMeasurementSchema = createInsertSchema(measurements).pick({
   timeInMs: true,
   taskType: true,
   partNumber: true,
+  operatorName: true,
+  partId: true,
+  partName: true,
+  trialNumber: true,
 });
 
 export const insertAnalysisResultSchema = createInsertSchema(analysisResults).pick({

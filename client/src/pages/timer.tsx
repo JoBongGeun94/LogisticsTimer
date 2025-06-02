@@ -306,6 +306,7 @@ export default function Timer() {
         partNumber: activeSession.partNumber || "",
         operatorName: operator?.name || "",
         partId: selectedPart,
+        partName: part?.name || "",
         trialNumber: currentTrial,
       });
     } else {
