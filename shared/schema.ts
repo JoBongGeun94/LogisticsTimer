@@ -46,6 +46,9 @@ export const workSessions = pgTable("work_sessions", {
   partNumber: varchar("part_number"),
   operatorName: varchar("operator_name"),
   targetName: varchar("target_name"),
+  operators: jsonb("operators"), // 측정자 목록 [{ name: "측정자1", id: "op1" }, ...]
+  parts: jsonb("parts"), // 부품 목록 [{ id: "part1", name: "부품1" }, ...]
+  trialsPerOperator: integer("trials_per_operator").default(3), // 측정자별 시행 횟수
   startedAt: timestamp("started_at").defaultNow(),
   completedAt: timestamp("completed_at"),
   isActive: boolean("is_active").default(true),
@@ -61,6 +64,9 @@ export const measurements = pgTable("measurements", {
   timeInMs: integer("time_in_ms").notNull(),
   taskType: varchar("task_type").notNull(),
   partNumber: varchar("part_number"),
+  operatorName: varchar("operator_name"), // 측정자 이름
+  partId: varchar("part_id"), // 부품 ID (같은 부품을 여러 측정자가 측정)
+  trialNumber: integer("trial_number").default(1), // 시행 번호 (각 측정자가 같은 부품을 여러 번 측정)
   timestamp: timestamp("timestamp").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
