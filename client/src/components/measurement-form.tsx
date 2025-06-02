@@ -223,17 +223,20 @@ export function MeasurementForm({
 
             {/* 측정자 정보 */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">현재 측정자</Label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleOperatorEdit}
-                  className="h-6 px-2 text-xs"
-                >
-                  변경
-                </Button>
-              </div>
+              {/* 기본 모드에서만 제목과 변경 버튼 표시 */}
+              {!activeSession?.operators && (
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">현재 측정자</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleOperatorEdit}
+                    className="h-6 px-2 text-xs"
+                  >
+                    변경
+                  </Button>
+                </div>
+              )}
               {isEditingOperator ? (
                 <div className="space-y-2">
                   <Select value={tempOperatorName} onValueChange={setTempOperatorName}>
@@ -328,17 +331,20 @@ export function MeasurementForm({
 
             {/* 대상자 정보 */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">현재 대상자</Label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleTargetEdit}
-                  className="h-6 px-2 text-xs"
-                >
-                  변경
-                </Button>
-              </div>
+              {/* 기본 모드에서만 제목과 변경 버튼 표시 */}
+              {!activeSession?.parts && (
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">현재 대상자</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleTargetEdit}
+                    className="h-6 px-2 text-xs"
+                  >
+                    변경
+                  </Button>
+                </div>
+              )}
               {isEditingTarget ? (
                 <div className="space-y-2">
                   <Select value={tempTargetName} onValueChange={setTempTargetName}>
@@ -436,7 +442,7 @@ export function MeasurementForm({
             {activeSession?.operators && activeSession?.parts && (
               <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                 <h3 className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">📊 현재 측정 조합</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 mb-3">
                   <div className="text-center">
                     <div className="text-xs text-gray-600 dark:text-gray-400">측정자</div>
                     <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
@@ -456,6 +462,21 @@ export function MeasurementForm({
                     </div>
                   </div>
                 </div>
+                
+                {/* 현재 조합의 측정 횟수 표시 */}
+                {selectedOperator && selectedPart && (
+                  <div className="text-center p-2 bg-white dark:bg-gray-800 rounded border">
+                    <div className="text-xs text-gray-600 dark:text-gray-400">이 조합 측정 횟수</div>
+                    <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                      {measurements?.filter((m: any) => {
+                        const operatorName = activeSession.operators.find((op: any) => op.id === selectedOperator)?.name;
+                        const partName = activeSession.parts.find((part: any) => part.id === selectedPart)?.name;
+                        return m.operatorName === operatorName && m.partName === partName;
+                      }).length || 0}회
+                    </div>
+                  </div>
+                )}
+                
                 {(!selectedOperator || !selectedPart) && (
                   <div className="mt-2 text-xs text-orange-600 dark:text-orange-400 text-center">
                     측정하기 전에 측정자와 대상자를 모두 선택해주세요
