@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'POST') {
       // Create new measurement
-      const { operatorName, partId, trialNumber, timeInMs, targetName } = req.body;
+      const { operatorName, partId, trialNumber, timeInMs, partName, taskType, partNumber, attemptNumber } = req.body;
 
       const [newMeasurement] = await db
         .insert(measurements)
@@ -36,7 +36,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           partId,
           trialNumber,
           timeInMs,
-          targetName
+          partName,
+          taskType: taskType || "measurement",
+          partNumber,
+          attemptNumber: attemptNumber || 1
         })
         .returning();
 
