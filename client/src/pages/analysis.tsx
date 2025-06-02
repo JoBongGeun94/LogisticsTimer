@@ -756,14 +756,49 @@ export default function Analysis() {
             <Button 
               variant="outline"
               className="flex items-center justify-center space-x-2"
-              onClick={() => {
-                const downloadUrl = `/api/export/excel/${activeSession?.id}/download`;
-                window.location.href = downloadUrl;
-                
-                toast({
-                  title: "Excel 파일 다운로드",
-                  description: "Excel 파일 다운로드가 시작됩니다.",
-                });
+              onClick={async () => {
+                try {
+                  const downloadUrl = `/api/export/excel/${activeSession?.id}/download`;
+                  
+                  // Try multiple download methods for better mobile compatibility
+                  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                  
+                  if (isMobile) {
+                    // Method 1: Create a temporary link element and click it
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = '';
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // Method 2: Also try window.open as fallback
+                    setTimeout(() => {
+                      window.open(downloadUrl, '_blank');
+                    }, 100);
+                    
+                    toast({
+                      title: "Excel 파일 다운로드",
+                      description: "Excel 파일 다운로드가 시작됩니다. 브라우저 다운로드 폴더를 확인해주세요.",
+                    });
+                  } else {
+                    // Desktop: Use window.location
+                    window.location.href = downloadUrl;
+                    
+                    toast({
+                      title: "Excel 파일 다운로드",
+                      description: "Excel 파일이 다운로드됩니다.",
+                    });
+                  }
+                } catch (error) {
+                  console.error('Download error:', error);
+                  toast({
+                    title: "다운로드 오류",
+                    description: "파일 다운로드에 실패했습니다.",
+                    variant: "destructive",
+                  });
+                }
               }}
             >
               <FileSpreadsheet className="h-4 w-4" />
