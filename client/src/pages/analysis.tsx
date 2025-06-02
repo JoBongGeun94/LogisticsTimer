@@ -12,6 +12,7 @@ import { validateMeasurementAccuracy } from "@/lib/timer-utils";
 import { generateExcelData, downloadExcelFile } from "@/lib/excel-export";
 import { Link } from "wouter";
 import { ArrowLeft, FileText, Share2, CheckCircle, XCircle, AlertTriangle, Download, FileSpreadsheet } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, ComposedChart, Area, AreaChart } from "recharts";
 
 // Type definitions
 interface User {
@@ -798,21 +799,137 @@ export default function Analysis() {
             </Card>
           )}
 
-          {/* Visual Chart Placeholder */}
-          <Card>
-            <CardHeader>
-              <CardTitle>분산 분석 차트</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-48 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                <div className="text-center text-gray-500 dark:text-gray-400">
-                  <FileText className="h-8 w-8 mx-auto mb-2" />
-                  <p className="text-sm">분산 분석 차트</p>
-                  <p className="text-xs mt-1">실제 구현 시 통계 차트 표시</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Variance Analysis Charts */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Measurement Distribution Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>측정값 분포</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={measurements.map((m, index) => ({
+                    index: index + 1,
+                    value: m.timeInMs,
+                    operator: m.operatorName || '기본',
+                    part: m.partName || '기본'
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="index" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        `${value}ms`,
+                        '측정값'
+                      ]}
+                      labelFormatter={(label) => `측정 #${label}`}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke="#2563eb" 
+                      strokeWidth={2}
+                      dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Variance Components Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>분산 성분 분석</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: '반복성', value: analysis?.repeatability || 0, fill: '#8884d8' },
+                        { name: '재현성', value: analysis?.reproducibility || 0, fill: '#82ca9d' },
+                        { name: '부품 변동', value: analysis?.partContribution || 0, fill: '#ffc658' },
+                        { name: '기타', value: Math.max(0, 100 - (analysis?.grr || 0)), fill: '#ff7300' }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {[
+                        { name: '반복성', value: analysis?.repeatability || 0, fill: '#8884d8' },
+                        { name: '재현성', value: analysis?.reproducibility || 0, fill: '#82ca9d' },
+                        { name: '부품 변동', value: analysis?.partContribution || 0, fill: '#ffc658' },
+                        { name: '기타', value: Math.max(0, 100 - (analysis?.grr || 0)), fill: '#ff7300' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Control Chart */}
+          {measurements.length >= 5 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>관리도 (Control Chart)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart data={measurements.map((m, index) => {
+                    const stats = { 
+                      mean: measurements.reduce((sum, item) => sum + item.timeInMs, 0) / measurements.length,
+                      std: Math.sqrt(measurements.reduce((sum, item) => sum + Math.pow(item.timeInMs - (measurements.reduce((s, i) => s + i.timeInMs, 0) / measurements.length), 2), 0) / measurements.length)
+                    };
+                    return {
+                      index: index + 1,
+                      value: m.timeInMs,
+                      mean: stats.mean,
+                      ucl: stats.mean + 3 * stats.std,
+                      lcl: Math.max(0, stats.mean - 3 * stats.std),
+                      operator: m.operatorName || '기본',
+                      part: m.partName || '기본'
+                    };
+                  })}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="index" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value, name) => {
+                        if (name === 'value') return [`${value}ms`, '측정값'];
+                        if (name === 'mean') return [`${value.toFixed(1)}ms`, '평균선'];
+                        if (name === 'ucl') return [`${value.toFixed(1)}ms`, '상한선 (UCL)'];
+                        if (name === 'lcl') return [`${value.toFixed(1)}ms`, '하한선 (LCL)'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label) => `측정 #${label}`}
+                    />
+                    <Area type="monotone" dataKey="ucl" stackId="1" stroke="none" fill="#fee2e2" fillOpacity={0.3} />
+                    <Area type="monotone" dataKey="lcl" stackId="1" stroke="none" fill="#ffffff" fillOpacity={1} />
+                    <Line type="monotone" dataKey="mean" stroke="#10b981" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                    <Line type="monotone" dataKey="ucl" stroke="#ef4444" strokeWidth={1} strokeDasharray="2 2" dot={false} />
+                    <Line type="monotone" dataKey="lcl" stroke="#ef4444" strokeWidth={1} strokeDasharray="2 2" dot={false} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke="#2563eb" 
+                      strokeWidth={3}
+                      dot={{ fill: '#2563eb', strokeWidth: 2, r: 5 }}
+                    />
+                    <Legend />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Recommendations */}
           <Card>
