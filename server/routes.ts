@@ -199,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Direct Excel file download route for mobile
+  // Direct Excel file download route
   app.get('/api/export/excel/:sessionId/download', demoAuth, async (req: any, res) => {
     try {
       const { sessionId } = req.params;
@@ -210,6 +210,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!session) {
         return res.status(404).json({ message: "Session not found" });
       }
+
+      // Import XLSX for server-side Excel generation
+      const XLSX = require('xlsx');
 
       // Generate filename with Korean team names
       const now = new Date();
@@ -222,95 +225,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const taskTypeName = teamNames[session.taskType] || session.taskType;
-      const filename = `${taskTypeName} ${session.partNumber || '측정'} 결과(${timestamp}).txt`;
+      const filename = `${taskTypeName} ${session.partNumber || '측정'} 결과(${timestamp}).xlsx`;
       
-      // Create comprehensive text report
-      const textReport = `=== 측정 분석 리포트 ===
-
-[작업 정보]
-작업 유형: ${taskTypeName}
-공정세부번호: ${session.partNumber || '미지정'}
-측정자: ${session.operatorName || '미지정'}
-대상자: ${session.targetName || '미지정'}
-측정 시작: ${new Date(session.createdAt).toLocaleString('ko-KR')}
-측정 완료: ${session.completedAt ? new Date(session.completedAt).toLocaleString('ko-KR') : '진행중'}
-
-[측정 데이터] (총 ${measurements.length}회)
-${'='.repeat(50)}
-${measurements.map((m, i) => 
-  `${(i+1).toString().padStart(2, ' ')}. ${(m.timeInMs/1000).toFixed(2)}초 | ${new Date(m.timestamp).toLocaleString('ko-KR')}`
-).join('\n')}
-
-[기본 통계]
-${'='.repeat(50)}
-평균 시간: ${measurements.length > 0 ? (measurements.reduce((sum, m) => sum + m.timeInMs, 0) / measurements.length / 1000).toFixed(2) : '0.00'}초
-최소 시간: ${measurements.length > 0 ? (Math.min(...measurements.map(m => m.timeInMs)) / 1000).toFixed(2) : '0.00'}초
-최대 시간: ${measurements.length > 0 ? (Math.max(...measurements.map(m => m.timeInMs)) / 1000).toFixed(2) : '0.00'}초
-측정 범위: ${measurements.length > 0 ? ((Math.max(...measurements.map(m => m.timeInMs)) - Math.min(...measurements.map(m => m.timeInMs))) / 1000).toFixed(2) : '0.00'}초
-
-${analysis ? `[Gage R&R 분석 결과]
-${'='.repeat(50)}
-반복성 (Repeatability): ${analysis.repeatability.toFixed(1)}%
-재현성 (Reproducibility): ${analysis.reproducibility.toFixed(1)}%
-전체 GRR: ${analysis.grr.toFixed(1)}%
-부품 기여도: ${analysis.partContribution.toFixed(1)}%
-측정자 기여도: ${analysis.operatorContribution.toFixed(1)}%
-수용성: ${analysis.grr < 30 ? '양호 (수용가능)' : '부적합 (개선필요)'}
-
-[상세 분석]
-${'='.repeat(50)}
-반복성 평가: ${analysis.repeatability < 10 ? '우수 - 측정 장비가 매우 안정적' : 
-               analysis.repeatability < 20 ? '양호 - 측정 장비의 정밀도가 적절' : 
-               '주의 - 측정 장비 점검 및 보정 필요'}
-
-재현성 평가: ${analysis.reproducibility < 10 ? '우수 - 측정자 간 일관성이 매우 높음' : 
-               analysis.reproducibility < 20 ? '양호 - 측정자 간 편차가 적절한 수준' : 
-               '주의 - 측정자 교육 및 작업 표준화 필요'}
-
-부품 기여도: ${analysis.partContribution > 50 ? '이상적 - 실제 작업 차이가 변동의 주요 원인' : 
-               analysis.partContribution > 20 ? '보통 - 작업 간 차이를 적절히 구별 가능' : 
-               '낮음 - 측정시스템 오차가 실제 차이보다 큼'}
-
-[평가 기준]
-${'='.repeat(50)}
-GRR < 10%: 우수 (측정시스템 수용가능)
-10% ≤ GRR < 30%: 양호 (조건부 수용가능)  
-GRR ≥ 30%: 부적합 (측정시스템 개선필요)
-
-[개선 권장사항]
-${'='.repeat(50)}
-${analysis.grr >= 30 ? 
-`우선순위 1: 측정 장비 점검 및 보정 (반복성 개선)
-우선순위 2: 측정자 교육 강화 (재현성 개선)
-우선순위 3: 작업 환경 및 절차 표준화
-우선순위 4: 측정시스템 전면 재검토` :
-analysis.grr >= 10 ?
-`개선사항 1: 측정 절차 문서화 및 표준화
-개선사항 2: 정기적 시스템 점검 체계 구축
-개선사항 3: 측정자 간 일관성 향상 교육` :
-`현재 상태: 측정시스템이 우수한 상태
-유지사항: 현재 수준 지속 관리 및 모니터링
-정기점검: 월 1회 정도 시스템 상태 확인`}` : 
-`[Gage R&R 분석]
-${'='.repeat(50)}
-분석 데이터가 부족합니다.
-최소 3회 이상 측정이 필요합니다.
-
-[권장사항]
-- 추가 측정 수행 (최소 10회 권장)
-- 일관된 측정 조건 유지
-- 측정자 교육 실시`}
-
-${'='.repeat(50)}
-리포트 생성일시: ${new Date().toLocaleString('ko-KR')}
-생성 시스템: Gage R&R 측정 분석 시스템
-${'='.repeat(50)}`;
+      // Create workbook
+      const workbook = XLSX.utils.book_new();
       
-      // Set headers for file download
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      // Raw Data Sheet
+      const rawData = [
+        ["시도 번호", "측정 시간(ms)", "측정 시간(형식)", "작업 유형", "공정세부번호", "측정자", "대상자", "측정 일시", "비고"],
+        ...measurements.map((m, i) => [
+          i + 1,
+          m.timeInMs,
+          `${Math.floor(m.timeInMs / 60000).toString().padStart(2, '0')}:${(Math.floor((m.timeInMs % 60000) / 1000)).toString().padStart(2, '0')}.${(m.timeInMs % 1000).toString().padStart(2, '0').slice(0, 2)}`,
+          taskTypeName,
+          session.partNumber || "",
+          session.operatorName || "",
+          session.targetName || "",
+          new Date(m.timestamp || new Date()).toLocaleString('ko-KR'),
+          m.timeInMs < 1000 ? "매우 빠름" : m.timeInMs > 10000 ? "느림" : "정상"
+        ]),
+      ];
+
+      // Summary Sheet
+      const summaryData = [
+        ["작업 정보", "", ""],
+        ["작업 유형", taskTypeName, ""],
+        ["공정세부번호", session.partNumber || "", ""],
+        ["측정자", session.operatorName || "", ""],
+        ["대상자", session.targetName || "", ""],
+        ["시작 시간", new Date(session.createdAt).toLocaleString('ko-KR'), ""],
+        ["", "", ""],
+        ["Gage R&R 분석 결과", "", ""],
+        ["반복성 (Repeatability)", analysis?.repeatability?.toFixed(2) || "N/A", "%"],
+        ["재현성 (Reproducibility)", analysis?.reproducibility?.toFixed(2) || "N/A", "%"],
+        ["GRR", analysis?.grr?.toFixed(2) || "N/A", "%"],
+        ["부품별 기여도", analysis?.partContribution?.toFixed(2) || "N/A", "%"],
+        ["측정자별 기여도", analysis?.operatorContribution?.toFixed(2) || "N/A", "%"],
+        ["수용성", analysis?.grr && analysis.grr < 30 ? "합격" : "부적합", ""],
+        ["", "", ""],
+        ["평가 기준", "", ""],
+        ["GRR < 10%", "우수 (측정시스템 수용가능)", ""],
+        ["10% ≤ GRR < 30%", "양호 (조건부 수용가능)", ""],
+        ["GRR ≥ 30%", "부적합 (측정시스템 개선필요)", ""],
+        ["", "", ""],
+        ["통계 정보", "", ""],
+        ["총 측정 횟수", measurements.length, "회"],
+        ["평균 시간", measurements.length > 0 ? (measurements.reduce((sum, m) => sum + m.timeInMs, 0) / measurements.length).toFixed(2) : "0.00", "ms"],
+        ["최소 시간", measurements.length > 0 ? Math.min(...measurements.map(m => m.timeInMs)).toFixed(2) : "0.00", "ms"],
+        ["최대 시간", measurements.length > 0 ? Math.max(...measurements.map(m => m.timeInMs)).toFixed(2) : "0.00", "ms"]
+      ];
+
+      // Analysis Details Sheet
+      const analysisData = [
+        ["Gage R&R 상세 분석", "", ""],
+        ["", "", ""],
+        ["반복성 분석", "", ""],
+        ["정의", "동일 측정자가 동일 조건에서 반복 측정 시 일관성", ""],
+        ["결과", analysis?.repeatability?.toFixed(2) || "N/A", "%"],
+        ["평가", analysis?.repeatability ? 
+          (analysis.repeatability < 10 ? "우수" : 
+           analysis.repeatability < 20 ? "양호" : "개선필요") : "N/A", ""],
+        ["", "", ""],
+        ["재현성 분석", "", ""],
+        ["정의", "서로 다른 측정자 간의 측정 일관성", ""],
+        ["결과", analysis?.reproducibility?.toFixed(2) || "N/A", "%"],
+        ["평가", analysis?.reproducibility ? 
+          (analysis.reproducibility < 10 ? "우수" : 
+           analysis.reproducibility < 20 ? "양호" : "개선필요") : "N/A", ""],
+        ["", "", ""],
+        ["전체 GRR", "", ""],
+        ["정의", "측정시스템의 전체 변동성", ""],
+        ["결과", analysis?.grr?.toFixed(2) || "N/A", "%"],
+        ["수용성", analysis?.grr ? 
+          (analysis.grr < 10 ? "우수" : 
+           analysis.grr < 30 ? "양호" : "부적합") : "N/A", ""]
+      ];
+
+      // Create worksheets
+      const rawSheet = XLSX.utils.aoa_to_sheet(rawData);
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      const analysisSheet = XLSX.utils.aoa_to_sheet(analysisData);
+
+      // Add sheets to workbook
+      XLSX.utils.book_append_sheet(workbook, rawSheet, "Raw Data");
+      XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
+      XLSX.utils.book_append_sheet(workbook, analysisSheet, "Analysis Details");
+
+      // Generate Excel buffer
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      // Set headers for Excel file download
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
       res.setHeader('Cache-Control', 'no-cache');
-      res.send(textReport);
+      res.send(excelBuffer);
       
     } catch (error) {
       console.error("Direct download error:", error);

@@ -640,47 +640,92 @@ export default function Analysis() {
                   if (isMobile) {
                     // For mobile, use direct server download link
                     const downloadUrl = `/api/export/excel/${activeSession?.id}/download`;
-                    window.open(downloadUrl, '_blank');
+                    
+                    // Create a temporary link for better download control
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = ''; // Let the server determine filename
+                    link.style.display = 'none';
+                    
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
                     
                     toast({
-                      title: "모바일 다운로드",
-                      description: "새 탭에서 파일이 다운로드됩니다. 다운로드 폴더를 확인해주세요.",
+                      title: "Excel 파일 다운로드",
+                      description: "Excel 파일이 다운로드됩니다. 다운로드 폴더를 확인해주세요.",
                     });
                   } else {
-                    // Desktop: use client-side Excel generation
-                    const response = await apiRequest('POST', '/api/export/excel', {
-                      sessionId: activeSession?.id
-                    });
-                    
-                    const responseData = await response.json();
-                    
-                    const excelData = generateExcelData({
-                      measurements: responseData.measurements || [],
-                      analysis: responseData.analysis || analysis,
-                      sessionInfo: responseData.sessionInfo || activeSession
-                    });
-                    
-                    try {
-                      const savedLocation = await downloadExcelFile(excelData, true);
+                    // Desktop: Try to use File System Access API for save location choice
+                    if ('showSaveFilePicker' in window) {
+                      try {
+                        // Generate filename
+                        const now = new Date();
+                        const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}`;
+                        
+                        const teamNames: { [key: string]: string } = {
+                          'material_inspection': '물자검수팀',
+                          'storage_management': '저장관리팀',
+                          'packaging_management': '포장관리팀',
+                        };
+                        
+                        const taskTypeName = teamNames[activeSession?.taskType] || activeSession?.taskType;
+                        const suggestedName = `${taskTypeName} ${activeSession?.partNumber || '측정'} 결과(${timestamp}).xlsx`;
+                        
+                        // Show save dialog
+                        const fileHandle = await (window as any).showSaveFilePicker({
+                          suggestedName: suggestedName,
+                          types: [
+                            {
+                              description: 'Excel 파일',
+                              accept: {
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+                              },
+                            },
+                          ],
+                        });
+                        
+                        // Get file data from server
+                        const downloadUrl = `/api/export/excel/${activeSession?.id}/download`;
+                        const response = await fetch(downloadUrl);
+                        const excelBuffer = await response.arrayBuffer();
+                        
+                        // Write file to chosen location
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(excelBuffer);
+                        await writable.close();
+                        
+                        toast({
+                          title: "Excel 파일 저장 완료",
+                          description: `파일이 "${fileHandle.name}"로 저장되었습니다.`,
+                        });
+                        
+                      } catch (error: any) {
+                        if (error.name === 'AbortError') {
+                          toast({
+                            title: "저장 취소",
+                            description: "파일 저장이 취소되었습니다.",
+                          });
+                        } else {
+                          // Fallback to regular download
+                          const downloadUrl = `/api/export/excel/${activeSession?.id}/download`;
+                          window.open(downloadUrl, '_blank');
+                          
+                          toast({
+                            title: "Excel 파일 다운로드",
+                            description: "Excel 파일이 기본 다운로드 폴더에 저장됩니다.",
+                          });
+                        }
+                      }
+                    } else {
+                      // Fallback for older browsers
+                      const downloadUrl = `/api/export/excel/${activeSession?.id}/download`;
+                      window.open(downloadUrl, '_blank');
                       
                       toast({
-                        title: "리포트 다운로드 완료",
-                        description: `파일이 "${savedLocation}"에 저장되었습니다.`,
+                        title: "Excel 파일 다운로드",
+                        description: "Excel 파일이 기본 다운로드 폴더에 저장됩니다.",
                       });
-                    } catch (saveError: any) {
-                      if (saveError.message === '저장이 취소되었습니다.') {
-                        toast({
-                          title: "저장 취소",
-                          description: "파일 저장이 취소되었습니다.",
-                        });
-                      } else {
-                        // Fallback to regular download
-                        const savedLocation = await downloadExcelFile(excelData, false);
-                        toast({
-                          title: "리포트 다운로드 완료",
-                          description: `파일이 "${savedLocation}"에 저장되었습니다.`,
-                        });
-                      }
                     }
                   }
                 } catch (error) {
