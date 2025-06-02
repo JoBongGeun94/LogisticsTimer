@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,6 +48,12 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [tempOperatorName, setTempOperatorName] = useState("");
   const [tempTargetName, setTempTargetName] = useState("");
+
+  // 과거 데이터 가져오기 (잠시 비활성화)
+  // const { data: historyData } = useQuery<{ operators: string[], targets: string[] }>({
+  //   queryKey: ["/api/work-sessions/history/operators-targets"],
+  //   retry: false,
+  // });
 
   const addOperator = () => {
     if (newOperatorName.trim()) {
@@ -112,6 +119,18 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
   const cancelTargetEdit = () => {
     setIsEditingTarget(false);
     setTempTargetName("");
+  };
+
+  const selectOperatorFromHistory = (selectedOperator: string) => {
+    if (onOperatorChange) {
+      onOperatorChange(selectedOperator);
+    }
+  };
+
+  const selectTargetFromHistory = (selectedTarget: string) => {
+    if (onTargetChange) {
+      onTargetChange(selectedTarget);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -199,34 +218,37 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                   </Button>
                 </div>
                 {isEditingOperator ? (
-                  <div className="flex space-x-2">
-                    <Input
-                      value={tempOperatorName}
-                      onChange={(e) => setTempOperatorName(e.target.value)}
-                      placeholder="측정자 이름"
-                      className="flex-1"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          saveOperatorEdit();
-                        } else if (e.key === 'Escape') {
-                          cancelOperatorEdit();
-                        }
-                      }}
-                    />
-                    <Button
-                      size="sm"
-                      onClick={saveOperatorEdit}
-                      disabled={!tempOperatorName.trim()}
-                    >
-                      저장
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={cancelOperatorEdit}
-                    >
-                      취소
-                    </Button>
+                  <div className="space-y-2">
+                    <Select value={tempOperatorName} onValueChange={setTempOperatorName}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="측정자를 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="측정자1">측정자1</SelectItem>
+                        <SelectItem value="측정자2">측정자2</SelectItem>
+                        <SelectItem value="홍길동">홍길동</SelectItem>
+                        <SelectItem value="김철수">김철수</SelectItem>
+                        <SelectItem value="이영희">이영희</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        onClick={saveOperatorEdit}
+                        disabled={!tempOperatorName.trim()}
+                        className="flex-1"
+                      >
+                        저장
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={cancelOperatorEdit}
+                        className="flex-1"
+                      >
+                        취소
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
@@ -253,7 +275,7 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
               </div>
             )}
 
-            {/* 대상자 정보 편집 */}
+            {/* 대상자 정보 편집 - GRR 모드가 아닐 때만 */}
             {!activeSession.operators && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -302,6 +324,23 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                     <span className="text-sm">{activeSession.targetName || "미설정"}</span>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* GRR 모드에서 대상자 선택 표시 */}
+            {activeSession.operators && activeSession.parts && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">현재 대상자 목록</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {activeSession.parts.map((part: any) => (
+                    <div key={part.id} className="p-2 bg-green-50 dark:bg-green-900/20 rounded border text-center">
+                      <span className="text-sm font-medium">{part.name}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">
+                  타이머 페이지에서 측정 시 현재 대상자를 선택할 수 있습니다.
+                </p>
               </div>
             )}
 

@@ -126,6 +126,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/work-sessions/history/operators-targets', demoAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const sessions = await storage.getUserWorkSessions(userId, 50); // 최근 50개 세션에서 추출
+      
+      const operators = new Set<string>();
+      const targets = new Set<string>();
+      
+      sessions.forEach((session: any) => {
+        if (session.operatorName) {
+          operators.add(session.operatorName);
+        }
+        if (session.targetName) {
+          targets.add(session.targetName);
+        }
+        // GRR 모드의 operators와 parts도 포함
+        if (session.operators) {
+          session.operators.forEach((op: any) => {
+            if (op.name) operators.add(op.name);
+          });
+        }
+        if (session.parts) {
+          session.parts.forEach((part: any) => {
+            if (part.name) targets.add(part.name);
+          });
+        }
+      });
+      
+      res.json({
+        operators: Array.from(operators).slice(0, 20), // 최대 20개
+        targets: Array.from(targets).slice(0, 20) // 최대 20개
+      });
+    } catch (error) {
+      console.error("Error fetching operators and targets history:", error);
+      res.status(500).json({ message: "Failed to fetch history" });
+    }
+  });
+
   // Measurement routes
   app.post('/api/measurements', demoAuth, async (req: any, res) => {
     try {
