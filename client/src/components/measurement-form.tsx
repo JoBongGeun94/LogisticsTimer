@@ -294,14 +294,20 @@ export function MeasurementForm({
                   <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
                     <span className="text-sm">{activeSession?.operatorName || "미설정"}</span>
                   </div>
-                  {/* GRR 모드일 때 전체 측정자 목록 표시 */}
+                  {/* GRR 모드일 때 측정자 선택 드롭다운 */}
                   {activeSession?.operators && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {activeSession.operators.map((op: any) => (
-                        <div key={op.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border text-center">
-                          <span className="text-sm font-medium">{op.name}</span>
-                        </div>
-                      ))}
+                    <div className="space-y-2">
+                      <Label className="text-xs text-gray-600">현재 측정자 선택</Label>
+                      <Select value={selectedOperator} onValueChange={onOperatorSelect}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="측정자를 선택하세요" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activeSession.operators.map((op: any) => (
+                            <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
                 </div>
@@ -384,14 +390,20 @@ export function MeasurementForm({
                   <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
                     <span className="text-sm">{activeSession?.targetName || "미설정"}</span>
                   </div>
-                  {/* GRR 모드일 때 전체 대상자 목록 표시 */}
+                  {/* GRR 모드일 때 대상자 선택 드롭다운 */}
                   {activeSession?.parts && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {activeSession.parts.map((part: any) => (
-                        <div key={part.id} className="p-2 bg-green-50 dark:bg-green-900/20 rounded border text-center">
-                          <span className="text-sm font-medium">{part.name}</span>
-                        </div>
-                      ))}
+                    <div className="space-y-2">
+                      <Label className="text-xs text-gray-600">현재 대상자 선택</Label>
+                      <Select value={selectedPart} onValueChange={onPartSelect}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="대상자를 선택하세요" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activeSession.parts.map((part: any) => (
+                            <SelectItem key={part.id} value={part.id}>{part.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
                 </div>
