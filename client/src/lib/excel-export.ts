@@ -188,22 +188,56 @@ export function downloadExcelFile(data: any): void {
       XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
     });
     
-    // Generate and download the file
-    XLSX.writeFile(workbook, data.filename);
+    // Check if we're on mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // Mobile approach: create blob and trigger download
+      const workbookBlob = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([workbookBlob], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = data.filename;
+      link.style.display = 'none';
+      
+      // For mobile Safari, we need to trigger the download differently
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+        // iOS Safari approach
+        link.target = '_blank';
+        link.rel = 'noopener';
+      }
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up URL object after delay
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } else {
+      // Desktop approach: use XLSX writeFile
+      XLSX.writeFile(workbook, data.filename);
+    }
   }).catch((error) => {
     console.error("Failed to load xlsx library:", error);
-    // Fallback to JSON download
+    // Enhanced fallback with better mobile support
     const jsonData = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = data.filename.replace('.xlsx', '.json');
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = data.filename.replace('.xlsx', '.json');
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   });
 }
 
