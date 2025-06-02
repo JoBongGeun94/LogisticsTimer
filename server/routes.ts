@@ -59,9 +59,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/work-sessions', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log("Session creation request body:", req.body);
       const sessionData = insertWorkSessionSchema.parse(req.body);
+      console.log("Parsed session data:", sessionData);
       
       const session = await storage.createWorkSession(userId, sessionData);
+      console.log("Created session:", session);
       res.json(session);
     } catch (error) {
       console.error("Error creating work session:", error);

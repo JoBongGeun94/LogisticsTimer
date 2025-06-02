@@ -149,6 +149,9 @@ export const insertWorkSessionSchema = createInsertSchema(workSessions).pick({
   partNumber: true,
   operatorName: true,
   targetName: true,
+  operators: true,
+  parts: true,
+  trialsPerOperator: true,
 });
 
 export const insertMeasurementSchema = createInsertSchema(measurements).pick({
