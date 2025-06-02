@@ -32,6 +32,17 @@ export default function Timer() {
   const [showHelp, setShowHelp] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState("");
   const [selectedPart, setSelectedPart] = useState("");
+
+  // Add logging for selection changes
+  const handleOperatorSelect = (operatorId: string) => {
+    console.log("Operator selected:", operatorId);
+    setSelectedOperator(operatorId);
+  };
+
+  const handlePartSelect = (partId: string) => {
+    console.log("Part selected:", partId);
+    setSelectedPart(partId);
+  };
   const [currentTrial, setCurrentTrial] = useState(1);
 
   // Redirect to login if unauthorized
@@ -559,8 +570,8 @@ export default function Timer() {
             onTargetChange={(targetName) => updateSessionMutation.mutate({ targetName })}
             selectedOperator={selectedOperator}
             selectedPart={selectedPart}
-            onOperatorSelect={setSelectedOperator}
-            onPartSelect={setSelectedPart}
+            onOperatorSelect={handleOperatorSelect}
+            onPartSelect={handlePartSelect}
             currentTrial={currentTrial}
           />
 
