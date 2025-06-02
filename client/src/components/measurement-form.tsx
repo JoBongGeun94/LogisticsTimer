@@ -31,9 +31,25 @@ interface MeasurementFormProps {
   isLoading?: boolean;
   onOperatorChange?: (operatorName: string) => void;
   onTargetChange?: (targetName: string) => void;
+  selectedOperator?: string;
+  selectedPart?: string;
+  onOperatorSelect?: (operatorId: string) => void;
+  onPartSelect?: (partId: string) => void;
+  currentTrial?: number;
 }
 
-export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onOperatorChange, onTargetChange }: MeasurementFormProps) {
+export function MeasurementForm({ 
+  onSessionCreate, 
+  activeSession, 
+  isLoading, 
+  onOperatorChange, 
+  onTargetChange,
+  selectedOperator,
+  selectedPart,
+  onOperatorSelect,
+  onPartSelect,
+  currentTrial
+}: MeasurementFormProps) {
   const [taskType, setTaskType] = useState("");
   const [partNumber, setPartNumber] = useState("");
   const [operatorName, setOperatorName] = useState("");
@@ -382,7 +398,49 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
               )}
             </div>
 
-
+            {/* GRR 모드에서 측정자/대상자 선택 */}
+            {activeSession?.operators && activeSession?.parts && (
+              <div className="space-y-3 border-t pt-3">
+                <div>
+                  <Label className="text-sm font-medium">측정 진행</Label>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div>
+                      <Label className="text-xs text-gray-500">현재 측정자</Label>
+                      <Select value={selectedOperator} onValueChange={onOperatorSelect}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="측정자 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activeSession.operators.map((op: any) => (
+                            <SelectItem key={op.id} value={op.id}>
+                              {op.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">현재 대상자</Label>
+                      <Select value={selectedPart} onValueChange={onPartSelect}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="대상자 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activeSession.parts.map((part: any) => (
+                            <SelectItem key={part.id} value={part.id}>
+                              {part.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    시행 {currentTrial || 1}/{activeSession.trialsPerOperator || 3}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 dark:text-gray-400">

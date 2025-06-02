@@ -537,54 +537,14 @@ export default function Timer() {
             isLoading={createSessionMutation.isPending}
             onOperatorChange={(operatorName) => updateSessionMutation.mutate({ operatorName })}
             onTargetChange={(targetName) => updateSessionMutation.mutate({ targetName })}
+            selectedOperator={selectedOperator}
+            selectedPart={selectedPart}
+            onOperatorSelect={setSelectedOperator}
+            onPartSelect={setSelectedPart}
+            currentTrial={currentTrial}
           />
 
-          {/* Gage R&R Selection - only show if active session has multiple operators/parts */}
-          {activeSession && activeSession.operators && activeSession.parts && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Users className="h-5 w-5 mr-2 text-green-600" />
-                  Gage R&R 측정 설정
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <Label className="text-sm font-medium">현재 측정자</Label>
-                  <Select value={selectedOperator} onValueChange={setSelectedOperator}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="측정자를 선택하세요" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeSession.operators.map((op: any) => (
-                        <SelectItem key={op.id} value={op.id}>
-                          {op.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">현재 대상자</Label>
-                  <Select value={selectedPart} onValueChange={setSelectedPart}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="대상자를 선택하세요" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeSession.parts.map((part: any) => (
-                        <SelectItem key={part.id} value={part.id}>
-                          {part.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="text-xs text-gray-500">
-                  시행 {currentTrial}/{activeSession.trialsPerOperator || 3}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+
 
           {/* Timer Section */}
           <Card>
