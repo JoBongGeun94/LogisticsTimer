@@ -505,13 +505,13 @@ export default function Analysis() {
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-purple-600">
-                      {anovaAnalysis.fStatistic.toFixed(2)}
+                      {anovaAnalysis?.fStatistic?.toFixed(2) || '0.00'}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">F-통계량</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-orange-600">
-                      {anovaAnalysis.pValue.toFixed(3)}
+                      {anovaAnalysis?.pValue?.toFixed(3) || '0.000'}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">p-값</div>
                   </div>
@@ -537,7 +537,7 @@ export default function Analysis() {
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">반복성 (Repeatability)</h4>
                     <span className="text-2xl font-bold text-indigo-600">
-                      {analysis.repeatability.toFixed(1)}%
+                      {analysis?.repeatability?.toFixed(1) || '0.0'}%
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -565,7 +565,7 @@ export default function Analysis() {
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">재현성 (Reproducibility)</h4>
                     <span className="text-2xl font-bold text-cyan-600">
-                      {analysis.reproducibility.toFixed(1)}%
+                      {analysis?.reproducibility?.toFixed(1) || '0.0'}%
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -593,7 +593,7 @@ export default function Analysis() {
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">부품 기여도 (Part-to-Part)</h4>
                     <span className="text-2xl font-bold text-purple-600">
-                      {analysis.partContribution.toFixed(1)}%
+                      {analysis?.partContribution?.toFixed(1) || '0.0'}%
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -621,7 +621,7 @@ export default function Analysis() {
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">측정자 기여도 (Operator Effect)</h4>
                     <span className="text-2xl font-bold text-amber-600">
-                      {analysis.operatorContribution.toFixed(1)}%
+                      {analysis?.operatorContribution?.toFixed(1) || '0.0'}%
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
