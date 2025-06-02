@@ -291,9 +291,12 @@ export function MeasurementForm({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
-                    <span className="text-sm">{activeSession?.operatorName || "미설정"}</span>
-                  </div>
+                  {/* 기본 모드일 때만 고정 표시 */}
+                  {!activeSession?.operators && (
+                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
+                      <span className="text-sm">{activeSession?.operatorName || "미설정"}</span>
+                    </div>
+                  )}
                   {/* GRR 모드일 때 측정자 선택 드롭다운 */}
                   {activeSession?.operators && (
                     <div className="space-y-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -394,9 +397,12 @@ export function MeasurementForm({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
-                    <span className="text-sm">{activeSession?.targetName || "미설정"}</span>
-                  </div>
+                  {/* 기본 모드일 때만 고정 표시 */}
+                  {!activeSession?.parts && (
+                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
+                      <span className="text-sm">{activeSession?.targetName || "미설정"}</span>
+                    </div>
+                  )}
                   {/* GRR 모드일 때 대상자 선택 드롭다운 */}
                   {activeSession?.parts && (
                     <div className="space-y-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
