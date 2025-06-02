@@ -55,6 +55,10 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
     retry: false,
   });
 
+  // 디버깅을 위한 콘솔 로그
+  console.log("Active Session Debug:", activeSession);
+  console.log("History Data Debug:", historyData);
+
   const addOperator = () => {
     if (newOperatorName.trim()) {
       const newOperator: Operator = {
