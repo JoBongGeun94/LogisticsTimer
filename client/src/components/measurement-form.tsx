@@ -28,9 +28,11 @@ interface MeasurementFormProps {
   }) => void;
   activeSession?: any;
   isLoading?: boolean;
+  onOperatorChange?: (operatorName: string) => void;
+  onTargetChange?: (targetName: string) => void;
 }
 
-export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: MeasurementFormProps) {
+export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onOperatorChange, onTargetChange }: MeasurementFormProps) {
   const [taskType, setTaskType] = useState("");
   const [partNumber, setPartNumber] = useState("");
   const [operatorName, setOperatorName] = useState("");
@@ -41,6 +43,10 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: M
   const [newOperatorName, setNewOperatorName] = useState("");
   const [newPartName, setNewPartName] = useState("");
   const [useAdvancedMode, setUseAdvancedMode] = useState(false);
+  const [isEditingOperator, setIsEditingOperator] = useState(false);
+  const [isEditingTarget, setIsEditingTarget] = useState(false);
+  const [tempOperatorName, setTempOperatorName] = useState("");
+  const [tempTargetName, setTempTargetName] = useState("");
 
   const addOperator = () => {
     if (newOperatorName.trim()) {
@@ -70,6 +76,42 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: M
 
   const removePart = (id: string) => {
     setParts(parts.filter(part => part.id !== id));
+  };
+
+  const handleOperatorEdit = () => {
+    setTempOperatorName(activeSession?.operatorName || "");
+    setIsEditingOperator(true);
+  };
+
+  const saveOperatorEdit = () => {
+    if (tempOperatorName.trim() && onOperatorChange) {
+      onOperatorChange(tempOperatorName.trim());
+      setIsEditingOperator(false);
+      setTempOperatorName("");
+    }
+  };
+
+  const cancelOperatorEdit = () => {
+    setIsEditingOperator(false);
+    setTempOperatorName("");
+  };
+
+  const handleTargetEdit = () => {
+    setTempTargetName(activeSession?.targetName || "");
+    setIsEditingTarget(true);
+  };
+
+  const saveTargetEdit = () => {
+    if (tempTargetName.trim() && onTargetChange) {
+      onTargetChange(tempTargetName.trim());
+      setIsEditingTarget(false);
+      setTempTargetName("");
+    }
+  };
+
+  const cancelTargetEdit = () => {
+    setIsEditingTarget(false);
+    setTempTargetName("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -141,6 +183,111 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: M
               </div>
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
             </div>
+
+            {/* 측정자 정보 편집 */}
+            {!activeSession.operators && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">측정자</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleOperatorEdit}
+                    className="h-6 px-2 text-xs"
+                  >
+                    변경
+                  </Button>
+                </div>
+                {isEditingOperator ? (
+                  <div className="flex space-x-2">
+                    <Input
+                      value={tempOperatorName}
+                      onChange={(e) => setTempOperatorName(e.target.value)}
+                      placeholder="측정자 이름"
+                      className="flex-1"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          saveOperatorEdit();
+                        } else if (e.key === 'Escape') {
+                          cancelOperatorEdit();
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={saveOperatorEdit}
+                      disabled={!tempOperatorName.trim()}
+                    >
+                      저장
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={cancelOperatorEdit}
+                    >
+                      취소
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
+                    <span className="text-sm">{activeSession.operatorName || "미설정"}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 대상자 정보 편집 */}
+            {!activeSession.operators && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">대상자</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleTargetEdit}
+                    className="h-6 px-2 text-xs"
+                  >
+                    변경
+                  </Button>
+                </div>
+                {isEditingTarget ? (
+                  <div className="flex space-x-2">
+                    <Input
+                      value={tempTargetName}
+                      onChange={(e) => setTempTargetName(e.target.value)}
+                      placeholder="대상자 이름"
+                      className="flex-1"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          saveTargetEdit();
+                        } else if (e.key === 'Escape') {
+                          cancelTargetEdit();
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={saveTargetEdit}
+                      disabled={!tempTargetName.trim()}
+                    >
+                      저장
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={cancelTargetEdit}
+                    >
+                      취소
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
+                    <span className="text-sm">{activeSession.targetName || "미설정"}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 현재 활성 세션입니다. 타이머를 사용하여 측정을 진행하세요.

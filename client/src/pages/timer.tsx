@@ -137,6 +137,43 @@ export default function Timer() {
     },
   });
 
+  // Update session mutation
+  const updateSessionMutation = useMutation({
+    mutationFn: async (updateData: {
+      operatorName?: string;
+      targetName?: string;
+    }) => {
+      const response = await apiRequest("PUT", `/api/work-sessions/${activeSession?.id}`, updateData);
+      return response.json();
+    },
+    onSuccess: () => {
+      // Force refresh session data
+      queryClient.invalidateQueries({ queryKey: ["/api/work-sessions/active"] });
+      toast({
+        title: "정보 업데이트",
+        description: "측정자 정보가 업데이트되었습니다.",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "인증 오류",
+          description: "다시 로그인해주세요.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "오류",
+        description: "정보를 업데이트할 수 없습니다.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Timer functions
   const startTimer = () => {
     const now = Date.now();
@@ -498,6 +535,8 @@ export default function Timer() {
             onSessionCreate={(sessionData) => createSessionMutation.mutate(sessionData)}
             activeSession={activeSession}
             isLoading={createSessionMutation.isPending}
+            onOperatorChange={(operatorName) => updateSessionMutation.mutate({ operatorName })}
+            onTargetChange={(targetName) => updateSessionMutation.mutate({ targetName })}
           />
 
           {/* Gage R&R Selection - only show if active session has multiple operators/parts */}
