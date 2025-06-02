@@ -204,6 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/export/excel/:sessionId/download', demoAuth, async (req: any, res) => {
     try {
       const { sessionId } = req.params;
+      const simpleMode = req.query.simple === 'true'; // Check for simple mode
       const measurements = await storage.getMeasurementsBySession(parseInt(sessionId));
       const analysis = await storage.getAnalysisResult(parseInt(sessionId));
       const session = await storage.getWorkSessionById(parseInt(sessionId));

@@ -874,7 +874,7 @@ export default function Analysis() {
               }}
             >
               <FileSpreadsheet className="h-4 w-4" />
-              <span>Excel 내보기</span>
+              <span>Excel 내보내기</span>
             </Button>
           </div>
         </div>

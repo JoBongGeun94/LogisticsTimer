@@ -263,8 +263,8 @@ export default function Timer() {
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
       if (isMobile) {
-        // For mobile, use window.location to force download
-        const downloadUrl = `/api/export/excel/${activeSession.id}/download`;
+        // For mobile, use window.location to force download with simple mode
+        const downloadUrl = `/api/export/excel/${activeSession.id}/download?simple=true`;
         
         // Try multiple methods for mobile compatibility
         try {
@@ -321,8 +321,8 @@ export default function Timer() {
               ],
             });
             
-            // Get file data from server
-            const downloadUrl = `/api/export/excel/${activeSession.id}/download`;
+            // Get file data from server with simple mode
+            const downloadUrl = `/api/export/excel/${activeSession.id}/download?simple=true`;
             const response = await fetch(downloadUrl);
             const excelBuffer = await response.arrayBuffer();
             
@@ -344,7 +344,7 @@ export default function Timer() {
               });
             } else {
               // Fallback to regular download
-              const downloadUrl = `/api/export/excel/${activeSession.id}/download`;
+              const downloadUrl = `/api/export/excel/${activeSession.id}/download?simple=true`;
               window.open(downloadUrl, '_blank');
               
               toast({
@@ -355,7 +355,7 @@ export default function Timer() {
           }
         } else {
           // Fallback for older browsers
-          const downloadUrl = `/api/export/excel/${activeSession.id}/download`;
+          const downloadUrl = `/api/export/excel/${activeSession.id}/download?simple=true`;
           window.open(downloadUrl, '_blank');
           
           toast({
