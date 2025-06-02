@@ -231,11 +231,14 @@ export default function History() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {Object.keys(trends.taskTypes || {}).length > 0
-                    ? Object.entries(trends.taskTypes).reduce((a: any, b: any) => 
-                        trends.taskTypes[a] > trends.taskTypes[b[0]] ? a : b[0]
-                      )
-                    : "없음"}
+                  {(() => {
+                    const taskTypeEntries = Object.entries(trends.taskTypes || {});
+                    if (taskTypeEntries.length === 0) return "없음";
+                    const mostFrequent = taskTypeEntries.reduce((a, b) => 
+                      a[1] > b[1] ? a : b
+                    );
+                    return mostFrequent[0];
+                  })()}
                 </div>
               </CardContent>
             </Card>
@@ -265,7 +268,7 @@ export default function History() {
                   disabled={selectedSessions.length < 2}
                   className="flex items-center"
                 >
-                  <Compare className="h-4 w-4 mr-2" />
+                  <GitCompare className="h-4 w-4 mr-2" />
                   비교 ({selectedSessions.length})
                 </Button>
               </div>
@@ -274,7 +277,7 @@ export default function History() {
           <CardContent>
             {filteredSessions.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <History className="h-12 w-12 mx-auto mb-2" />
+                <HistoryIcon className="h-12 w-12 mx-auto mb-2" />
                 <p className="text-sm">작업 히스토리가 없습니다</p>
               </div>
             ) : (
@@ -351,7 +354,7 @@ export default function History() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Compare className="h-5 w-5 mr-2" />
+                <GitCompare className="h-5 w-5 mr-2" />
                 세션 비교 결과
               </CardTitle>
             </CardHeader>

@@ -5,6 +5,35 @@ import { insertWorkSessionSchema, insertMeasurementSchema, insertAnalysisResultS
 import { z } from "zod";
 import * as XLSX from 'xlsx';
 
+// Helper functions for analytics
+function calculateDailyActivity(sessions: any[]) {
+  const dailyCount: { [key: string]: number } = {};
+  
+  sessions.forEach(session => {
+    if (session.createdAt) {
+      const date = new Date(session.createdAt).toISOString().split('T')[0];
+      dailyCount[date] = (dailyCount[date] || 0) + 1;
+    }
+  });
+  
+  return Object.entries(dailyCount).map(([date, count]) => ({ date, count }));
+}
+
+function calculateAverageSessionDuration(sessions: any[]) {
+  let totalDuration = 0;
+  let validSessions = 0;
+  
+  for (const session of sessions) {
+    if (session.startedAt && session.completedAt) {
+      const duration = new Date(session.completedAt).getTime() - new Date(session.startedAt).getTime();
+      totalDuration += duration;
+      validSessions++;
+    }
+  }
+  
+  return validSessions > 0 ? totalDuration / validSessions : 0;
+}
+
 // Simple demo authentication middleware
 const demoAuth = (req: any, res: any, next: any) => {
   // Create a demo user session
@@ -232,8 +261,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           acc[s.taskType] = (acc[s.taskType] || 0) + 1;
           return acc;
         }, {}),
-        dailyActivity: await calculateDailyActivity(recentSessions),
-        averageSessionDuration: await calculateAverageSessionDuration(recentSessions, storage)
+        dailyActivity: calculateDailyActivity(recentSessions),
+        averageSessionDuration: calculateAverageSessionDuration(recentSessions)
       };
       
       res.json(trends);
