@@ -280,10 +280,20 @@ export default function Analysis() {
 
   if (!analysis) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">분석 중...</p>
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-200 dark:border-emerald-800"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-600 border-t-transparent absolute top-0 left-0"></div>
+          </div>
+          <div className="mt-6 space-y-2">
+            <p className="text-lg font-medium text-gray-700 dark:text-gray-300">Gage R&R 분석 중</p>
+            <div className="flex items-center justify-center space-x-1">
+              <div className="w-2 h-2 bg-emerald-600 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+              <div className="w-2 h-2 bg-emerald-600 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+              <div className="w-2 h-2 bg-emerald-600 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -354,13 +364,21 @@ export default function Analysis() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">
+                  <div className={`text-3xl font-bold ${
+                    resultStatus.color === 'green' ? 'text-emerald-600' :
+                    resultStatus.color === 'blue' ? 'text-blue-600' :
+                    'text-red-600'
+                  }`}>
                     {analysis.grr.toFixed(1)}%
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">% GRR</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-500">
+                  <div className={`text-3xl font-bold ${
+                    resultStatus.color === 'green' ? 'text-emerald-600' :
+                    resultStatus.color === 'blue' ? 'text-blue-600' :
+                    'text-red-600'
+                  }`}>
                     {resultStatus.label}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">수용성</div>
@@ -461,10 +479,10 @@ export default function Analysis() {
             <CardContent>
               <div className="space-y-6">
                 {/* Repeatability Analysis */}
-                <div className="border-l-4 border-blue-500 pl-4">
+                <div className="border-l-4 border-indigo-500 pl-4">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">반복성 (Repeatability)</h4>
-                    <span className="text-2xl font-bold text-blue-600">
+                    <span className="text-2xl font-bold text-indigo-600">
                       {analysis.repeatability.toFixed(1)}%
                     </span>
                   </div>
@@ -489,10 +507,10 @@ export default function Analysis() {
                 </div>
 
                 {/* Reproducibility Analysis */}
-                <div className="border-l-4 border-green-500 pl-4">
+                <div className="border-l-4 border-cyan-500 pl-4">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">재현성 (Reproducibility)</h4>
-                    <span className="text-2xl font-bold text-green-600">
+                    <span className="text-2xl font-bold text-cyan-600">
                       {analysis.reproducibility.toFixed(1)}%
                     </span>
                   </div>
@@ -545,10 +563,10 @@ export default function Analysis() {
                 </div>
 
                 {/* Operator Contribution Analysis */}
-                <div className="border-l-4 border-orange-500 pl-4">
+                <div className="border-l-4 border-amber-500 pl-4">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">측정자 기여도 (Operator Effect)</h4>
-                    <span className="text-2xl font-bold text-orange-600">
+                    <span className="text-2xl font-bold text-amber-600">
                       {analysis.operatorContribution.toFixed(1)}%
                     </span>
                   </div>
