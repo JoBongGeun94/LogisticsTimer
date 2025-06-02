@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertWorkSessionSchema, insertMeasurementSchema, insertAnalysisResultSchema } from "@shared/schema";
 import { z } from "zod";
+import * as XLSX from 'xlsx';
 
 // Simple demo authentication middleware
 const demoAuth = (req: any, res: any, next: any) => {
@@ -211,8 +212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Session not found" });
       }
 
-      // Import XLSX for server-side Excel generation
-      const XLSX = require('xlsx');
+      // Use imported XLSX library
 
       // Generate filename with Korean team names
       const now = new Date();
@@ -241,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           session.partNumber || "",
           session.operatorName || "",
           session.targetName || "",
-          new Date(m.timestamp || new Date()).toLocaleString('ko-KR'),
+          m.timestamp ? new Date(m.timestamp).toLocaleString('ko-KR') : new Date().toLocaleString('ko-KR'),
           m.timeInMs < 1000 ? "매우 빠름" : m.timeInMs > 10000 ? "느림" : "정상"
         ]),
       ];
@@ -253,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ["공정세부번호", session.partNumber || "", ""],
         ["측정자", session.operatorName || "", ""],
         ["대상자", session.targetName || "", ""],
-        ["시작 시간", new Date(session.createdAt).toLocaleString('ko-KR'), ""],
+        ["시작 시간", session.createdAt ? new Date(session.createdAt).toLocaleString('ko-KR') : '', ""],
         ["", "", ""],
         ["Gage R&R 분석 결과", "", ""],
         ["반복성 (Repeatability)", analysis?.repeatability?.toFixed(2) || "N/A", "%"],
@@ -314,11 +314,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate Excel buffer
       const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
       
-      // Set headers for Excel file download
+      // Set headers for Excel file download with better mobile compatibility
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
-      res.setHeader('Cache-Control', 'no-cache');
-      res.send(excelBuffer);
+      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+      res.setHeader('Content-Length', excelBuffer.length.toString());
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+      
+      res.end(excelBuffer);
       
     } catch (error) {
       console.error("Direct download error:", error);

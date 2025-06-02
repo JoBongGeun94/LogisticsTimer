@@ -638,23 +638,34 @@ export default function Analysis() {
                   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                   
                   if (isMobile) {
-                    // For mobile, use direct server download link
+                    // For mobile, use window.location to force download
                     const downloadUrl = `/api/export/excel/${activeSession?.id}/download`;
                     
-                    // Create a temporary link for better download control
-                    const link = document.createElement('a');
-                    link.href = downloadUrl;
-                    link.download = ''; // Let the server determine filename
-                    link.style.display = 'none';
-                    
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    toast({
-                      title: "Excel 파일 다운로드",
-                      description: "Excel 파일이 다운로드됩니다. 다운로드 폴더를 확인해주세요.",
-                    });
+                    // Try multiple methods for mobile compatibility
+                    try {
+                      // Method 1: Direct window.location assignment
+                      window.location.href = downloadUrl;
+                      
+                      toast({
+                        title: "Excel 파일 다운로드 시작",
+                        description: "파일 다운로드가 시작됩니다. 브라우저의 다운로드 알림을 확인해주세요.",
+                      });
+                    } catch (error) {
+                      // Method 2: Open in new window as fallback
+                      const newWindow = window.open(downloadUrl, '_blank');
+                      if (newWindow) {
+                        toast({
+                          title: "Excel 파일 다운로드",
+                          description: "새 창에서 파일이 다운로드됩니다.",
+                        });
+                      } else {
+                        toast({
+                          title: "다운로드 차단됨",
+                          description: "팝업 차단을 해제하고 다시 시도해주세요.",
+                          variant: "destructive",
+                        });
+                      }
+                    }
                   } else {
                     // Desktop: Try to use File System Access API for save location choice
                     if ('showSaveFilePicker' in window) {
