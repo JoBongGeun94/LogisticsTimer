@@ -12,8 +12,10 @@ import { MeasurementForm } from "@/components/measurement-form";
 import { TimerControls } from "@/components/timer-controls";
 import { LapHistory } from "@/components/lap-history";
 import { Link } from "wouter";
-import { BarChart3, Download, LogOut, Moon, Sun, Settings, HelpCircle, Play, Pause, Flag, RotateCcw } from "lucide-react";
+import { BarChart3, Download, LogOut, Moon, Sun, Settings, HelpCircle, Play, Pause, Flag, RotateCcw, Users } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 export default function Timer() {
   const { user, isLoading } = useAuth();
@@ -28,6 +30,9 @@ export default function Timer() {
   const [lastStartTime, setLastStartTime] = useState<number | null>(null);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [selectedOperator, setSelectedOperator] = useState("");
+  const [selectedPart, setSelectedPart] = useState("");
+  const [currentTrial, setCurrentTrial] = useState(1);
 
   // Redirect to login if unauthorized
   useEffect(() => {
@@ -229,13 +234,44 @@ export default function Timer() {
       return;
     }
 
-    createMeasurementMutation.mutate({
-      sessionId: activeSession.id,
-      attemptNumber: measurements.length + 1,
-      timeInMs: currentTime,
-      taskType: activeSession.taskType,
-      partNumber: activeSession.partNumber || "",
-    });
+    // Check if Gage R&R mode requires operator and part selection
+    if (activeSession.operators && activeSession.parts) {
+      if (!selectedOperator || !selectedPart) {
+        toast({
+          title: "선택 필요",
+          description: "측정자와 부품을 선택해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Get operator name from selected operator
+      const operator = activeSession.operators.find((op: any) => op.id === selectedOperator);
+      const part = activeSession.parts.find((p: any) => p.id === selectedPart);
+      
+      createMeasurementMutation.mutate({
+        sessionId: activeSession.id,
+        attemptNumber: measurements.length + 1,
+        timeInMs: currentTime,
+        taskType: activeSession.taskType,
+        partNumber: activeSession.partNumber || "",
+        operatorName: operator?.name || "",
+        partId: selectedPart,
+        trialNumber: currentTrial,
+      });
+    } else {
+      // Basic mode - single operator
+      createMeasurementMutation.mutate({
+        sessionId: activeSession.id,
+        attemptNumber: measurements.length + 1,
+        timeInMs: currentTime,
+        taskType: activeSession.taskType,
+        partNumber: activeSession.partNumber || "",
+        operatorName: activeSession.operatorName || "",
+        partId: null,
+        trialNumber: 1,
+      });
+    }
   };
 
   const handleLogout = () => {
@@ -463,6 +499,53 @@ export default function Timer() {
             activeSession={activeSession}
             isLoading={createSessionMutation.isPending}
           />
+
+          {/* Gage R&R Selection - only show if active session has multiple operators/parts */}
+          {activeSession && activeSession.operators && activeSession.parts && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="h-5 w-5 mr-2 text-green-600" />
+                  Gage R&R 측정 설정
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">현재 측정자</Label>
+                  <Select value={selectedOperator} onValueChange={setSelectedOperator}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="측정자를 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeSession.operators.map((op: any) => (
+                        <SelectItem key={op.id} value={op.id}>
+                          {op.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">현재 부품</Label>
+                  <Select value={selectedPart} onValueChange={setSelectedPart}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="부품을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeSession.parts.map((part: any) => (
+                        <SelectItem key={part.id} value={part.id}>
+                          {part.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-xs text-gray-500">
+                  시행 {currentTrial}/{activeSession.trialsPerOperator || 3}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Timer Section */}
           <Card>

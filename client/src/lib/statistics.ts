@@ -8,7 +8,137 @@ interface GageRRResult {
   analysisData: any;
 }
 
-export function calculateGageRR(measurements: number[]): GageRRResult {
+interface MeasurementData {
+  operatorName: string;
+  partId: string;
+  trialNumber: number;
+  timeInMs: number;
+}
+
+export function calculateGageRR(measurements: number[] | MeasurementData[]): GageRRResult {
+  // Check if we have structured Gage R&R data or simple measurements
+  if (measurements.length === 0) {
+    throw new Error("No measurements provided for analysis");
+  }
+
+  // If we have structured data (multiple operators/parts), use proper Gage R&R
+  if (typeof measurements[0] === 'object' && 'operatorName' in measurements[0]) {
+    return calculateMultiOperatorGageRR(measurements as MeasurementData[]);
+  }
+  
+  // Otherwise, use single operator analysis
+  return calculateSingleOperatorGageRR(measurements as number[]);
+}
+
+function calculateMultiOperatorGageRR(data: MeasurementData[]): GageRRResult {
+  // Group data by operator and part
+  const operatorGroups: { [key: string]: MeasurementData[] } = {};
+  const partGroups: { [key: string]: MeasurementData[] } = {};
+  
+  data.forEach(measurement => {
+    if (!operatorGroups[measurement.operatorName]) {
+      operatorGroups[measurement.operatorName] = [];
+    }
+    if (!partGroups[measurement.partId]) {
+      partGroups[measurement.partId] = [];
+    }
+    operatorGroups[measurement.operatorName].push(measurement);
+    partGroups[measurement.partId].push(measurement);
+  });
+
+  const operators = Object.keys(operatorGroups);
+  const parts = Object.keys(partGroups);
+  
+  if (operators.length < 2) {
+    throw new Error("최소 2명의 측정자가 필요합니다");
+  }
+
+  // Calculate means for each operator-part combination
+  const cellMeans: { [key: string]: number } = {};
+  const cellRanges: { [key: string]: number } = {};
+  
+  operators.forEach(operator => {
+    parts.forEach(part => {
+      const cellData = data.filter(d => d.operatorName === operator && d.partId === part);
+      if (cellData.length > 0) {
+        const times = cellData.map(d => d.timeInMs);
+        const mean = times.reduce((sum, val) => sum + val, 0) / times.length;
+        const range = Math.max(...times) - Math.min(...times);
+        cellMeans[`${operator}_${part}`] = mean;
+        cellRanges[`${operator}_${part}`] = range;
+      }
+    });
+  });
+
+  // Calculate average range within cells (repeatability)
+  const avgRange = Object.values(cellRanges).reduce((sum, val) => sum + val, 0) / Object.values(cellRanges).length;
+  const d2 = 1.128; // d2 constant for n=2 (assuming 2 trials per cell typically)
+  const repeatabilityStdDev = avgRange / d2;
+
+  // Calculate operator means
+  const operatorMeans: { [key: string]: number } = {};
+  operators.forEach(operator => {
+    const operatorData = data.filter(d => d.operatorName === operator);
+    const mean = operatorData.reduce((sum, d) => sum + d.timeInMs, 0) / operatorData.length;
+    operatorMeans[operator] = mean;
+  });
+
+  // Calculate part means
+  const partMeans: { [key: string]: number } = {};
+  parts.forEach(part => {
+    const partData = data.filter(d => d.partId === part);
+    const mean = partData.reduce((sum, d) => sum + d.timeInMs, 0) / partData.length;
+    partMeans[part] = mean;
+  });
+
+  // Calculate reproducibility (operator-to-operator variation)
+  const grandMean = data.reduce((sum, d) => sum + d.timeInMs, 0) / data.length;
+  const operatorVariation = operators.reduce((sum, op) => {
+    return sum + Math.pow(operatorMeans[op] - grandMean, 2);
+  }, 0) / (operators.length - 1);
+  
+  const reproducibilityStdDev = Math.sqrt(Math.max(0, operatorVariation - (repeatabilityStdDev * repeatabilityStdDev) / (parts.length * data.length / operators.length / parts.length)));
+
+  // Calculate part-to-part variation
+  const partVariation = parts.reduce((sum, part) => {
+    return sum + Math.pow(partMeans[part] - grandMean, 2);
+  }, 0) / (parts.length - 1);
+  
+  const partStdDev = Math.sqrt(Math.max(0, partVariation - (repeatabilityStdDev * repeatabilityStdDev) / (operators.length * data.length / operators.length / parts.length)));
+
+  // Convert to 6-sigma percentages
+  const repeatability = (6 * repeatabilityStdDev);
+  const reproducibility = (6 * reproducibilityStdDev);
+  const partContribution = (6 * partStdDev);
+  
+  const totalVariation = Math.sqrt(repeatability * repeatability + reproducibility * reproducibility + partContribution * partContribution);
+  const grr = Math.sqrt(repeatability * repeatability + reproducibility * reproducibility);
+  
+  // Calculate percentages
+  const repeatabilityPercent = (repeatability / totalVariation) * 100;
+  const reproducibilityPercent = (reproducibility / totalVariation) * 100;
+  const grrPercent = (grr / totalVariation) * 100;
+  const partPercent = (partContribution / totalVariation) * 100;
+
+  return {
+    repeatability: repeatabilityPercent,
+    reproducibility: reproducibilityPercent,
+    grr: grrPercent,
+    partContribution: partPercent,
+    operatorContribution: reproducibilityPercent,
+    isAcceptable: grrPercent < 30,
+    analysisData: {
+      operators: operators.length,
+      parts: parts.length,
+      totalMeasurements: data.length,
+      operatorMeans,
+      partMeans,
+      grandMean
+    }
+  };
+}
+
+function calculateSingleOperatorGageRR(measurements: number[]): GageRRResult {
   if (measurements.length < 3) {
     throw new Error("Minimum 3 measurements required for Gage R&R analysis");
   }
