@@ -55,9 +55,14 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
     retry: false,
   });
 
-  // 디버깅을 위한 콘솔 로그
-  console.log("Active Session Debug:", activeSession);
-  console.log("History Data Debug:", historyData);
+  // 활성 세션의 현재 측정자와 대상자만 필터링
+  const currentSessionOperators = activeSession?.operators || 
+    (activeSession?.operatorName ? [activeSession.operatorName] : []);
+  const currentSessionTargets = activeSession?.parts?.map((p: any) => p.name) || 
+    (activeSession?.targetName ? [activeSession.targetName] : []);
+  
+  console.log("Current Session Operators:", currentSessionOperators);
+  console.log("Current Session Targets:", currentSessionTargets);
 
   const addOperator = () => {
     if (newOperatorName.trim()) {
@@ -228,12 +233,18 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         <SelectValue placeholder="측정자를 선택하세요" />
                       </SelectTrigger>
                       <SelectContent>
-                        {/* 활성 세션이 있는 경우 해당 세션의 측정자 목록에서만 선택 */}
-                        {activeSession.operators && activeSession.operators.map((op: any) => (
+                        {/* 활성 세션이 있는 경우 - GRR 모드 */}
+                        {activeSession?.operators && activeSession.operators.map((op: any) => (
                           <SelectItem key={op.id} value={op.name}>{op.name}</SelectItem>
                         ))}
+                        {/* 활성 세션이 있는 경우 - 기본 모드 */}
+                        {activeSession && !activeSession.operators && activeSession.operatorName && (
+                          <SelectItem key={activeSession.operatorName} value={activeSession.operatorName}>
+                            {activeSession.operatorName}
+                          </SelectItem>
+                        )}
                         {/* 활성 세션이 없는 경우 과거 데이터에서 측정자 선택지 */}
-                        {!activeSession.operators && (
+                        {!activeSession && (
                           <>
                             {historyData && historyData.operators.map((operator: string) => (
                               <SelectItem key={operator} value={operator}>{operator}</SelectItem>
@@ -362,12 +373,18 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         <SelectValue placeholder="대상자를 선택하세요" />
                       </SelectTrigger>
                       <SelectContent>
-                        {/* 활성 세션이 있는 경우 해당 세션의 대상자 목록에서만 선택 */}
-                        {activeSession.parts && activeSession.parts.map((part: any) => (
+                        {/* 활성 세션이 있는 경우 - GRR 모드 */}
+                        {activeSession?.parts && activeSession.parts.map((part: any) => (
                           <SelectItem key={part.id} value={part.name}>{part.name}</SelectItem>
                         ))}
+                        {/* 활성 세션이 있는 경우 - 기본 모드 */}
+                        {activeSession && !activeSession.parts && activeSession.targetName && (
+                          <SelectItem key={activeSession.targetName} value={activeSession.targetName}>
+                            {activeSession.targetName}
+                          </SelectItem>
+                        )}
                         {/* 활성 세션이 없는 경우 과거 데이터에서 대상자 선택지 */}
-                        {!activeSession.parts && (
+                        {!activeSession && (
                           <>
                             {historyData && historyData.targets.map((target: string) => (
                               <SelectItem key={target} value={target}>{target}</SelectItem>
