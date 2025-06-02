@@ -298,6 +298,13 @@ export default function Timer() {
       const operator = activeSession.operators.find((op: any) => op.id === selectedOperator);
       const part = activeSession.parts.find((p: any) => p.id === selectedPart);
       
+      console.log("Recording measurement with:", {
+        selectedOperator,
+        selectedPart,
+        operatorName: operator?.name,
+        partName: part?.name
+      });
+      
       createMeasurementMutation.mutate({
         sessionId: activeSession.id,
         attemptNumber: measurements.length + 1,
