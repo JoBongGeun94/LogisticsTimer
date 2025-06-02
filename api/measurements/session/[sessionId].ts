@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           partId,
           trialNumber,
           timeInMs,
-          targetName
+          partName
         })
         .returning();
 
