@@ -290,34 +290,38 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                   </Button>
                 </div>
                 {isEditingTarget ? (
-                  <div className="flex space-x-2">
-                    <Input
-                      value={tempTargetName}
-                      onChange={(e) => setTempTargetName(e.target.value)}
-                      placeholder="대상자 이름"
-                      className="flex-1"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          saveTargetEdit();
-                        } else if (e.key === 'Escape') {
-                          cancelTargetEdit();
-                        }
-                      }}
-                    />
-                    <Button
-                      size="sm"
-                      onClick={saveTargetEdit}
-                      disabled={!tempTargetName.trim()}
-                    >
-                      저장
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={cancelTargetEdit}
-                    >
-                      취소
-                    </Button>
+                  <div className="space-y-2">
+                    <Select value={tempTargetName} onValueChange={setTempTargetName}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="대상자를 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="대상자1">대상자1</SelectItem>
+                        <SelectItem value="대상자2">대상자2</SelectItem>
+                        <SelectItem value="작업자A">작업자A</SelectItem>
+                        <SelectItem value="작업자B">작업자B</SelectItem>
+                        <SelectItem value="신입사원">신입사원</SelectItem>
+                        <SelectItem value="베테랑">베테랑</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        onClick={saveTargetEdit}
+                        disabled={!tempTargetName.trim()}
+                        className="flex-1"
+                      >
+                        저장
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={cancelTargetEdit}
+                        className="flex-1"
+                      >
+                        취소
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
