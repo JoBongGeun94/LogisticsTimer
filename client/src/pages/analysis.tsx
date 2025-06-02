@@ -459,33 +459,117 @@ export default function Analysis() {
               <CardTitle>상세 지표</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="font-medium">반복성 (Repeatability)</span>
-                  <span className="text-blue-600 font-semibold">
-                    {analysis.repeatability.toFixed(1)}%
-                  </span>
+              <div className="space-y-6">
+                {/* Repeatability Analysis */}
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">반복성 (Repeatability)</h4>
+                    <span className="text-2xl font-bold text-blue-600">
+                      {analysis.repeatability.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    동일 측정자가 동일 조건에서 반복 측정할 때의 변동성
+                  </div>
+                  <div className="text-xs">
+                    {analysis.repeatability < 10 ? (
+                      <span className="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
+                        ✓ 우수: 측정 장비가 매우 안정적입니다
+                      </span>
+                    ) : analysis.repeatability < 20 ? (
+                      <span className="text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                        ● 양호: 측정 장비의 정밀도가 적절합니다
+                      </span>
+                    ) : (
+                      <span className="text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                        ⚠ 주의: 측정 장비 점검 및 보정이 필요합니다
+                      </span>
+                    )}
+                  </div>
                 </div>
-                
-                <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="font-medium">재현성 (Reproducibility)</span>
-                  <span className="text-blue-600 font-semibold">
-                    {analysis.reproducibility.toFixed(1)}%
-                  </span>
+
+                {/* Reproducibility Analysis */}
+                <div className="border-l-4 border-green-500 pl-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">재현성 (Reproducibility)</h4>
+                    <span className="text-2xl font-bold text-green-600">
+                      {analysis.reproducibility.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    서로 다른 측정자 간의 측정 결과 변동성
+                  </div>
+                  <div className="text-xs">
+                    {analysis.reproducibility < 10 ? (
+                      <span className="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
+                        ✓ 우수: 측정자 간 일관성이 매우 높습니다
+                      </span>
+                    ) : analysis.reproducibility < 20 ? (
+                      <span className="text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                        ● 양호: 측정자 간 편차가 적절한 수준입니다
+                      </span>
+                    ) : (
+                      <span className="text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                        ⚠ 주의: 측정자 교육 및 작업 표준화가 필요합니다
+                      </span>
+                    )}
+                  </div>
                 </div>
-                
-                <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="font-medium">부품별 기여도</span>
-                  <span className="text-green-500 font-semibold">
-                    {analysis.partContribution.toFixed(1)}%
-                  </span>
+
+                {/* Part Contribution Analysis */}
+                <div className="border-l-4 border-purple-500 pl-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">부품 기여도 (Part-to-Part)</h4>
+                    <span className="text-2xl font-bold text-purple-600">
+                      {analysis.partContribution.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    실제 부품(작업) 간 차이가 전체 변동에서 차지하는 비율
+                  </div>
+                  <div className="text-xs">
+                    {analysis.partContribution > 50 ? (
+                      <span className="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
+                        ✓ 이상적: 실제 작업 차이가 변동의 주요 원인입니다
+                      </span>
+                    ) : analysis.partContribution > 20 ? (
+                      <span className="text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                        ● 보통: 작업 간 차이를 적절히 구별할 수 있습니다
+                      </span>
+                    ) : (
+                      <span className="text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                        ⚠ 낮음: 측정시스템 오차가 실제 차이보다 큽니다
+                      </span>
+                    )}
+                  </div>
                 </div>
-                
-                <div className="flex items-center justify-between py-2">
-                  <span className="font-medium">측정자별 기여도</span>
-                  <span className="text-purple-500 font-semibold">
-                    {analysis.operatorContribution.toFixed(1)}%
-                  </span>
+
+                {/* Operator Contribution Analysis */}
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">측정자 기여도 (Operator Effect)</h4>
+                    <span className="text-2xl font-bold text-orange-600">
+                      {analysis.operatorContribution.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    측정자별 편향(bias) 차이가 전체 변동에 미치는 영향
+                  </div>
+                  <div className="text-xs">
+                    {analysis.operatorContribution < 10 ? (
+                      <span className="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
+                        ✓ 우수: 측정자 간 편향 차이가 미미합니다
+                      </span>
+                    ) : analysis.operatorContribution < 20 ? (
+                      <span className="text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                        ● 주의: 일부 측정자 간 차이가 있습니다
+                      </span>
+                    ) : (
+                      <span className="text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                        ⚠ 개선필요: 측정자별 교육과 표준화가 시급합니다
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
