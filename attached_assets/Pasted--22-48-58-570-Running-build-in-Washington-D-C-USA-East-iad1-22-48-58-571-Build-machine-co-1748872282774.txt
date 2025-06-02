@@ -1,0 +1,36 @@
+[22:48:58.570] Running build in Washington, D.C., USA (East) – iad1
+[22:48:58.571] Build machine configuration: 2 cores, 8 GB
+[22:48:58.588] Cloning github.com/JoBongGeun94/LogisticsTimer (Branch: main, Commit: 47a55c3)
+[22:48:58.776] Previous build caches not available
+[22:48:58.973] Cloning completed: 384.000ms
+[22:48:59.280] Running "vercel build"
+[22:48:59.850] Vercel CLI 42.2.0
+[22:48:59.992] WARN! Due to `builds` existing in your configuration file, the Build and Development Settings defined in your Project Settings will not apply. Learn More: https://vercel.link/unused-build-settings
+[22:49:00.461] Installing dependencies...
+[22:49:05.765] npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+[22:49:05.805] npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+[22:49:11.876] 
+[22:49:11.877] added 597 packages in 11s
+[22:49:11.877] 
+[22:49:11.877] 74 packages are looking for funding
+[22:49:11.877]   run `npm fund` for details
+[22:49:12.133] Using TypeScript 5.6.3 (local user-provided)
+[22:49:18.976] Using TypeScript 5.6.3 (local user-provided)
+[22:49:19.298] Using TypeScript 5.6.3 (local user-provided)
+[22:49:19.842] api/measurements/session/[sessionId].ts(32,10): error TS2769: No overload matches this call.
+[22:49:19.843]   Overload 1 of 2, '(value: { sessionId: number | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; taskType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; timestamp?: SQL<...> | ... 3 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+[22:49:19.844]     Object literal may only specify known properties, but 'targetName' does not exist in type '{ sessionId: number | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; taskType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; timestamp?: SQL<...> | ... 3 more ... | undefined; }'. Did you mean to write 'partName'?
+[22:49:19.844]   Overload 2 of 2, '(values: { sessionId: number | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; taskType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; timestamp?: SQL<...> | ... 3 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+[22:49:19.844]     Object literal may only specify known properties, and 'sessionId' does not exist in type '{ sessionId: number | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; taskType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; timestamp?: SQL<...> | ... 3 more ... | undefined; }[]'.
+[22:49:19.844] 
+[22:49:20.539] Using TypeScript 5.6.3 (local user-provided)
+[22:49:20.999] Using TypeScript 5.6.3 (local user-provided)
+[22:49:22.070] Using TypeScript 5.6.3 (local user-provided)
+[22:49:23.135] Using TypeScript 5.6.3 (local user-provided)
+[22:49:24.177] Build Completed in /vercel/output [24s]
+[22:49:24.367] Deploying outputs...
+[22:49:29.205] 
+[22:49:29.469] Deployment completed
+[22:50:11.325] Uploading build cache [110.11 MB]...
+[22:50:15.321] Build cache uploaded: 3.995s
+[22:50:17.566] Exiting build container
