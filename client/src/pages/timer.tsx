@@ -36,6 +36,7 @@ interface WorkSession {
   targetName?: string;
   operators?: Operator[];
   parts?: Part[];
+  trialsPerOperator?: number;
 }
 
 interface Measurement {
@@ -123,6 +124,52 @@ export default function Timer() {
     }
   }, [activeSession]);
 
+  // Keyboard shortcuts (moved after timer functions are defined)
+  const addKeyboardShortcuts = () => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input field
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
+        return;
+      }
+
+      // Prevent default only for our shortcuts
+      switch (event.key.toLowerCase()) {
+        case ' ': // Spacebar - Start/Pause
+          event.preventDefault();
+          if (activeSession) {
+            if (!isRunning && !isPaused) {
+              startTimer();
+            } else if (isRunning) {
+              pauseTimer();
+            } else if (isPaused) {
+              startTimer();
+            }
+          }
+          break;
+        case 'enter': // Enter - Record measurement (lap)
+          event.preventDefault();
+          if ((isRunning || isPaused) && activeSession) {
+            lapTimer();
+          }
+          break;
+        case 'escape': // Escape - Stop timer
+          event.preventDefault();
+          if ((isRunning || isPaused) && activeSession) {
+            stopTimer();
+          }
+          break;
+        case 'r': // R - Reset
+          event.preventDefault();
+          if (activeSession) {
+            resetTimer();
+          }
+          break;
+      }
+    };
+
+    return handleKeyPress;
+  };
+
   // Create work session mutation
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { taskType: string; partNumber?: string }) => {
@@ -177,12 +224,26 @@ export default function Timer() {
       queryClient.invalidateQueries({ queryKey: [`/api/measurements/session/${activeSession?.id}`] });
       refetchMeasurements();
       
-      // Enhanced success feedback
+      // Enhanced success feedback with next step guidance
       const measurementCount = Array.isArray(measurements) ? measurements.length + 1 : 1;
+      const isGRRMode = activeSession?.taskType === 'gage-rr';
+      const totalRequired = isGRRMode ? (activeSession?.operators?.length || 0) * (activeSession?.parts?.length || 0) * (activeSession?.trialsPerOperator || 3) : 10;
+      
+      let nextStepMessage = "";
+      if (measurementCount >= totalRequired) {
+        nextStepMessage = " 충분한 데이터가 수집되었습니다. 분석 페이지로 이동하여 결과를 확인하세요.";
+      } else if (isGRRMode) {
+        const remainingTrials = totalRequired - measurementCount;
+        nextStepMessage = ` 다음 측정을 진행하세요. (${remainingTrials}회 남음)`;
+      } else {
+        nextStepMessage = " 다음 측정을 계속 진행하거나 분석을 시작하세요.";
+      }
+      
       toast({
         title: "✅ 측정 완료",
-        description: `${measurementCount}번째 측정이 성공적으로 기록되었습니다. (${formatTime(currentTime)})`,
+        description: `${measurementCount}번째 측정이 성공적으로 기록되었습니다. (${formatTime(currentTime)})${nextStepMessage}`,
         className: "border-emerald-200 bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
+        duration: measurementCount >= totalRequired ? 8000 : 5000,
       });
       
       // Reset timer after successful measurement
@@ -193,6 +254,36 @@ export default function Timer() {
       setTimeout(() => {
         document.body.style.background = '';
       }, 200);
+      
+      // Auto-advance logic for GRR mode
+      if (isGRRMode && activeSession?.operators && activeSession?.parts) {
+        const currentOperatorIndex = activeSession.operators.findIndex(op => op.id === selectedOperator);
+        const currentPartIndex = activeSession.parts.findIndex(part => part.id === selectedPart);
+        const currentTrialsForThisCombination = measurements.filter(m => 
+          m.operatorName === activeSession.operators?.[currentOperatorIndex]?.name &&
+          m.partName === activeSession.parts?.[currentPartIndex]?.name
+        ).length + 1;
+        
+        if (currentTrialsForThisCombination >= (activeSession.trialsPerOperator || 3)) {
+          // Move to next part or operator
+          if (currentPartIndex < activeSession.parts.length - 1) {
+            setSelectedPart(activeSession.parts[currentPartIndex + 1].id);
+            toast({
+              title: "자동 전환",
+              description: `다음 부품으로 자동 전환: ${activeSession.parts[currentPartIndex + 1].name}`,
+              className: "border-blue-200 bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-100",
+            });
+          } else if (currentOperatorIndex < activeSession.operators.length - 1) {
+            setSelectedOperator(activeSession.operators[currentOperatorIndex + 1].id);
+            setSelectedPart(activeSession.parts[0].id);
+            toast({
+              title: "자동 전환",
+              description: `다음 측정자로 자동 전환: ${activeSession.operators[currentOperatorIndex + 1].name}`,
+              className: "border-blue-200 bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-100",
+            });
+          }
+        }
+      }
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -684,28 +775,90 @@ export default function Timer() {
                 disabled={!activeSession}
               />
 
-              {/* Measurement Progress */}
-              {measurements.length > 0 && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                      측정 진행도
-                    </span>
-                    <span className="text-xs text-blue-600 dark:text-blue-400">
-                      {measurements.length}/10 (권장)
-                    </span>
-                  </div>
-                  <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, (measurements.length / 10) * 100)}%` }}
-                    ></div>
-                  </div>
-                  <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
-                    {measurements.length < 3 ? "분석을 위해 최소 3회 측정이 필요합니다" :
-                     measurements.length < 10 ? "신뢰성 향상을 위해 10회 측정을 권장합니다" :
-                     "통계적으로 신뢰할 수 있는 데이터입니다"}
-                  </div>
+              {/* Enhanced Progress Display */}
+              {(measurements.length > 0 || activeSession?.taskType === 'gage-rr') && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg mb-4 border border-blue-200 dark:border-blue-800">
+                  {activeSession?.taskType === 'gage-rr' && activeSession?.operators && activeSession?.parts ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                          Gage R&R 진행도
+                        </span>
+                        <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">
+                          {measurements.length}/{(activeSession.operators.length * activeSession.parts.length * (activeSession.trialsPerOperator || 3))} 측정
+                        </span>
+                      </div>
+                      
+                      <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3 mb-3">
+                        <div 
+                          className="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                          style={{ width: `${Math.min(100, (measurements.length / (activeSession.operators.length * activeSession.parts.length * (activeSession.trialsPerOperator || 3))) * 100)}%` }}
+                        >
+                          {measurements.length > 0 && (
+                            <div className="text-xs text-white font-medium">
+                              {Math.round((measurements.length / (activeSession.operators.length * activeSession.parts.length * (activeSession.trialsPerOperator || 3))) * 100)}%
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {selectedOperator && selectedPart && (
+                        <div className="mt-3 p-2 bg-white dark:bg-gray-800 rounded border">
+                          <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            현재: {activeSession.operators.find(op => op.id === selectedOperator)?.name} × {activeSession.parts.find(part => part.id === selectedPart)?.name}
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {Array.from({ length: activeSession.trialsPerOperator || 3 }).map((_, index) => {
+                              const isCompleted = measurements.filter(m => 
+                                m.operatorName === activeSession.operators?.find(op => op.id === selectedOperator)?.name &&
+                                m.partName === activeSession.parts?.find(part => part.id === selectedPart)?.name
+                              ).length > index;
+                              return (
+                                <div 
+                                  key={index}
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                                    isCompleted 
+                                      ? 'bg-green-500 text-white' 
+                                      : 'bg-gray-200 dark:bg-gray-600 text-gray-500'
+                                  }`}
+                                >
+                                  {index + 1}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                          측정 진행도
+                        </span>
+                        <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">
+                          {measurements.length}/10 (권장)
+                        </span>
+                      </div>
+                      <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3">
+                        <div 
+                          className="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                          style={{ width: `${Math.min(100, (measurements.length / 10) * 100)}%` }}
+                        >
+                          {measurements.length > 0 && (
+                            <div className="text-xs text-white font-medium">
+                              {Math.round((measurements.length / 10) * 100)}%
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                        {measurements.length < 3 ? "분석을 위해 최소 3회 측정이 필요합니다" :
+                         measurements.length < 10 ? "신뢰성 향상을 위해 10회 측정을 권장합니다" :
+                         "통계적으로 신뢰할 수 있는 데이터입니다"}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
