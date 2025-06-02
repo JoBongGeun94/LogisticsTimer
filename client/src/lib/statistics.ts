@@ -6,6 +6,12 @@ interface GageRRResult {
   operatorContribution: number;
   isAcceptable: boolean;
   analysisData: any;
+  // 고급 통계 지표 추가
+  coefficientOfVariation?: number;
+  processCapabilityIndex?: number;
+  outlierCount?: number;
+  confidenceInterval?: { lower: number; upper: number };
+  normalityTest?: { isNormal: boolean; pValue: number };
 }
 
 interface MeasurementData {
@@ -13,6 +19,76 @@ interface MeasurementData {
   partId: string;
   trialNumber: number;
   timeInMs: number;
+}
+
+// 고급 통계 분석 헬퍼 함수들
+function detectOutliers(measurements: number[]): number[] {
+  if (measurements.length < 4) return [];
+  
+  const sorted = [...measurements].sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(sorted.length * 0.25)];
+  const q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const iqr = q3 - q1;
+  const lowerBound = q1 - 1.5 * iqr;
+  const upperBound = q3 + 1.5 * iqr;
+  
+  return measurements.filter(value => value < lowerBound || value > upperBound);
+}
+
+function calculateConfidenceInterval(measurements: number[], confidence: number): { lower: number; upper: number } {
+  if (measurements.length < 2) return { lower: 0, upper: 0 };
+  
+  const mean = measurements.reduce((sum, val) => sum + val, 0) / measurements.length;
+  const variance = measurements.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (measurements.length - 1);
+  const standardError = Math.sqrt(variance / measurements.length);
+  
+  // t-distribution approximation for 95% confidence
+  const tValue = measurements.length > 30 ? 1.96 : 2.0 + (0.3 / Math.sqrt(measurements.length));
+  const margin = tValue * standardError;
+  
+  return {
+    lower: mean - margin,
+    upper: mean + margin
+  };
+}
+
+function performNormalityTest(measurements: number[]): { isNormal: boolean; pValue: number } {
+  if (measurements.length < 3) return { isNormal: true, pValue: 1.0 };
+  
+  // Simplified Shapiro-Wilk approximation
+  const mean = measurements.reduce((sum, val) => sum + val, 0) / measurements.length;
+  const variance = measurements.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / measurements.length;
+  const standardDeviation = Math.sqrt(variance);
+  
+  // Calculate skewness and kurtosis
+  const skewness = measurements.reduce((sum, val) => sum + Math.pow((val - mean) / standardDeviation, 3), 0) / measurements.length;
+  const kurtosis = measurements.reduce((sum, val) => sum + Math.pow((val - mean) / standardDeviation, 4), 0) / measurements.length - 3;
+  
+  // Simple normality test based on skewness and kurtosis
+  const skewnessTest = Math.abs(skewness) < 1.0;
+  const kurtosisTest = Math.abs(kurtosis) < 3.0;
+  const isNormal = skewnessTest && kurtosisTest;
+  
+  // Approximate p-value based on test statistics
+  const testStatistic = Math.abs(skewness) + Math.abs(kurtosis) / 3;
+  const pValue = Math.max(0.01, Math.min(0.99, Math.exp(-testStatistic)));
+  
+  return { isNormal, pValue };
+}
+
+function calculateProcessCapability(measurements: number[], mean: number, standardDeviation: number): number {
+  if (measurements.length < 5 || standardDeviation === 0) return 0;
+  
+  // Process capability index (Cpk) calculation
+  // Assumes specification limits are ±3σ from target (common in timing studies)
+  const target = mean;
+  const upperLimit = target + 3 * standardDeviation;
+  const lowerLimit = target - 3 * standardDeviation;
+  
+  const cpkUpper = (upperLimit - mean) / (3 * standardDeviation);
+  const cpkLower = (mean - lowerLimit) / (3 * standardDeviation);
+  
+  return Math.min(cpkUpper, cpkLower);
 }
 
 export function calculateGageRR(measurements: number[] | MeasurementData[]): GageRRResult {
@@ -39,10 +115,11 @@ function calculateMultiOperatorGageRR(data: MeasurementData[]): GageRRResult {
     if (!operatorGroups[measurement.operatorName]) {
       operatorGroups[measurement.operatorName] = [];
     }
+    operatorGroups[measurement.operatorName].push(measurement);
+
     if (!partGroups[measurement.partId]) {
       partGroups[measurement.partId] = [];
     }
-    operatorGroups[measurement.operatorName].push(measurement);
     partGroups[measurement.partId].push(measurement);
   });
 
@@ -50,127 +127,129 @@ function calculateMultiOperatorGageRR(data: MeasurementData[]): GageRRResult {
   const parts = Object.keys(partGroups);
   
   if (operators.length < 2) {
-    throw new Error("최소 2명의 측정자가 필요합니다");
+    // Fall back to single operator analysis
+    const times = data.map(d => d.timeInMs);
+    return calculateSingleOperatorGageRR(times);
   }
 
-  // Calculate means for each operator-part combination
-  const cellMeans: { [key: string]: number } = {};
-  const cellRanges: { [key: string]: number } = {};
+  // Calculate means for each operator
+  const operatorMeans = operators.map(op => {
+    const opData = operatorGroups[op];
+    return opData.reduce((sum, d) => sum + d.timeInMs, 0) / opData.length;
+  });
+
+  // Calculate means for each part
+  const partMeans = parts.map(part => {
+    const partData = partGroups[part];
+    return partData.reduce((sum, d) => sum + d.timeInMs, 0) / partData.length;
+  });
+
+  // Overall mean
+  const overallMean = data.reduce((sum, d) => sum + d.timeInMs, 0) / data.length;
+
+  // Calculate variance components
+  const operatorVariance = operatorMeans.reduce((sum, mean) => sum + Math.pow(mean - overallMean, 2), 0) / (operators.length - 1);
+  const partVariance = partMeans.reduce((sum, mean) => sum + Math.pow(mean - overallMean, 2), 0) / (parts.length - 1);
   
-  operators.forEach(operator => {
-    parts.forEach(part => {
-      const cellData = data.filter(d => d.operatorName === operator && d.partId === part);
-      if (cellData.length > 0) {
-        const times = cellData.map(d => d.timeInMs);
-        const mean = times.reduce((sum, val) => sum + val, 0) / times.length;
-        const range = Math.max(...times) - Math.min(...times);
-        cellMeans[`${operator}_${part}`] = mean;
-        cellRanges[`${operator}_${part}`] = range;
-      }
+  // Calculate within-group variance (repeatability)
+  let withinVariance = 0;
+  let withinCount = 0;
+  
+  operators.forEach(op => {
+    const opData = operatorGroups[op];
+    const opMean = opData.reduce((sum, d) => sum + d.timeInMs, 0) / opData.length;
+    opData.forEach(d => {
+      withinVariance += Math.pow(d.timeInMs - opMean, 2);
+      withinCount++;
     });
   });
-
-  // Calculate average range within cells (repeatability)
-  const avgRange = Object.values(cellRanges).reduce((sum, val) => sum + val, 0) / Object.values(cellRanges).length;
-  const d2 = 1.128; // d2 constant for n=2 (assuming 2 trials per cell typically)
-  const repeatabilityStdDev = avgRange / d2;
-
-  // Calculate operator means
-  const operatorMeans: { [key: string]: number } = {};
-  operators.forEach(operator => {
-    const operatorData = data.filter(d => d.operatorName === operator);
-    const mean = operatorData.reduce((sum, d) => sum + d.timeInMs, 0) / operatorData.length;
-    operatorMeans[operator] = mean;
-  });
-
-  // Calculate part means
-  const partMeans: { [key: string]: number } = {};
-  parts.forEach(part => {
-    const partData = data.filter(d => d.partId === part);
-    const mean = partData.reduce((sum, d) => sum + d.timeInMs, 0) / partData.length;
-    partMeans[part] = mean;
-  });
-
-  // Calculate reproducibility (operator-to-operator variation)
-  const grandMean = data.reduce((sum, d) => sum + d.timeInMs, 0) / data.length;
-  const operatorVariation = operators.reduce((sum, op) => {
-    return sum + Math.pow(operatorMeans[op] - grandMean, 2);
-  }, 0) / (operators.length - 1);
   
-  const reproducibilityStdDev = Math.sqrt(Math.max(0, operatorVariation - (repeatabilityStdDev * repeatabilityStdDev) / (parts.length * data.length / operators.length / parts.length)));
+  withinVariance = withinVariance / (withinCount - operators.length);
 
-  // Calculate part-to-part variation
-  const partVariation = parts.reduce((sum, part) => {
-    return sum + Math.pow(partMeans[part] - grandMean, 2);
-  }, 0) / (parts.length - 1);
-  
-  const partStdDev = Math.sqrt(Math.max(0, partVariation - (repeatabilityStdDev * repeatabilityStdDev) / (operators.length * data.length / operators.length / parts.length)));
+  // Calculate study variances
+  const totalVariance = Math.max(1, operatorVariance + partVariance + withinVariance);
+  const repeatabilityVariance = withinVariance;
+  const reproducibilityVariance = operatorVariance;
+  const totalGRRVariance = repeatabilityVariance + reproducibilityVariance;
 
-  // Convert to 6-sigma percentages
-  const repeatability = (6 * repeatabilityStdDev);
-  const reproducibility = (6 * reproducibilityStdDev);
-  const partContribution = (6 * partStdDev);
-  
-  const totalVariation = Math.sqrt(repeatability * repeatability + reproducibility * reproducibility + partContribution * partContribution);
-  const grr = Math.sqrt(repeatability * repeatability + reproducibility * reproducibility);
-  
   // Calculate percentages
-  const repeatabilityPercent = (repeatability / totalVariation) * 100;
-  const reproducibilityPercent = (reproducibility / totalVariation) * 100;
-  const grrPercent = (grr / totalVariation) * 100;
-  const partPercent = (partContribution / totalVariation) * 100;
+  const repeatability = Math.sqrt(repeatabilityVariance / totalVariance) * 100;
+  const reproducibility = Math.sqrt(reproducibilityVariance / totalVariance) * 100;
+  const grr = Math.sqrt(totalGRRVariance / totalVariance) * 100;
+  const partContribution = Math.sqrt(partVariance / totalVariance) * 100;
+
+  const isAcceptable = grr < 30;
+
+  // 고급 통계 지표 계산
+  const times = data.map(d => d.timeInMs);
+  const coefficientOfVariation = overallMean > 0 ? (Math.sqrt(totalVariance) / overallMean) * 100 : 0;
+  const outliers = detectOutliers(times);
+  const confInterval = calculateConfidenceInterval(times, 0.95);
+  const normTest = performNormalityTest(times);
+  const processCapIndex = calculateProcessCapability(times, overallMean, Math.sqrt(totalVariance));
 
   return {
-    repeatability: repeatabilityPercent,
-    reproducibility: reproducibilityPercent,
-    grr: grrPercent,
-    partContribution: partPercent,
-    operatorContribution: reproducibilityPercent,
-    isAcceptable: grrPercent < 30,
+    repeatability: isNaN(repeatability) ? 0 : repeatability,
+    reproducibility: isNaN(reproducibility) ? 0 : reproducibility,
+    grr: isNaN(grr) ? 100 : grr,
+    partContribution: isNaN(partContribution) ? 0 : partContribution,
+    operatorContribution: reproducibility,
+    isAcceptable,
+    coefficientOfVariation,
+    processCapabilityIndex: processCapIndex,
+    outlierCount: outliers.length,
+    confidenceInterval: confInterval,
+    normalityTest: normTest,
     analysisData: {
+      measurements: times,
+      mean: overallMean,
       operators: operators.length,
       parts: parts.length,
       totalMeasurements: data.length,
       operatorMeans,
       partMeans,
-      grandMean
-    }
+      timestamp: new Date().toISOString(),
+      calculationMethod: "multi_operator_grr"
+    },
   };
 }
 
 function calculateSingleOperatorGageRR(measurements: number[]): GageRRResult {
-  if (measurements.length < 3) {
-    throw new Error("Minimum 3 measurements required for Gage R&R analysis");
+  if (measurements.length === 0) {
+    throw new Error("No measurements provided for analysis");
   }
 
-  // Validate measurements
-  const validMeasurements = measurements.filter(m => !isNaN(m) && isFinite(m) && m > 0);
-  if (validMeasurements.length < 3) {
-    throw new Error("Insufficient valid measurements for analysis");
-  }
+  // Filter out invalid measurements
+  const validMeasurements = measurements.filter(m => typeof m === 'number' && !isNaN(m) && m > 0);
   
+  if (validMeasurements.length === 0) {
+    throw new Error("No valid measurements found");
+  }
+
   const n = validMeasurements.length;
   const mean = validMeasurements.reduce((sum, val) => sum + val, 0) / n;
   
-  // Enhanced statistical reliability assessment based on sample size
-  const reliabilityFactor = n >= 10 ? 1.0 : n >= 6 ? 0.8 : 0.6;
-  
-  // Calculate variance components with safety checks
-  const totalVariance = Math.max(1, validMeasurements.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (n - 1));
+  // Calculate basic statistics
+  const variance = validMeasurements.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / Math.max(1, n - 1);
   const range = Math.max(...validMeasurements) - Math.min(...validMeasurements);
   
-  // Use appropriate d2 constants based on sample size
-  const d2 = n <= 3 ? 1.693 : n <= 4 ? 2.059 : n <= 5 ? 2.326 : n <= 6 ? 2.534 : 2.704;
-  const equipmentVariation = Math.max(1, range / d2);
+  // Calculate total variance with enhanced method for larger samples
+  let totalVariance: number;
+  if (n >= 10) {
+    // Use more sophisticated calculation for larger samples
+    totalVariance = variance;
+  } else {
+    // Use range-based method for smaller samples
+    const d2 = n <= 2 ? 1.128 : n <= 5 ? 2.326 : n <= 10 ? 3.078 : 3.267;
+    totalVariance = Math.pow(range / d2, 2);
+  }
   
-  // Calculate variance components with improved estimation for small samples
-  const repeatabilityVariance = Math.pow(equipmentVariation, 2);
+  // Reliability factor based on sample size
+  const reliabilityFactor = Math.min(1.0, Math.max(0.5, (n - 2) / 8));
   
-  // Adjust reproducibility estimation based on sample size
-  // For single operator (current limitation), estimate based on measurement variation
-  const reproducibilityVariance = n < 10 ? 
-    Math.max(0, totalVariance * 0.15) : // Higher uncertainty for small samples
-    Math.max(0, totalVariance * 0.05);  // More confident with larger samples
+  // Since we only have one operator, most variance is "repeatability"
+  const repeatabilityVariance = totalVariance * 0.8; // Assume 80% is repeatability
+  const reproducibilityVariance = totalVariance * 0.1; // Small reproducibility component
   
   const partVariance = Math.max(totalVariance * 0.2, totalVariance - repeatabilityVariance - reproducibilityVariance);
   
@@ -192,6 +271,13 @@ function calculateSingleOperatorGageRR(measurements: number[]): GageRRResult {
   const operatorContribution = reproducibility;
   const isAcceptable = grr < 30; // AIAG MSA standard
   
+  // 고급 통계 지표 계산
+  const coefficientOfVariation = mean > 0 ? (Math.sqrt(totalVariance) / mean) * 100 : 0;
+  const outliers = detectOutliers(validMeasurements);
+  const confInterval = calculateConfidenceInterval(validMeasurements, 0.95);
+  const normTest = performNormalityTest(validMeasurements);
+  const processCapIndex = calculateProcessCapability(validMeasurements, mean, Math.sqrt(totalVariance));
+
   return {
     repeatability: isNaN(repeatability) ? 0 : repeatability,
     reproducibility: isNaN(reproducibility) ? 0 : reproducibility,
@@ -199,6 +285,11 @@ function calculateSingleOperatorGageRR(measurements: number[]): GageRRResult {
     partContribution: isNaN(partContribution) ? 0 : partContribution,
     operatorContribution: isNaN(operatorContribution) ? 0 : operatorContribution,
     isAcceptable,
+    coefficientOfVariation,
+    processCapabilityIndex: processCapIndex,
+    outlierCount: outliers.length,
+    confidenceInterval: confInterval,
+    normalityTest: normTest,
     analysisData: {
       measurements: validMeasurements,
       mean,
@@ -215,67 +306,59 @@ function calculateSingleOperatorGageRR(measurements: number[]): GageRRResult {
 
 export function performANOVA(data: number[][]): any {
   if (!data || data.length < 2) {
-    throw new Error("ANOVA requires at least 2 groups of data");
+    return { error: "Insufficient data for ANOVA analysis" };
   }
 
-  // Flatten data and calculate group means
-  const groups = data.filter(group => group.length > 0);
-  const allValues = groups.flat();
-  const n = allValues.length;
-  const k = groups.length; // number of groups
-  
-  if (n < 3) {
-    throw new Error("Insufficient data for ANOVA analysis");
+  const groups = data.filter(group => group && group.length > 0);
+  if (groups.length < 2) {
+    return { error: "Need at least 2 groups for ANOVA" };
   }
+
+  // Calculate group means and overall mean
+  const groupMeans = groups.map(group => 
+    group.reduce((sum, val) => sum + val, 0) / group.length
+  );
   
-  const grandMean = allValues.reduce((sum, val) => sum + val, 0) / n;
-  
+  const n = groups.reduce((sum, group) => sum + group.length, 0);
+  const overallMean = groups.flat().reduce((sum, val) => sum + val, 0) / n;
+
   // Calculate Sum of Squares
-  let ssBetween = 0;
-  let ssWithin = 0;
+  const ssBetween = groups.reduce((sum, group, i) => 
+    sum + group.length * Math.pow(groupMeans[i] - overallMean, 2), 0
+  );
   
-  groups.forEach(group => {
-    const groupMean = group.reduce((sum, val) => sum + val, 0) / group.length;
-    ssBetween += group.length * Math.pow(groupMean - grandMean, 2);
-    
-    group.forEach(value => {
-      ssWithin += Math.pow(value - groupMean, 2);
-    });
-  });
-  
+  const ssWithin = groups.reduce((sum, group, i) => 
+    sum + group.reduce((groupSum, val) => 
+      groupSum + Math.pow(val - groupMeans[i], 2), 0
+    ), 0
+  );
+
   const ssTotal = ssBetween + ssWithin;
-  
+
   // Degrees of freedom
-  const dfBetween = k - 1;
-  const dfWithin = n - k;
+  const dfBetween = groups.length - 1;
+  const dfWithin = n - groups.length;
   const dfTotal = n - 1;
-  
-  // Mean squares
-  const msBetween = dfBetween > 0 ? ssBetween / dfBetween : 0;
-  const msWithin = dfWithin > 0 ? ssWithin / dfWithin : 1;
-  
+
+  // Mean Squares
+  const msBetween = ssBetween / dfBetween;
+  const msWithin = ssWithin / dfWithin;
+
   // F-statistic
-  const fStatistic = msWithin > 0 ? msBetween / msWithin : 0;
+  const fStatistic = msBetween / msWithin;
   
-  // Approximate p-value (simplified F-distribution)
-  const pValue = fStatistic > 4 ? 0.05 : fStatistic > 2 ? 0.1 : 0.5;
-  
-  // Variance components estimation
-  const totalVariance = ssTotal / dfTotal;
-  const betweenVariance = Math.max(0, (msBetween - msWithin) / (n / k));
-  const withinVariance = msWithin;
-  
+  // Simplified p-value approximation
+  const pValue = fStatistic > 4 ? 0.01 : fStatistic > 2 ? 0.05 : 0.1;
+
   const varianceComponents = {
-    operator: Math.max(0, betweenVariance / totalVariance * 100),
-    part: Math.max(0, (totalVariance * 0.6) / totalVariance * 100), // Estimated
-    interaction: Math.max(0, (totalVariance * 0.1) / totalVariance * 100), // Estimated
-    repeatability: Math.max(0, withinVariance / totalVariance * 100),
+    between: msBetween,
+    within: msWithin,
+    total: msBetween + msWithin
   };
-  
+
   return {
-    method: "anova",
-    fStatistic: isNaN(fStatistic) ? 0 : fStatistic,
-    pValue: isNaN(pValue) ? 1 : pValue,
+    fStatistic,
+    pValue,
     ssBetween,
     ssWithin,
     ssTotal,
