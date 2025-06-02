@@ -164,6 +164,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Advanced session history routes
+  app.get('/api/work-sessions/history', demoAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const sessions = await storage.getUserWorkSessions(userId, limit);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching session history:", error);
+      res.status(500).json({ message: "Failed to fetch session history" });
+    }
+  });
+
+  app.get('/api/work-sessions/compare/:sessionIds', demoAuth, async (req: any, res) => {
+    try {
+      const sessionIds = req.params.sessionIds.split(',').map((id: string) => parseInt(id));
+      const userId = req.user.claims.sub;
+      
+      const comparisons = await Promise.all(
+        sessionIds.map(async (sessionId: number) => {
+          const session = await storage.getWorkSessionById(sessionId);
+          if (!session || session.userId !== userId) {
+            return null;
+          }
+          
+          const measurements = await storage.getMeasurementsBySession(sessionId);
+          const analysis = await storage.getAnalysisResult(sessionId);
+          
+          return {
+            session,
+            measurements,
+            analysis,
+            statistics: {
+              count: measurements.length,
+              average: measurements.length > 0 ? measurements.reduce((sum, m) => sum + m.timeInMs, 0) / measurements.length : 0,
+              min: measurements.length > 0 ? Math.min(...measurements.map(m => m.timeInMs)) : 0,
+              max: measurements.length > 0 ? Math.max(...measurements.map(m => m.timeInMs)) : 0
+            }
+          };
+        })
+      );
+      
+      res.json(comparisons.filter(c => c !== null));
+    } catch (error) {
+      console.error("Error comparing sessions:", error);
+      res.status(500).json({ message: "Failed to compare sessions" });
+    }
+  });
+
+  app.get('/api/work-sessions/analytics/trends', demoAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const days = parseInt(req.query.days as string) || 30;
+      
+      const sessions = await storage.getUserWorkSessions(userId, 100);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      
+      const recentSessions = sessions.filter(s => 
+        s.createdAt && new Date(s.createdAt) >= cutoffDate
+      );
+      
+      const trends = {
+        sessionCount: recentSessions.length,
+        taskTypes: recentSessions.reduce((acc: any, s) => {
+          acc[s.taskType] = (acc[s.taskType] || 0) + 1;
+          return acc;
+        }, {}),
+        dailyActivity: await calculateDailyActivity(recentSessions),
+        averageSessionDuration: await calculateAverageSessionDuration(recentSessions, storage)
+      };
+      
+      res.json(trends);
+    } catch (error) {
+      console.error("Error fetching analytics trends:", error);
+      res.status(500).json({ message: "Failed to fetch analytics trends" });
+    }
+  });
+
+
+
   // Measurement routes
   app.post('/api/measurements', demoAuth, async (req: any, res) => {
     try {

@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Timer from "@/pages/timer";
 import Analysis from "@/pages/analysis";
+import History from "@/pages/history";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
         <>
           <Route path="/" component={Timer} />
           <Route path="/analysis" component={Analysis} />
+          <Route path="/history" component={History} />
         </>
       )}
       <Route component={NotFound} />
