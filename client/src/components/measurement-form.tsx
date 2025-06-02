@@ -203,7 +203,7 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
             </div>
 
-            {/* 측정자 정보 편집 - GRR 모드가 아닐 때만 */}
+            {/* 측정자 정보 편집 - 기본 모드에서만 표시 */}
             {!activeSession.operators && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -224,11 +224,20 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         <SelectValue placeholder="측정자를 선택하세요" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="측정자1">측정자1</SelectItem>
-                        <SelectItem value="측정자2">측정자2</SelectItem>
-                        <SelectItem value="홍길동">홍길동</SelectItem>
-                        <SelectItem value="김철수">김철수</SelectItem>
-                        <SelectItem value="이영희">이영희</SelectItem>
+                        {/* GRR 모드가 아닌 경우 일반적인 측정자 선택지 */}
+                        {!activeSession.operators && (
+                          <>
+                            <SelectItem value="측정자1">측정자1</SelectItem>
+                            <SelectItem value="측정자2">측정자2</SelectItem>
+                            <SelectItem value="홍길동">홍길동</SelectItem>
+                            <SelectItem value="김철수">김철수</SelectItem>
+                            <SelectItem value="이영희">이영희</SelectItem>
+                          </>
+                        )}
+                        {/* GRR 모드인 경우 설정된 측정자 목록에서 선택 */}
+                        {activeSession.operators && activeSession.operators.map((op: any) => (
+                          <SelectItem key={op.id} value={op.name}>{op.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <div className="flex space-x-2">
@@ -258,20 +267,65 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
               </div>
             )}
 
-            {/* GRR 모드에서 측정자 선택 표시 */}
+            {/* GRR 모드에서 측정자 선택 */}
             {activeSession.operators && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">현재 측정자 목록</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {activeSession.operators.map((op: any) => (
-                    <div key={op.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border text-center">
-                      <span className="text-sm font-medium">{op.name}</span>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">현재 측정자</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleOperatorEdit}
+                    className="h-6 px-2 text-xs"
+                  >
+                    변경
+                  </Button>
                 </div>
-                <p className="text-xs text-gray-500">
-                  타이머 페이지에서 측정 시 현재 측정자를 선택할 수 있습니다.
-                </p>
+                {isEditingOperator ? (
+                  <div className="space-y-2">
+                    <Select value={tempOperatorName} onValueChange={setTempOperatorName}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="측정자를 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeSession.operators.map((op: any) => (
+                          <SelectItem key={op.id} value={op.name}>{op.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        onClick={saveOperatorEdit}
+                        disabled={!tempOperatorName.trim()}
+                        className="flex-1"
+                      >
+                        저장
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={cancelOperatorEdit}
+                        className="flex-1"
+                      >
+                        취소
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
+                      <span className="text-sm">{activeSession.operatorName || "미설정"}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {activeSession.operators.map((op: any) => (
+                        <div key={op.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border text-center">
+                          <span className="text-sm font-medium">{op.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -296,12 +350,21 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         <SelectValue placeholder="대상자를 선택하세요" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="대상자1">대상자1</SelectItem>
-                        <SelectItem value="대상자2">대상자2</SelectItem>
-                        <SelectItem value="작업자A">작업자A</SelectItem>
-                        <SelectItem value="작업자B">작업자B</SelectItem>
-                        <SelectItem value="신입사원">신입사원</SelectItem>
-                        <SelectItem value="베테랑">베테랑</SelectItem>
+                        {/* GRR 모드가 아닌 경우 일반적인 대상자 선택지 */}
+                        {!activeSession.parts && (
+                          <>
+                            <SelectItem value="대상자1">대상자1</SelectItem>
+                            <SelectItem value="대상자2">대상자2</SelectItem>
+                            <SelectItem value="작업자A">작업자A</SelectItem>
+                            <SelectItem value="작업자B">작업자B</SelectItem>
+                            <SelectItem value="신입사원">신입사원</SelectItem>
+                            <SelectItem value="베테랑">베테랑</SelectItem>
+                          </>
+                        )}
+                        {/* GRR 모드인 경우 설정된 대상자 목록에서 선택 */}
+                        {activeSession.parts && activeSession.parts.map((part: any) => (
+                          <SelectItem key={part.id} value={part.name}>{part.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <div className="flex space-x-2">
@@ -331,20 +394,65 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
               </div>
             )}
 
-            {/* GRR 모드에서 대상자 선택 표시 */}
+            {/* GRR 모드에서 대상자 선택 */}
             {activeSession.operators && activeSession.parts && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">현재 대상자 목록</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {activeSession.parts.map((part: any) => (
-                    <div key={part.id} className="p-2 bg-green-50 dark:bg-green-900/20 rounded border text-center">
-                      <span className="text-sm font-medium">{part.name}</span>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">현재 대상자</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleTargetEdit}
+                    className="h-6 px-2 text-xs"
+                  >
+                    변경
+                  </Button>
                 </div>
-                <p className="text-xs text-gray-500">
-                  타이머 페이지에서 측정 시 현재 대상자를 선택할 수 있습니다.
-                </p>
+                {isEditingTarget ? (
+                  <div className="space-y-2">
+                    <Select value={tempTargetName} onValueChange={setTempTargetName}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="대상자를 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeSession.parts.map((part: any) => (
+                          <SelectItem key={part.id} value={part.name}>{part.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        onClick={saveTargetEdit}
+                        disabled={!tempTargetName.trim()}
+                        className="flex-1"
+                      >
+                        저장
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={cancelTargetEdit}
+                        className="flex-1"
+                      >
+                        취소
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
+                      <span className="text-sm">{activeSession.targetName || "미설정"}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {activeSession.parts.map((part: any) => (
+                        <div key={part.id} className="p-2 bg-green-50 dark:bg-green-900/20 rounded border text-center">
+                          <span className="text-sm font-medium">{part.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
