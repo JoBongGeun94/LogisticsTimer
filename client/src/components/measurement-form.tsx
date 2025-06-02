@@ -55,14 +55,7 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
     retry: false,
   });
 
-  // 활성 세션의 현재 측정자와 대상자만 필터링
-  const currentSessionOperators = activeSession?.operators || 
-    (activeSession?.operatorName ? [activeSession.operatorName] : []);
-  const currentSessionTargets = activeSession?.parts?.map((p: any) => p.name) || 
-    (activeSession?.targetName ? [activeSession.targetName] : []);
-  
-  console.log("Current Session Operators:", currentSessionOperators);
-  console.log("Current Session Targets:", currentSessionTargets);
+
 
   const addOperator = () => {
     if (newOperatorName.trim()) {
@@ -212,134 +205,81 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
             </div>
 
-            {/* 측정자 정보 편집 - 기본 모드에서만 표시 */}
-            {!activeSession.operators && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">측정자</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleOperatorEdit}
-                    className="h-6 px-2 text-xs"
-                  >
-                    변경
-                  </Button>
-                </div>
-                {isEditingOperator ? (
-                  <div className="space-y-2">
-                    <Select value={tempOperatorName} onValueChange={setTempOperatorName}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="측정자를 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* 활성 세션이 있는 경우 - GRR 모드 */}
-                        {activeSession?.operators && activeSession.operators.map((op: any) => (
-                          <SelectItem key={op.id} value={op.name}>{op.name}</SelectItem>
-                        ))}
-                        {/* 활성 세션이 있는 경우 - 기본 모드 */}
-                        {activeSession && !activeSession.operators && activeSession.operatorName && (
-                          <SelectItem key={activeSession.operatorName} value={activeSession.operatorName}>
-                            {activeSession.operatorName}
-                          </SelectItem>
-                        )}
-                        {/* 활성 세션이 없는 경우 과거 데이터에서 측정자 선택지 */}
-                        {!activeSession && (
-                          <>
-                            {historyData && historyData.operators.map((operator: string) => (
-                              <SelectItem key={operator} value={operator}>{operator}</SelectItem>
-                            ))}
-                            {/* 과거 데이터가 없을 때 기본 선택지 */}
-                            {(!historyData || historyData.operators.length === 0) && (
-                              <>
-                                <SelectItem value="측정자1">측정자1</SelectItem>
-                                <SelectItem value="측정자2">측정자2</SelectItem>
-                                <SelectItem value="홍길동">홍길동</SelectItem>
-                                <SelectItem value="김철수">김철수</SelectItem>
-                                <SelectItem value="이영희">이영희</SelectItem>
-                              </>
-                            )}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={saveOperatorEdit}
-                        disabled={!tempOperatorName.trim()}
-                        className="flex-1"
-                      >
-                        저장
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={cancelOperatorEdit}
-                        className="flex-1"
-                      >
-                        취소
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
-                    <span className="text-sm">{activeSession.operatorName || "미설정"}</span>
-                  </div>
-                )}
+            {/* 측정자 정보 */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">현재 측정자</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleOperatorEdit}
+                  className="h-6 px-2 text-xs"
+                >
+                  변경
+                </Button>
               </div>
-            )}
-
-            {/* GRR 모드에서 측정자 선택 */}
-            {activeSession.operators && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">현재 측정자</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleOperatorEdit}
-                    className="h-6 px-2 text-xs"
-                  >
-                    변경
-                  </Button>
-                </div>
-                {isEditingOperator ? (
-                  <div className="space-y-2">
-                    <Select value={tempOperatorName} onValueChange={setTempOperatorName}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="측정자를 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeSession.operators.map((op: any) => (
-                          <SelectItem key={op.id} value={op.name}>{op.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={saveOperatorEdit}
-                        disabled={!tempOperatorName.trim()}
-                        className="flex-1"
-                      >
-                        저장
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={cancelOperatorEdit}
-                        className="flex-1"
-                      >
-                        취소
-                      </Button>
-                    </div>
+              {isEditingOperator ? (
+                <div className="space-y-2">
+                  <Select value={tempOperatorName} onValueChange={setTempOperatorName}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="측정자를 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* GRR 모드 */}
+                      {activeSession?.operators && activeSession.operators.map((op: any) => (
+                        <SelectItem key={op.id} value={op.name}>{op.name}</SelectItem>
+                      ))}
+                      {/* 기본 모드 */}
+                      {activeSession && !activeSession.operators && activeSession.operatorName && (
+                        <SelectItem key={activeSession.operatorName} value={activeSession.operatorName}>
+                          {activeSession.operatorName}
+                        </SelectItem>
+                      )}
+                      {/* 세션 없을 때 */}
+                      {!activeSession && (
+                        <>
+                          {historyData && historyData.operators.map((operator: string) => (
+                            <SelectItem key={operator} value={operator}>{operator}</SelectItem>
+                          ))}
+                          {(!historyData || historyData.operators.length === 0) && (
+                            <>
+                              <SelectItem value="측정자1">측정자1</SelectItem>
+                              <SelectItem value="측정자2">측정자2</SelectItem>
+                              <SelectItem value="홍길동">홍길동</SelectItem>
+                              <SelectItem value="김철수">김철수</SelectItem>
+                              <SelectItem value="이영희">이영희</SelectItem>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      onClick={saveOperatorEdit}
+                      disabled={!tempOperatorName.trim()}
+                      className="flex-1"
+                    >
+                      저장
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={cancelOperatorEdit}
+                      className="flex-1"
+                    >
+                      취소
+                    </Button>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
-                      <span className="text-sm">{activeSession.operatorName || "미설정"}</span>
-                    </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
+                    <span className="text-sm">{activeSession?.operatorName || "미설정"}</span>
+                  </div>
+                  {/* GRR 모드일 때 전체 측정자 목록 표시 */}
+                  {activeSession?.operators && (
                     <div className="grid grid-cols-2 gap-2">
                       {activeSession.operators.map((op: any) => (
                         <div key={op.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border text-center">
@@ -347,140 +287,89 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 대상자 정보 편집 - GRR 모드가 아닐 때만 */}
-            {!activeSession.operators && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">대상자</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleTargetEdit}
-                    className="h-6 px-2 text-xs"
-                  >
-                    변경
-                  </Button>
+                  )}
                 </div>
-                {isEditingTarget ? (
-                  <div className="space-y-2">
-                    <Select value={tempTargetName} onValueChange={setTempTargetName}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="대상자를 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* 활성 세션이 있는 경우 - GRR 모드 */}
-                        {activeSession?.parts && activeSession.parts.map((part: any) => (
-                          <SelectItem key={part.id} value={part.name}>{part.name}</SelectItem>
-                        ))}
-                        {/* 활성 세션이 있는 경우 - 기본 모드 */}
-                        {activeSession && !activeSession.parts && activeSession.targetName && (
-                          <SelectItem key={activeSession.targetName} value={activeSession.targetName}>
-                            {activeSession.targetName}
-                          </SelectItem>
-                        )}
-                        {/* 활성 세션이 없는 경우 과거 데이터에서 대상자 선택지 */}
-                        {!activeSession && (
-                          <>
-                            {historyData && historyData.targets.map((target: string) => (
-                              <SelectItem key={target} value={target}>{target}</SelectItem>
-                            ))}
-                            {/* 과거 데이터가 없을 때 기본 선택지 */}
-                            {(!historyData || historyData.targets.length === 0) && (
-                              <>
-                                <SelectItem value="대상자1">대상자1</SelectItem>
-                                <SelectItem value="대상자2">대상자2</SelectItem>
-                                <SelectItem value="작업자A">작업자A</SelectItem>
-                                <SelectItem value="작업자B">작업자B</SelectItem>
-                                <SelectItem value="신입사원">신입사원</SelectItem>
-                                <SelectItem value="베테랑">베테랑</SelectItem>
-                              </>
-                            )}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={saveTargetEdit}
-                        disabled={!tempTargetName.trim()}
-                        className="flex-1"
-                      >
-                        저장
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={cancelTargetEdit}
-                        className="flex-1"
-                      >
-                        취소
-                      </Button>
-                    </div>
+              )}
+            </div>
+
+
+
+            {/* 대상자 정보 */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">현재 대상자</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleTargetEdit}
+                  className="h-6 px-2 text-xs"
+                >
+                  변경
+                </Button>
+              </div>
+              {isEditingTarget ? (
+                <div className="space-y-2">
+                  <Select value={tempTargetName} onValueChange={setTempTargetName}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="대상자를 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* GRR 모드 */}
+                      {activeSession?.parts && activeSession.parts.map((part: any) => (
+                        <SelectItem key={part.id} value={part.name}>{part.name}</SelectItem>
+                      ))}
+                      {/* 기본 모드 */}
+                      {activeSession && !activeSession.parts && activeSession.targetName && (
+                        <SelectItem key={activeSession.targetName} value={activeSession.targetName}>
+                          {activeSession.targetName}
+                        </SelectItem>
+                      )}
+                      {/* 세션 없을 때 */}
+                      {!activeSession && (
+                        <>
+                          {historyData && historyData.targets.map((target: string) => (
+                            <SelectItem key={target} value={target}>{target}</SelectItem>
+                          ))}
+                          {(!historyData || historyData.targets.length === 0) && (
+                            <>
+                              <SelectItem value="대상자1">대상자1</SelectItem>
+                              <SelectItem value="대상자2">대상자2</SelectItem>
+                              <SelectItem value="작업자A">작업자A</SelectItem>
+                              <SelectItem value="작업자B">작업자B</SelectItem>
+                              <SelectItem value="신입사원">신입사원</SelectItem>
+                              <SelectItem value="베테랑">베테랑</SelectItem>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      onClick={saveTargetEdit}
+                      disabled={!tempTargetName.trim()}
+                      className="flex-1"
+                    >
+                      저장
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={cancelTargetEdit}
+                      className="flex-1"
+                    >
+                      취소
+                    </Button>
                   </div>
-                ) : (
+                </div>
+              ) : (
+                <div className="space-y-2">
                   <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
-                    <span className="text-sm">{activeSession.targetName || "미설정"}</span>
+                    <span className="text-sm">{activeSession?.targetName || "미설정"}</span>
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* GRR 모드에서 대상자 선택 */}
-            {activeSession.operators && activeSession.parts && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">현재 대상자</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleTargetEdit}
-                    className="h-6 px-2 text-xs"
-                  >
-                    변경
-                  </Button>
-                </div>
-                {isEditingTarget ? (
-                  <div className="space-y-2">
-                    <Select value={tempTargetName} onValueChange={setTempTargetName}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="대상자를 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeSession.parts.map((part: any) => (
-                          <SelectItem key={part.id} value={part.name}>{part.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={saveTargetEdit}
-                        disabled={!tempTargetName.trim()}
-                        className="flex-1"
-                      >
-                        저장
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={cancelTargetEdit}
-                        className="flex-1"
-                      >
-                        취소
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
-                      <span className="text-sm">{activeSession.targetName || "미설정"}</span>
-                    </div>
+                  {/* GRR 모드일 때 전체 대상자 목록 표시 */}
+                  {activeSession?.parts && (
                     <div className="grid grid-cols-2 gap-2">
                       {activeSession.parts.map((part: any) => (
                         <div key={part.id} className="p-2 bg-green-50 dark:bg-green-900/20 rounded border text-center">
@@ -488,10 +377,12 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
+
+
 
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 dark:text-gray-400">
