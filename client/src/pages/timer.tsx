@@ -565,10 +565,10 @@ export default function Timer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">현재 부품</Label>
+                  <Label className="text-sm font-medium">현재 대상자</Label>
                   <Select value={selectedPart} onValueChange={setSelectedPart}>
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="부품을 선택하세요" />
+                      <SelectValue placeholder="대상자를 선택하세요" />
                     </SelectTrigger>
                     <SelectContent>
                       {activeSession.parts.map((part: any) => (

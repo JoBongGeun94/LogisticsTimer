@@ -184,7 +184,7 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
             </div>
 
-            {/* 측정자 정보 편집 */}
+            {/* 측정자 정보 편집 - GRR 모드가 아닐 때만 */}
             {!activeSession.operators && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -233,6 +233,23 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                     <span className="text-sm">{activeSession.operatorName || "미설정"}</span>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* GRR 모드에서 측정자 선택 표시 */}
+            {activeSession.operators && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">현재 측정자 목록</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {activeSession.operators.map((op: any) => (
+                    <div key={op.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border text-center">
+                      <span className="text-sm font-medium">{op.name}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">
+                  타이머 페이지에서 측정 시 현재 측정자를 선택할 수 있습니다.
+                </p>
               </div>
             )}
 
@@ -411,11 +428,11 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">부품 관리</Label>
+                  <Label className="text-sm font-medium">대상자 지정</Label>
                   <div className="mt-2 space-y-2">
                     <div className="flex space-x-2">
                       <Input
-                        placeholder="부품 이름 입력"
+                        placeholder="대상자 이름 입력"
                         value={newPartName}
                         onChange={(e) => setNewPartName(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addPart())}
@@ -436,7 +453,7 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         ))}
                       </div>
                     )}
-                    <p className="text-xs text-gray-500">최소 1개의 부품이 필요합니다</p>
+                    <p className="text-xs text-gray-500">최소 1명의 대상자가 필요합니다</p>
                   </div>
                 </div>
 
