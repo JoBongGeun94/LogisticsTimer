@@ -12,7 +12,7 @@ import { MeasurementForm } from "@/components/measurement-form";
 import { TimerControls } from "@/components/timer-controls";
 import { LapHistory } from "@/components/lap-history";
 import { Link } from "wouter";
-import { BarChart3, Download, LogOut, Moon, Sun, Settings, HelpCircle, Play, Pause, Square, RotateCcw, Users, CheckCircle2, Save } from "lucide-react";
+import { BarChart3, Download, LogOut, Moon, Sun, Settings, HelpCircle, Play, Pause, Square, RotateCcw, Users, CheckCircle2, Save, History } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -691,6 +691,16 @@ export default function Timer() {
             </div>
           </div>
           <div className="flex space-x-2">
+            <Link href="/history">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-blue-700"
+                title="작업 히스토리"
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            </Link>
             <Button
               variant="ghost"
               size="sm"

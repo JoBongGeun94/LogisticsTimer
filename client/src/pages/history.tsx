@@ -235,7 +235,7 @@ export default function History() {
                     const taskTypeEntries = Object.entries(trends.taskTypes || {});
                     if (taskTypeEntries.length === 0) return "없음";
                     const mostFrequent = taskTypeEntries.reduce((a, b) => 
-                      a[1] > b[1] ? a : b
+                      (a[1] as number) > (b[1] as number) ? a : b
                     );
                     return mostFrequent[0];
                   })()}
