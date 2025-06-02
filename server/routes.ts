@@ -168,10 +168,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/measurements', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { sessionId, ...measurementData } = req.body;
-      const validatedData = insertMeasurementSchema.parse(measurementData);
+      const validatedData = insertMeasurementSchema.parse(req.body);
       
-      const measurement = await storage.createMeasurement(sessionId, userId, validatedData);
+      const measurement = await storage.createMeasurement(validatedData.sessionId, userId, validatedData);
       res.json(measurement);
     } catch (error) {
       console.error("Error creating measurement:", error);

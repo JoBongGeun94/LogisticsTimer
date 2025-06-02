@@ -164,6 +164,10 @@ export default function Timer() {
       timeInMs: number;
       taskType: string;
       partNumber?: string;
+      operatorName?: string;
+      partId?: string;
+      partName?: string;
+      trialNumber?: number;
     }) => {
       const response = await apiRequest("POST", "/api/measurements", measurementData);
       return response.json();
