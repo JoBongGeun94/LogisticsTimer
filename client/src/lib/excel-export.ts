@@ -18,8 +18,8 @@ export function generateExcelData(data: ExcelData): any {
         formatTimeForExcel(m.timeInMs || 0),
         data.sessionInfo?.taskType || m.taskType || "",
         data.sessionInfo?.partNumber || m.partNumber || "",
-        data.sessionInfo?.operatorName || "",
-        data.sessionInfo?.targetName || "",
+        m.operatorName || data.sessionInfo?.operatorName || "",
+        m.partName || data.sessionInfo?.targetName || "",
         new Date(m.timestamp || new Date()).toLocaleString('ko-KR'),
         m.timeInMs < 1000 ? "매우 빠름" : m.timeInMs > 10000 ? "느림" : "정상"
       ]),
