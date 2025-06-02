@@ -49,11 +49,11 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
   const [tempOperatorName, setTempOperatorName] = useState("");
   const [tempTargetName, setTempTargetName] = useState("");
 
-  // 과거 데이터 가져오기 (잠시 비활성화)
-  // const { data: historyData } = useQuery<{ operators: string[], targets: string[] }>({
-  //   queryKey: ["/api/work-sessions/history/operators-targets"],
-  //   retry: false,
-  // });
+  // 과거 데이터 가져오기
+  const { data: historyData } = useQuery<{ operators: string[], targets: string[] }>({
+    queryKey: ["/api/work-sessions/history/operators-targets"],
+    retry: false,
+  });
 
   const addOperator = () => {
     if (newOperatorName.trim()) {
@@ -224,14 +224,22 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         <SelectValue placeholder="측정자를 선택하세요" />
                       </SelectTrigger>
                       <SelectContent>
-                        {/* GRR 모드가 아닌 경우 일반적인 측정자 선택지 */}
+                        {/* GRR 모드가 아닌 경우 과거 데이터에서 측정자 선택지 */}
                         {!activeSession.operators && (
                           <>
-                            <SelectItem value="측정자1">측정자1</SelectItem>
-                            <SelectItem value="측정자2">측정자2</SelectItem>
-                            <SelectItem value="홍길동">홍길동</SelectItem>
-                            <SelectItem value="김철수">김철수</SelectItem>
-                            <SelectItem value="이영희">이영희</SelectItem>
+                            {historyData && historyData.operators.map((operator: string) => (
+                              <SelectItem key={operator} value={operator}>{operator}</SelectItem>
+                            ))}
+                            {/* 과거 데이터가 없을 때 기본 선택지 */}
+                            {(!historyData || historyData.operators.length === 0) && (
+                              <>
+                                <SelectItem value="측정자1">측정자1</SelectItem>
+                                <SelectItem value="측정자2">측정자2</SelectItem>
+                                <SelectItem value="홍길동">홍길동</SelectItem>
+                                <SelectItem value="김철수">김철수</SelectItem>
+                                <SelectItem value="이영희">이영희</SelectItem>
+                              </>
+                            )}
                           </>
                         )}
                         {/* GRR 모드인 경우 설정된 측정자 목록에서 선택 */}
@@ -350,15 +358,23 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         <SelectValue placeholder="대상자를 선택하세요" />
                       </SelectTrigger>
                       <SelectContent>
-                        {/* GRR 모드가 아닌 경우 일반적인 대상자 선택지 */}
+                        {/* GRR 모드가 아닌 경우 과거 데이터에서 대상자 선택지 */}
                         {!activeSession.parts && (
                           <>
-                            <SelectItem value="대상자1">대상자1</SelectItem>
-                            <SelectItem value="대상자2">대상자2</SelectItem>
-                            <SelectItem value="작업자A">작업자A</SelectItem>
-                            <SelectItem value="작업자B">작업자B</SelectItem>
-                            <SelectItem value="신입사원">신입사원</SelectItem>
-                            <SelectItem value="베테랑">베테랑</SelectItem>
+                            {historyData && historyData.targets.map((target: string) => (
+                              <SelectItem key={target} value={target}>{target}</SelectItem>
+                            ))}
+                            {/* 과거 데이터가 없을 때 기본 선택지 */}
+                            {(!historyData || historyData.targets.length === 0) && (
+                              <>
+                                <SelectItem value="대상자1">대상자1</SelectItem>
+                                <SelectItem value="대상자2">대상자2</SelectItem>
+                                <SelectItem value="작업자A">작업자A</SelectItem>
+                                <SelectItem value="작업자B">작업자B</SelectItem>
+                                <SelectItem value="신입사원">신입사원</SelectItem>
+                                <SelectItem value="베테랑">베테랑</SelectItem>
+                              </>
+                            )}
                           </>
                         )}
                         {/* GRR 모드인 경우 설정된 대상자 목록에서 선택 */}
