@@ -63,6 +63,18 @@ export default function Timer() {
     retry: false,
   });
 
+  // Auto-select first operator and part when session loads (GRR mode)
+  useEffect(() => {
+    if (activeSession?.operators && activeSession?.parts) {
+      if (!selectedOperator && activeSession.operators.length > 0) {
+        setSelectedOperator(activeSession.operators[0].id);
+      }
+      if (!selectedPart && activeSession.parts.length > 0) {
+        setSelectedPart(activeSession.parts[0].id);
+      }
+    }
+  }, [activeSession, selectedOperator, selectedPart]);
+
   // Create work session mutation
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { taskType: string; partNumber?: string }) => {
