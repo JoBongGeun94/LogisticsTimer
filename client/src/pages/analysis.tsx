@@ -519,7 +519,7 @@ export default function Analysis() {
                 <div className="text-xs text-gray-600 dark:text-gray-400">
                   <p>• 그룹 수: {anovaAnalysis.groups}개</p>
                   <p>• 총 샘플: {anovaAnalysis.totalSamples}개</p>
-                  <p>• 측정자 간 변동: {anovaAnalysis.varianceComponents.operator.toFixed(1)}%</p>
+                  <p>• 측정자 간 변동: {anovaAnalysis?.varianceComponents?.operator?.toFixed(1) || '0.0'}%</p>
                 </div>
               </CardContent>
             </Card>
@@ -664,7 +664,7 @@ export default function Analysis() {
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium text-gray-900 dark:text-gray-100">변동계수 (CV)</h4>
                         <span className="text-2xl font-bold text-orange-600">
-                          {(analysis as any).coefficientOfVariation.toFixed(1)}%
+                          {(analysis as any).coefficientOfVariation?.toFixed(1) || '0.0'}%
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -694,7 +694,7 @@ export default function Analysis() {
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium text-gray-900 dark:text-gray-100">공정능력지수 (Cpk)</h4>
                         <span className="text-2xl font-bold text-emerald-600">
-                          {(analysis as any).processCapabilityIndex.toFixed(2)}
+                          {(analysis as any).processCapabilityIndex?.toFixed(2) || '0.00'}
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
