@@ -32,14 +32,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .values({
           sessionId: Number(sessionId),
           userId,
-          operatorName,
-          partId,
-          trialNumber,
+          attemptNumber: attemptNumber || 1,
           timeInMs,
-          partName,
           taskType: taskType || "measurement",
           partNumber,
-          attemptNumber: attemptNumber || 1
+          operatorName,
+          partId,
+          partName,
+          trialNumber
         })
         .returning();
 
