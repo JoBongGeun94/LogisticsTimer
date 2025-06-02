@@ -210,31 +210,66 @@ export function downloadExcelFile(data: any): void {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (isMobile) {
-      // Mobile approach: create blob and trigger download
-      const workbookBlob = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([workbookBlob], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-      });
-      
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = data.filename;
-      link.style.display = 'none';
-      
-      // For mobile Safari, we need to trigger the download differently
-      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-        // iOS Safari approach
-        link.target = '_blank';
-        link.rel = 'noopener';
+      // Enhanced mobile approach with better error handling
+      try {
+        const workbookBlob = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([workbookBlob], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        
+        // Check if the blob was created successfully
+        if (blob.size === 0) {
+          throw new Error('Empty blob created');
+        }
+        
+        const url = URL.createObjectURL(blob);
+        
+        // For iOS Safari - different approach
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+          // Use a more reliable iOS approach
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = data.filename;
+          link.style.position = 'fixed';
+          link.style.top = '-1000px';
+          
+          document.body.appendChild(link);
+          
+          // Create a touch event for iOS
+          const event = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true
+          });
+          
+          link.dispatchEvent(event);
+          
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 100);
+        } else {
+          // Android and other mobile browsers
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = data.filename;
+          link.style.display = 'none';
+          
+          // Use click() with user interaction context
+          document.body.appendChild(link);
+          
+          // Force immediate click
+          setTimeout(() => {
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 0);
+        }
+      } catch (error) {
+        console.error('Mobile download error:', error);
+        // Fallback to desktop method
+        XLSX.writeFile(workbook, data.filename);
       }
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up URL object after delay
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
     } else {
       // Desktop approach: use XLSX writeFile
       XLSX.writeFile(workbook, data.filename);

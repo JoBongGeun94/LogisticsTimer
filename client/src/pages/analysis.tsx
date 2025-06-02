@@ -649,14 +649,24 @@ export default function Analysis() {
                   // Check if we're on mobile
                   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                   
-                  downloadExcelFile(excelData);
-                  
-                  toast({
-                    title: "리포트 다운로드",
-                    description: isMobile 
-                      ? "파일이 다운로드됩니다. 다운로드가 시작되지 않으면 브라우저 설정에서 다운로드를 허용해주세요." 
-                      : "Excel 파일이 다운로드되었습니다.",
-                  });
+                  if (isMobile) {
+                    // For mobile, show additional guidance
+                    toast({
+                      title: "모바일 다운로드 시작",
+                      description: "파일이 다운로드됩니다. 브라우저의 다운로드 폴더를 확인해주세요.",
+                    });
+                    
+                    // Wait a moment then trigger download
+                    setTimeout(() => {
+                      downloadExcelFile(excelData);
+                    }, 500);
+                  } else {
+                    downloadExcelFile(excelData);
+                    toast({
+                      title: "리포트 다운로드 완료",
+                      description: "Excel 파일이 다운로드되었습니다.",
+                    });
+                  }
                 } catch (error) {
                   console.error('Download error:', error);
                   toast({

@@ -35,11 +35,9 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading }: M
   };
 
   const taskTypes = [
-    { value: "pallet_loading", label: "파렛트 적재" },
-    { value: "sorting", label: "분류 작업" },
-    { value: "picking", label: "피킹 작업" },
-    { value: "packaging", label: "포장 작업" },
-    { value: "inventory", label: "재고 확인" },
+    { value: "material_inspection", label: "물자검수팀" },
+    { value: "storage_management", label: "저장관리팀" },
+    { value: "packaging_management", label: "포장관리팀" },
   ];
 
   return (
