@@ -231,7 +231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create workbook
       const workbook = XLSX.utils.book_new();
       
-      // Raw Data Sheet
+      // Raw Data Sheet (always included)
       const rawData = [
         ["시도 번호", "측정 시간(ms)", "측정 시간(형식)", "작업 유형", "공정세부번호", "측정자", "대상자", "측정 일시", "비고"],
         ...measurements.map((m, i) => [
@@ -246,9 +246,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           m.timeInMs < 1000 ? "매우 빠름" : m.timeInMs > 10000 ? "느림" : "정상"
         ]),
       ];
-
-      // Summary Sheet
-      const summaryData = [
+      
+      // Add Raw Data sheet
+      const worksheet1 = XLSX.utils.aoa_to_sheet(rawData);
+      XLSX.utils.book_append_sheet(workbook, worksheet1, "Raw Data");
+      
+      // Only add additional sheets if not in simple mode
+      if (!simpleMode) {
+        // Summary Sheet
+        const summaryData = [
         ["작업 정보", "", ""],
         ["작업 유형", taskTypeName, ""],
         ["공정세부번호", session.partNumber || "", ""],
@@ -300,17 +306,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ["수용성", analysis?.grr ? 
           (analysis.grr < 10 ? "우수" : 
            analysis.grr < 30 ? "양호" : "부적합") : "N/A", ""]
-      ];
+        ];
 
-      // Create worksheets
-      const rawSheet = XLSX.utils.aoa_to_sheet(rawData);
-      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-      const analysisSheet = XLSX.utils.aoa_to_sheet(analysisData);
+        // Create worksheets for additional sheets
+        const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+        const analysisSheet = XLSX.utils.aoa_to_sheet(analysisData);
 
-      // Add sheets to workbook
-      XLSX.utils.book_append_sheet(workbook, rawSheet, "Raw Data");
-      XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
-      XLSX.utils.book_append_sheet(workbook, analysisSheet, "Analysis Details");
+        // Add additional sheets to workbook
+        XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
+        XLSX.utils.book_append_sheet(workbook, analysisSheet, "Analysis Details");
+      } // End of !simpleMode condition
 
       // Generate Excel buffer
       const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
