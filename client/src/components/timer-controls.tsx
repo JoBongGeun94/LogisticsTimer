@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Flag, RotateCcw } from "lucide-react";
+import { Play, Pause, Square, Save, RotateCcw } from "lucide-react";
 
 interface TimerControlsProps {
   isRunning: boolean;
@@ -84,7 +84,7 @@ export function TimerControls({
                 : 'bg-orange-600 hover:bg-orange-700'
             }`}
           >
-            <Flag className="h-6 w-6" />
+            <Save className="h-6 w-6" />
           </Button>
           <span className="text-xs text-gray-600 dark:text-gray-400 mt-1">기록</span>
         </div>

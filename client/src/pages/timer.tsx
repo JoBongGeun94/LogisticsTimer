@@ -12,7 +12,7 @@ import { MeasurementForm } from "@/components/measurement-form";
 import { TimerControls } from "@/components/timer-controls";
 import { LapHistory } from "@/components/lap-history";
 import { Link } from "wouter";
-import { BarChart3, Download, LogOut, Moon, Sun, Settings, HelpCircle, Play, Pause, Flag, RotateCcw, Users } from "lucide-react";
+import { BarChart3, Download, LogOut, Moon, Sun, Settings, HelpCircle, Play, Pause, Square, RotateCcw, Users, CheckCircle2, Save } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -135,10 +135,23 @@ export default function Timer() {
       // Force refresh measurements data
       queryClient.invalidateQueries({ queryKey: [`/api/measurements/session/${activeSession?.id}`] });
       refetchMeasurements();
+      
+      // Enhanced success feedback
+      const measurementCount = Array.isArray(measurements) ? measurements.length + 1 : 1;
       toast({
-        title: "측정 기록",
-        description: `${Array.isArray(measurements) ? measurements.length + 1 : 1}번째 측정이 기록되었습니다.`,
+        title: "✅ 측정 완료",
+        description: `${measurementCount}번째 측정이 성공적으로 기록되었습니다. (${formatTime(currentTime)})`,
+        className: "border-emerald-200 bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
       });
+      
+      // Reset timer after successful measurement
+      resetTimer();
+      
+      // Visual feedback: brief flash animation
+      document.body.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+      setTimeout(() => {
+        document.body.style.background = '';
+      }, 200);
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -298,8 +311,10 @@ export default function Timer() {
     if (activeSession.operators && activeSession.parts) {
       if (!selectedOperator || !selectedPart) {
         toast({
-          title: "선택 필요",
-          description: "측정자와 부품을 선택해주세요.",
+          title: "⚠️ 선택 항목 확인",
+          description: !selectedOperator && !selectedPart ? 
+            "GRR 모드에서는 측정자와 대상자를 모두 선택해야 합니다." :
+            !selectedOperator ? "측정자를 선택해주세요." : "대상자를 선택해주세요.",
           variant: "destructive",
         });
         return;
@@ -800,7 +815,7 @@ export default function Timer() {
               </div>
               <div>
                 <h4 className="font-semibold mb-2 flex items-center gap-2">
-                  <Flag className="h-4 w-4 text-orange-600" />
+                  <Save className="h-4 w-4 text-orange-600" />
                   3. 측정 기록하기
                 </h4>
                 <p className="text-gray-600 dark:text-gray-400">
