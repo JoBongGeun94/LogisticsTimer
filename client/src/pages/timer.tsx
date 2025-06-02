@@ -17,8 +17,45 @@ import { useTheme } from "@/components/theme-provider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
+// Type definitions
+interface Operator {
+  id: string;
+  name: string;
+}
+
+interface Part {
+  id: string;
+  name: string;
+}
+
+interface WorkSession {
+  id: number;
+  taskType: string;
+  partNumber?: string;
+  operatorName?: string;
+  targetName?: string;
+  operators?: Operator[];
+  parts?: Part[];
+}
+
+interface Measurement {
+  id: number;
+  timeInMs: number;
+  timestamp: string;
+  operatorName?: string;
+  partName?: string;
+}
+
+interface User {
+  id: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  workerId?: string;
+}
+
 export default function Timer() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth() as { user: User | null; isLoading: boolean };
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
@@ -61,14 +98,14 @@ export default function Timer() {
   }, [user, isLoading, toast]);
 
   // Fetch active work session
-  const { data: activeSession } = useQuery({
+  const { data: activeSession } = useQuery<WorkSession>({
     queryKey: ["/api/work-sessions/active"],
     enabled: !!user,
     retry: false,
   });
 
   // Fetch measurements for active session
-  const { data: measurements = [], refetch: refetchMeasurements } = useQuery({
+  const { data: measurements = [], refetch: refetchMeasurements } = useQuery<Measurement[]>({
     queryKey: [`/api/measurements/session/${activeSession?.id}`],
     enabled: !!activeSession?.id,
     retry: false,
@@ -484,7 +521,9 @@ export default function Timer() {
         }
       }
     } catch (error) {
-      if (isUnauthorizedError(error)) {
+      const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
+      
+      if (error instanceof Error && isUnauthorizedError(error)) {
         toast({
           title: "인증 오류",
           description: "다시 로그인해주세요.",
