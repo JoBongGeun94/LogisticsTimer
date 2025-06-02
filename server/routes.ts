@@ -91,6 +91,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/work-sessions/:id', demoAuth, async (req: any, res) => {
+    try {
+      const sessionId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      // Validate that only allowed fields are being updated
+      const allowedFields = ['operatorName', 'targetName'];
+      const validUpdates: any = {};
+      
+      for (const field of allowedFields) {
+        if (updates[field] !== undefined) {
+          validUpdates[field] = updates[field];
+        }
+      }
+      
+      const updatedSession = await storage.updateWorkSession(sessionId, validUpdates);
+      res.json(updatedSession);
+    } catch (error) {
+      console.error("Error updating work session:", error);
+      res.status(500).json({ message: "Failed to update work session" });
+    }
+  });
+
   app.get('/api/work-sessions', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
