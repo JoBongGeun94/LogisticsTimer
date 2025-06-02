@@ -660,12 +660,28 @@ export default function Analysis() {
                       sessionInfo: responseData.sessionInfo || activeSession
                     });
                     
-                    downloadExcelFile(excelData);
-                    
-                    toast({
-                      title: "리포트 다운로드 완료",
-                      description: "Excel 파일이 다운로드되었습니다.",
-                    });
+                    try {
+                      const savedLocation = await downloadExcelFile(excelData, true);
+                      
+                      toast({
+                        title: "리포트 다운로드 완료",
+                        description: `파일이 "${savedLocation}"에 저장되었습니다.`,
+                      });
+                    } catch (saveError: any) {
+                      if (saveError.message === '저장이 취소되었습니다.') {
+                        toast({
+                          title: "저장 취소",
+                          description: "파일 저장이 취소되었습니다.",
+                        });
+                      } else {
+                        // Fallback to regular download
+                        const savedLocation = await downloadExcelFile(excelData, false);
+                        toast({
+                          title: "리포트 다운로드 완료",
+                          description: `파일이 "${savedLocation}"에 저장되었습니다.`,
+                        });
+                      }
+                    }
                   }
                 } catch (error) {
                   console.error('Download error:', error);

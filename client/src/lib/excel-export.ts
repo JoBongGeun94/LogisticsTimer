@@ -192,123 +192,97 @@ function calculateStandardDeviation(numbers: number[]): number {
   return Math.sqrt(variance);
 }
 
-export function downloadExcelFile(data: any): void {
+export async function downloadExcelFile(data: any, showSaveDialog: boolean = true): Promise<string> {
   console.log("Downloading Excel file:", data);
   
-  // Import xlsx library dynamically
-  import('xlsx').then((XLSX) => {
-    // Create workbook
-    const workbook = XLSX.utils.book_new();
-    
-    // Add each sheet to the workbook
-    data.sheets.forEach((sheet: any) => {
-      const worksheet = XLSX.utils.aoa_to_sheet(sheet.data);
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
-    });
-    
-    // Check if we're on mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      // Enhanced mobile approach with better error handling
+  return new Promise((resolve, reject) => {
+    // Import xlsx library dynamically
+    import('xlsx').then(async (XLSX) => {
       try {
-        const workbookBlob = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([workbookBlob], { 
-          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        // Create workbook
+        const workbook = XLSX.utils.book_new();
+        
+        // Add each sheet to the workbook
+        data.sheets.forEach((sheet: any) => {
+          const worksheet = XLSX.utils.aoa_to_sheet(sheet.data);
+          XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
         });
         
-        // Check if the blob was created successfully
-        if (blob.size === 0) {
-          throw new Error('Empty blob created');
-        }
+        // Check if we're on mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
-        const url = URL.createObjectURL(blob);
-        
-        // For iOS Safari - different approach
-        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-          // Use a more reliable iOS approach
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = data.filename;
-          link.style.position = 'fixed';
-          link.style.top = '-1000px';
-          
-          document.body.appendChild(link);
-          
-          // Create a touch event for iOS
-          const event = new MouseEvent('click', {
-            view: window,
-            bubbles: true,
-            cancelable: true
+        if (isMobile) {
+          // Mobile: Use standard download
+          const workbookBlob = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+          const blob = new Blob([workbookBlob], { 
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
           });
           
-          link.dispatchEvent(event);
-          
-          setTimeout(() => {
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          }, 100);
-        } else {
-          // Android and other mobile browsers
+          const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
           link.download = data.filename;
-          link.style.cssText = 'display: none; position: absolute; top: -1000px;';
+          link.style.display = 'none';
           
-          // Add explicit MIME type for better compatibility
-          link.type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-          
-          // Use click() with user interaction context
           document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
           
-          // Try multiple download methods for better compatibility
-          try {
-            // Method 1: Direct click
-            link.click();
-          } catch (e) {
-            // Method 2: Dispatch click event
-            const clickEvent = new MouseEvent('click', {
-              view: window,
-              bubbles: true,
-              cancelable: true
-            });
-            link.dispatchEvent(clickEvent);
-          }
-          
-          // Cleanup after a delay
-          setTimeout(() => {
-            if (document.body.contains(link)) {
-              document.body.removeChild(link);
+          resolve("다운로드 폴더");
+        } else {
+          // Desktop: Try to use File System Access API for save dialog
+          if (showSaveDialog && 'showSaveFilePicker' in window) {
+            try {
+              const fileHandle = await (window as any).showSaveFilePicker({
+                suggestedName: data.filename,
+                types: [
+                  {
+                    description: 'Excel 파일',
+                    accept: {
+                      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+                    },
+                  },
+                ],
+              });
+              
+              const wbout = XLSX.write(workbook, { 
+                bookType: 'xlsx', 
+                type: 'array',
+                compression: true 
+              });
+              
+              const writable = await fileHandle.createWritable();
+              await writable.write(wbout);
+              await writable.close();
+              
+              // Extract directory path from file handle
+              const fileName = fileHandle.name || data.filename;
+              resolve(fileName);
+            } catch (error: any) {
+              if (error.name === 'AbortError') {
+                reject(new Error('저장이 취소되었습니다.'));
+                return;
+              }
+              
+              // Fallback to regular download
+              XLSX.writeFile(workbook, data.filename);
+              resolve("다운로드 폴더");
             }
-            URL.revokeObjectURL(url);
-          }, 1000);
+          } else {
+            // Regular download without save dialog
+            XLSX.writeFile(workbook, data.filename);
+            resolve("다운로드 폴더");
+          }
         }
       } catch (error) {
-        console.error('Mobile download error:', error);
-        // Fallback to desktop method
-        XLSX.writeFile(workbook, data.filename);
+        console.error('Excel generation error:', error);
+        reject(new Error('Excel 파일 생성에 실패했습니다.'));
       }
-    } else {
-      // Desktop approach: use XLSX writeFile
-      XLSX.writeFile(workbook, data.filename);
-    }
-  }).catch((error) => {
-    console.error("Failed to load xlsx library:", error);
-    // Enhanced fallback with better mobile support
-    const jsonData = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = data.filename.replace('.xlsx', '.json');
-    link.style.display = 'none';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }).catch((error) => {
+      console.error("Failed to load xlsx library:", error);
+      reject(new Error('Excel 라이브러리 로드에 실패했습니다.'));
+    });
   });
 }
 
