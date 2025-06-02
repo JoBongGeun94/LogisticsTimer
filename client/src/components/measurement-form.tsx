@@ -224,7 +224,11 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         <SelectValue placeholder="측정자를 선택하세요" />
                       </SelectTrigger>
                       <SelectContent>
-                        {/* GRR 모드가 아닌 경우 과거 데이터에서 측정자 선택지 */}
+                        {/* 활성 세션이 있는 경우 해당 세션의 측정자 목록에서만 선택 */}
+                        {activeSession.operators && activeSession.operators.map((op: any) => (
+                          <SelectItem key={op.id} value={op.name}>{op.name}</SelectItem>
+                        ))}
+                        {/* 활성 세션이 없는 경우 과거 데이터에서 측정자 선택지 */}
                         {!activeSession.operators && (
                           <>
                             {historyData && historyData.operators.map((operator: string) => (
@@ -242,10 +246,6 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                             )}
                           </>
                         )}
-                        {/* GRR 모드인 경우 설정된 측정자 목록에서 선택 */}
-                        {activeSession.operators && activeSession.operators.map((op: any) => (
-                          <SelectItem key={op.id} value={op.name}>{op.name}</SelectItem>
-                        ))}
                       </SelectContent>
                     </Select>
                     <div className="flex space-x-2">
@@ -358,7 +358,11 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                         <SelectValue placeholder="대상자를 선택하세요" />
                       </SelectTrigger>
                       <SelectContent>
-                        {/* GRR 모드가 아닌 경우 과거 데이터에서 대상자 선택지 */}
+                        {/* 활성 세션이 있는 경우 해당 세션의 대상자 목록에서만 선택 */}
+                        {activeSession.parts && activeSession.parts.map((part: any) => (
+                          <SelectItem key={part.id} value={part.name}>{part.name}</SelectItem>
+                        ))}
+                        {/* 활성 세션이 없는 경우 과거 데이터에서 대상자 선택지 */}
                         {!activeSession.parts && (
                           <>
                             {historyData && historyData.targets.map((target: string) => (
@@ -377,10 +381,6 @@ export function MeasurementForm({ onSessionCreate, activeSession, isLoading, onO
                             )}
                           </>
                         )}
-                        {/* GRR 모드인 경우 설정된 대상자 목록에서 선택 */}
-                        {activeSession.parts && activeSession.parts.map((part: any) => (
-                          <SelectItem key={part.id} value={part.name}>{part.name}</SelectItem>
-                        ))}
                       </SelectContent>
                     </Select>
                     <div className="flex space-x-2">
