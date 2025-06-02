@@ -156,6 +156,7 @@ export const insertWorkSessionSchema = createInsertSchema(workSessions).pick({
 });
 
 export const insertMeasurementSchema = createInsertSchema(measurements).pick({
+  sessionId: true,
   attemptNumber: true,
   timeInMs: true,
   taskType: true,

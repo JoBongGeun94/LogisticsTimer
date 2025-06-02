@@ -13,8 +13,54 @@ import { generateExcelData, downloadExcelFile } from "@/lib/excel-export";
 import { Link } from "wouter";
 import { ArrowLeft, FileText, Share2, CheckCircle, XCircle, AlertTriangle, Download, FileSpreadsheet } from "lucide-react";
 
+// Type definitions
+interface User {
+  id: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  workerId?: string;
+}
+
+interface Operator {
+  id: string;
+  name: string;
+}
+
+interface Part {
+  id: string;
+  name: string;
+}
+
+interface WorkSession {
+  id: number;
+  taskType: string;
+  partNumber?: string;
+  operatorName?: string;
+  targetName?: string;
+  operators?: Operator[];
+  parts?: Part[];
+}
+
+interface Measurement {
+  id: number;
+  timeInMs: number;
+  timestamp: string;
+  operatorName?: string;
+  partName?: string;
+}
+
+interface GageRRResult {
+  grr: number;
+  repeatability: number;
+  reproducibility: number;
+  partContribution: number;
+  operatorContribution: number;
+  isAcceptable: boolean;
+}
+
 export default function Analysis() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth() as { user: User | null; isLoading: boolean };
   const { toast } = useToast();
   const [hasCreatedAnalysis, setHasCreatedAnalysis] = useState(false);
 
@@ -34,21 +80,21 @@ export default function Analysis() {
   }, [user, isLoading, toast]);
 
   // Fetch active work session
-  const { data: activeSession } = useQuery({
+  const { data: activeSession } = useQuery<WorkSession>({
     queryKey: ["/api/work-sessions/active"],
     enabled: !!user,
     retry: false,
   });
 
   // Fetch measurements for active session
-  const { data: measurements = [] } = useQuery({
+  const { data: measurements = [] } = useQuery<Measurement[]>({
     queryKey: [`/api/measurements/session/${activeSession?.id}`],
     enabled: !!activeSession?.id,
     retry: false,
   });
 
   // Fetch existing analysis result
-  const { data: existingAnalysis } = useQuery({
+  const { data: existingAnalysis } = useQuery<GageRRResult>({
     queryKey: ["/api/analysis/session", activeSession?.id],
     enabled: !!activeSession?.id,
     retry: false,
@@ -77,7 +123,9 @@ export default function Analysis() {
       });
     },
     onError: (error) => {
-      if (isUnauthorizedError(error)) {
+      const errorMessage = error instanceof Error ? error.message : "Gage R&R 분석을 수행할 수 없습니다.";
+      
+      if (error instanceof Error && isUnauthorizedError(error)) {
         toast({
           title: "인증 오류",
           description: "다시 로그인해주세요.",
@@ -90,14 +138,14 @@ export default function Analysis() {
       }
       toast({
         title: "분석 오류",
-        description: "Gage R&R 분석을 수행할 수 없습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
   });
 
   // Calculate comprehensive analysis
-  const times = measurements.map((m: any) => m.timeInMs);
+  const times = measurements.map((m: Measurement) => m.timeInMs);
   let analysis = existingAnalysis;
   let accuracyValidation = null;
   let anovaAnalysis = null;
