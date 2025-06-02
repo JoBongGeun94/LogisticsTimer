@@ -124,51 +124,7 @@ export default function Timer() {
     }
   }, [activeSession]);
 
-  // Keyboard shortcuts (moved after timer functions are defined)
-  const addKeyboardShortcuts = () => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input field
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
-        return;
-      }
 
-      // Prevent default only for our shortcuts
-      switch (event.key.toLowerCase()) {
-        case ' ': // Spacebar - Start/Pause
-          event.preventDefault();
-          if (activeSession) {
-            if (!isRunning && !isPaused) {
-              startTimer();
-            } else if (isRunning) {
-              pauseTimer();
-            } else if (isPaused) {
-              startTimer();
-            }
-          }
-          break;
-        case 'enter': // Enter - Record measurement (lap)
-          event.preventDefault();
-          if ((isRunning || isPaused) && activeSession) {
-            lapTimer();
-          }
-          break;
-        case 'escape': // Escape - Stop timer
-          event.preventDefault();
-          if ((isRunning || isPaused) && activeSession) {
-            stopTimer();
-          }
-          break;
-        case 'r': // R - Reset
-          event.preventDefault();
-          if (activeSession) {
-            resetTimer();
-          }
-          break;
-      }
-    };
-
-    return handleKeyPress;
-  };
 
   // Create work session mutation
   const createSessionMutation = useMutation({
@@ -483,7 +439,7 @@ export default function Timer() {
         taskType: activeSession.taskType,
         partNumber: activeSession.partNumber || "",
         operatorName: activeSession.operatorName || "",
-        partId: null,
+        partId: undefined,
         trialNumber: 1,
       });
     }
@@ -637,6 +593,53 @@ export default function Timer() {
       });
     }
   };
+
+  // Keyboard shortcuts (after timer functions are defined)
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input field
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
+        return;
+      }
+
+      // Prevent default only for our shortcuts
+      switch (event.key.toLowerCase()) {
+        case ' ': // Spacebar - Start/Pause
+          event.preventDefault();
+          if (activeSession) {
+            if (!isRunning && !isPaused) {
+              startTimer();
+            } else if (isRunning) {
+              pauseTimer();
+            } else if (isPaused) {
+              startTimer();
+            }
+          }
+          break;
+        case 'enter': // Enter - Record measurement (lap)
+          event.preventDefault();
+          if ((isRunning || isPaused) && activeSession) {
+            lapTimer();
+          }
+          break;
+        case 'escape': // Escape - Stop timer
+          event.preventDefault();
+          if ((isRunning || isPaused) && activeSession) {
+            stopTimer();
+          }
+          break;
+        case 'r': // R - Reset
+          event.preventDefault();
+          if (activeSession) {
+            resetTimer();
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [isRunning, isPaused, activeSession]);
 
   const stats = calculateStatistics(measurements.map(m => m.timeInMs));
 
@@ -1029,6 +1032,27 @@ export default function Timer() {
                 <p className="text-gray-600 dark:text-gray-400">
                   측정이 완료되면 "Gage R&R 분석"에서 통계 분석 결과를 확인하고 Excel로 내보낼 수 있습니다.
                 </p>
+              </div>
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h4 className="font-semibold mb-2 text-blue-800 dark:text-blue-200">🎹 키보드 단축키</h4>
+                <div className="space-y-1 text-xs text-blue-700 dark:text-blue-300">
+                  <div className="flex justify-between">
+                    <span>스페이스바</span>
+                    <span>타이머 시작/일시정지</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Enter</span>
+                    <span>측정 기록</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Esc</span>
+                    <span>타이머 정지</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>R</span>
+                    <span>타이머 리셋</span>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="pt-4">
