@@ -36,6 +36,7 @@ interface MeasurementFormProps {
   onOperatorSelect?: (operatorId: string) => void;
   onPartSelect?: (partId: string) => void;
   currentTrial?: number;
+  measurements?: any[];
 }
 
 export function MeasurementForm({ 
@@ -48,7 +49,8 @@ export function MeasurementForm({
   selectedPart,
   onOperatorSelect,
   onPartSelect,
-  currentTrial
+  currentTrial,
+  measurements
 }: MeasurementFormProps) {
   const [taskType, setTaskType] = useState("");
   const [partNumber, setPartNumber] = useState("");

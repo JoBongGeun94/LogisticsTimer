@@ -573,6 +573,7 @@ export default function Timer() {
             onOperatorSelect={handleOperatorSelect}
             onPartSelect={handlePartSelect}
             currentTrial={currentTrial}
+            measurements={measurements}
           />
 
 
