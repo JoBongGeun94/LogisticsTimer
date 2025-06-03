@@ -8,6 +8,18 @@ import { verifyToken, extractTokenFromRequest } from '../../jwt-utils';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema });
 
+// Type for measurement payload
+interface MeasurementPayload {
+  operatorName?: string;
+  partId?: string;
+  trialNumber?: number;
+  timeInMs: number;
+  partName?: string;
+  taskType?: string;
+  partNumber?: string;
+  attemptNumber?: number;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Extract and verify JWT token
@@ -27,27 +39,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { sessionId } = req.query;
 
     if (req.method === 'GET') {
-      // Get measurements for session
+      // Get measurements for session - fix TS2769 by using query builder properly
       const sessionMeasurements = await db
         .select()
         .from(schema.measurements)
-        .where(eq(schema.measurements.sessionId, Number(sessionId)));
+        .where(eq(schema.measurements.sessionId, parseInt(sessionId as string)));
 
       return res.json(sessionMeasurements);
     }
 
     if (req.method === 'POST') {
-      // Create new measurement
-      const {
-        operatorName,
-        partId,
-        trialNumber,
-        timeInMs,
-        partName,
-        taskType,
-        partNumber,
-        attemptNumber
-      } = req.body;
+      // Create new measurement - fix TS18004 by proper type declaration
+      const requestBody = req.body as MeasurementPayload;
+      
+      // Extract values with explicit variable declarations to avoid scope issues
+      const operatorName = requestBody.operatorName;
+      const partId = requestBody.partId;
+      const trialNumber = requestBody.trialNumber;
+      const timeInMs = requestBody.timeInMs;
+      const partName = requestBody.partName; // Explicit declaration for scope
+      const taskType = requestBody.taskType;
+      const partNumber = requestBody.partNumber;
+      const attemptNumber = requestBody.attemptNumber;
 
       // Validate required fields
       if (!timeInMs) {
@@ -57,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const [newMeasurement] = await db
         .insert(schema.measurements)
         .values({
-          sessionId: Number(sessionId),
+          sessionId: parseInt(sessionId as string),
           userId: userId,
           attemptNumber: attemptNumber || 1,
           timeInMs: Number(timeInMs),
@@ -65,7 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           partNumber: partNumber || null,
           operatorName: operatorName || null,
           partId: partId || null,
-          partName: partName || null,
+          partName: partName || null, // Now properly in scope
           trialNumber: trialNumber || 1
         })
         .returning();
