@@ -95,8 +95,65 @@ const initializeDatabase = async () => {
       }
     };
 
-    // Execute constraint removal first
+    // SOLID Principle: Single Responsibility - Referential integrity management
+    const cleanDependentData = async () => {
+      console.log('Cleaning dependent data with referential integrity...');
+      
+      // 1. Clean work_sessions first (child table)
+      try {
+        const sessionExists = await pool.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_name = 'work_sessions'
+          );
+        `);
+        
+        if (sessionExists.rows[0].exists) {
+          await pool.query(`DELETE FROM work_sessions WHERE user_id = 'demo-user-001';`);
+          console.log('Cleaned work_sessions references');
+        }
+      } catch (error) {
+        console.log('Work sessions cleanup handled:', error);
+      }
+
+      // 2. Clean measurements (child table)
+      try {
+        const measurementExists = await pool.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_name = 'measurements'
+          );
+        `);
+        
+        if (measurementExists.rows[0].exists) {
+          await pool.query(`DELETE FROM measurements WHERE user_id = 'demo-user-001';`);
+          console.log('Cleaned measurements references');
+        }
+      } catch (error) {
+        console.log('Measurements cleanup handled:', error);
+      }
+
+      // 3. Clean analysis_results (child table)
+      try {
+        const analysisExists = await pool.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_name = 'analysis_results'
+          );
+        `);
+        
+        if (analysisExists.rows[0].exists) {
+          await pool.query(`DELETE FROM analysis_results WHERE user_id = 'demo-user-001';`);
+          console.log('Cleaned analysis_results references');
+        }
+      } catch (error) {
+        console.log('Analysis results cleanup handled:', error);
+      }
+    };
+
+    // Execute constraint removal and data cleanup first
     await removeConstraints();
+    await cleanDependentData();
     
     // Create tables with complete schema matching local environment
     await pool.query(`
@@ -178,7 +235,15 @@ const initializeDatabase = async () => {
 
     // SOLID Principle: Single Responsibility - Safe user data management
     const safeUserUpsert = async () => {
-      // Clean any conflicting data first
+      // Now safely remove demo-user-001 (all references cleaned above)
+      try {
+        await pool.query(`DELETE FROM users WHERE id = 'demo-user-001';`);
+        console.log('Removed demo-user-001 safely');
+      } catch (error) {
+        console.log('Demo user cleanup handled:', error);
+      }
+      
+      // Clean any other conflicting data
       await pool.query(`
         DELETE FROM users WHERE id != 'AF-001' AND (email = 'supply@airforce.mil.kr' OR worker_id = 'AF-001');
       `);
@@ -198,7 +263,7 @@ const initializeDatabase = async () => {
     };
 
     await safeUserUpsert();
-    console.log('Demo user AF-001 safely initialized with SOLID principles');
+    console.log('Demo user AF-001 safely initialized with SOLID principles and referential integrity');
 
     // Update any existing work sessions to use new user ID
     await pool.query(`
@@ -215,14 +280,45 @@ const initializeDatabase = async () => {
       DELETE FROM users WHERE id = 'demo-user-001';
     `);
 
-    console.log('Database initialization completed successfully');
-    
-    // Verify tables exist
-    const tableCheck = await pool.query(`
-      SELECT table_name FROM information_schema.tables 
-      WHERE table_schema = 'public' AND table_name IN ('users', 'work_sessions', 'measurements', 'analysis_results');
-    `);
-    console.log('Created tables:', tableCheck.rows.map(r => r.table_name));
+    // SOLID Principle: Single Responsibility - Final integrity validation
+    const finalIntegrityCheck = async () => {
+      console.log('Performing final integrity validation...');
+      
+      // 1. Verify AF-001 user exists
+      const userCheck = await pool.query(`SELECT id, email, worker_id FROM users WHERE id = 'AF-001';`);
+      if (userCheck.rows.length === 0) {
+        throw new Error('Critical: AF-001 user not found after initialization');
+      }
+      console.log('✓ AF-001 user verified');
+
+      // 2. Check for any remaining referential integrity violations
+      const orphanCheck = await pool.query(`
+        SELECT COUNT(*) as count 
+        FROM work_sessions ws 
+        LEFT JOIN users u ON ws.user_id = u.id 
+        WHERE u.id IS NULL;
+      `);
+      
+      if (orphanCheck.rows[0].count > 0) {
+        console.log(`Warning: ${orphanCheck.rows[0].count} orphaned sessions found, cleaning...`);
+        await pool.query(`DELETE FROM work_sessions WHERE user_id NOT IN (SELECT id FROM users);`);
+      }
+      console.log('✓ Referential integrity validated');
+
+      // 3. Verify table structure
+      const tableCheck = await pool.query(`
+        SELECT table_name FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name IN ('users', 'work_sessions', 'measurements', 'analysis_results', 'sessions');
+      `);
+      console.log('✓ Created tables:', tableCheck.rows.map(r => r.table_name));
+      
+      if (tableCheck.rows.length < 5) {
+        console.warn('Warning: Not all expected tables were created');
+      }
+    };
+
+    await finalIntegrityCheck();
+    console.log('Database initialization completed successfully with SOLID principles and integrity validation');
     
   } catch (error) {
     console.error('Database initialization error:', error);
