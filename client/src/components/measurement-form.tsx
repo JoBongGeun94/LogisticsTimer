@@ -313,8 +313,10 @@ export function MeasurementForm({
                 <div className="space-y-2">
                   {/* 기본 모드일 때만 고정 표시 */}
                   {!activeSession?.operators && (
-                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
-                      <span className="text-sm">{activeSession?.operatorName || "미설정"}</span>
+                    <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                      <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                        {activeSession?.operatorName || "측정자1"}
+                      </span>
                     </div>
                   )}
                   {/* GRR 모드일 때 측정자 선택 드롭다운 */}
@@ -422,8 +424,10 @@ export function MeasurementForm({
                 <div className="space-y-2">
                   {/* 기본 모드일 때만 고정 표시 */}
                   {!activeSession?.parts && (
-                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border">
-                      <span className="text-sm">{activeSession?.targetName || "미설정"}</span>
+                    <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                      <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                        {activeSession?.targetName || "대상자1"}
+                      </span>
                     </div>
                   )}
                   {/* GRR 모드일 때 대상자 선택 드롭다운 */}

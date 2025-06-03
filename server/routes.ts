@@ -146,6 +146,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure arrays are properly handled for Gage R&R mode
       const sessionData = {
         ...req.body,
+        operatorName: req.body.operatorName || "측정자1",
+        targetName: req.body.targetName || "대상자1",
         operators: req.body.operators || [],
         parts: req.body.parts || [],
         trialsPerOperator: req.body.trialsPerOperator || 3
