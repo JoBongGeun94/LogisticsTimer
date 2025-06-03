@@ -3,7 +3,7 @@ import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from '../shared/schema';
 import { eq } from 'drizzle-orm';
-import { signToken } from './jwt-utils';
+import { signAccessToken, signRefreshToken } from './jwt-utils';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema });
@@ -80,12 +80,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       .returning();
 
-    // Generate JWT token
-    const token = signToken({ userId: user.id, email: user.email || undefined });
+    // Generate access and refresh tokens
+    const accessToken = signAccessToken({ userId: user.id, email: user.email || undefined });
+    const refreshToken = signRefreshToken({ userId: user.id, email: user.email || undefined });
     
-    // Set secure cookie with JWT and clear state cookie
+    // Set secure cookies with tokens and clear state cookie
     res.setHeader('Set-Cookie', [
-      `auth_token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800`,
+      `auth_token=${accessToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800`,
+      `refresh_token=${refreshToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
       `oauth_state=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`
     ]);
     

@@ -15,15 +15,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Extract and verify JWT token
-    const token = extractTokenFromRequest(req);
+    const { accessToken } = extractTokenFromRequest(req);
     
-    if (!token) {
+    if (!accessToken) {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const payload = verifyToken(token);
+    const payload = verifyToken(accessToken);
     
-    if (!payload) {
+    if (!payload || payload.type !== 'access') {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
