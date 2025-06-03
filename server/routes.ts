@@ -94,44 +94,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Demo auth routes
-  app.get('/api/login', (req, res) => {
-    res.redirect('/');
-  });
+  // Removed authentication - direct access
 
-  app.get('/api/logout', (req, res) => {
-    res.redirect('/');
-  });
-
-  // Auth routes
-  app.get('/api/auth/user', demoAuth, async (req: any, res) => {
+  // Work session routes - no authentication required
+  app.post('/api/work-sessions', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      let user = await storage.getUser(userId);
-      
-      // Create demo user if doesn't exist
-      if (!user) {
-        user = await storage.upsertUserWithId(userId, {
-          email: req.user.claims.email,
-          firstName: req.user.claims.first_name,
-          lastName: req.user.claims.last_name,
-          profileImageUrl: req.user.claims.profile_image_url,
-          workerId: "W001",
-          role: "worker",
-        });
-      }
-      
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
-
-  // Work session routes
-  app.post('/api/work-sessions', demoAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
+      const userId = "demo-user-001"; // Fixed demo user
       const sessionData = insertWorkSessionSchema.parse(req.body);
       
       const session = await storage.createWorkSession(userId, sessionData);
@@ -142,9 +110,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/work-sessions/active', demoAuth, async (req: any, res) => {
+  app.get('/api/work-sessions/active', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = "demo-user-001";
       const session = await storage.getActiveWorkSession(userId);
       res.json(session);
     } catch (error) {
@@ -153,7 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/work-sessions/:id/complete', demoAuth, async (req: any, res) => {
+  app.put('/api/work-sessions/:id/complete', async (req: any, res) => {
     try {
       const sessionId = parseInt(req.params.id);
       const session = await storage.completeWorkSession(sessionId);
@@ -164,7 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/work-sessions/:id', demoAuth, async (req: any, res) => {
+  app.put('/api/work-sessions/:id', async (req: any, res) => {
     try {
       const sessionId = parseInt(req.params.id);
       const updates = req.body;
