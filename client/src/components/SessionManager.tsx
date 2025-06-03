@@ -90,13 +90,39 @@ export function SessionManager({
               )}
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {activeSession.operatorName && (
-                  <div>
-                    <span className="text-blue-600 dark:text-blue-400">측정자:</span> {activeSession.operatorName}
+                  <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded border">
+                    <div>
+                      <span className="text-blue-600 dark:text-blue-400">측정자:</span> {activeSession.operatorName}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => {
+                        const event = new CustomEvent('openOperatorDialog');
+                        window.dispatchEvent(event);
+                      }}
+                    >
+                      변경
+                    </Button>
                   </div>
                 )}
                 {activeSession.targetName && (
-                  <div>
-                    <span className="text-blue-600 dark:text-blue-400">대상:</span> {activeSession.targetName}
+                  <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded border">
+                    <div>
+                      <span className="text-blue-600 dark:text-blue-400">대상:</span> {activeSession.targetName}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => {
+                        const event = new CustomEvent('openTargetDialog');
+                        window.dispatchEvent(event);
+                      }}
+                    >
+                      변경
+                    </Button>
                   </div>
                 )}
               </div>

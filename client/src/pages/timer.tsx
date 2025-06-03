@@ -80,6 +80,10 @@ export default function Timer() {
   // Dialog states
   const [showStatistics, setShowStatistics] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showOperatorDialog, setShowOperatorDialog] = useState(false);
+  const [showTargetDialog, setShowTargetDialog] = useState(false);
+  const [newOperatorName, setNewOperatorName] = useState("");
+  const [newTargetName, setNewTargetName] = useState("");
 
   // Authentication check
   useEffect(() => {
@@ -95,6 +99,20 @@ export default function Timer() {
       return;
     }
   }, [user, isLoading, toast]);
+
+  // Event listeners for dialog opening
+  useEffect(() => {
+    const handleOpenOperatorDialog = () => setShowOperatorDialog(true);
+    const handleOpenTargetDialog = () => setShowTargetDialog(true);
+
+    window.addEventListener('openOperatorDialog', handleOpenOperatorDialog);
+    window.addEventListener('openTargetDialog', handleOpenTargetDialog);
+
+    return () => {
+      window.removeEventListener('openOperatorDialog', handleOpenOperatorDialog);
+      window.removeEventListener('openTargetDialog', handleOpenTargetDialog);
+    };
+  }, []);
 
   // Fetch measurements for active session
   const { data: measurements = [], refetch: refetchMeasurements } = useQuery<Measurement[]>({
@@ -157,10 +175,13 @@ export default function Timer() {
       });
       
       // Auto-stop timer after successful measurement recording
-      const autoStopService = TimerAutoStopService.getInstance();
-      autoStopService.stopTimerAfterMeasurement(stopTimer, isRunning, () => {
-        autoStopService.provideVisualFeedback();
-      });
+      stopTimer();
+      
+      // Visual feedback
+      document.body.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+      setTimeout(() => {
+        document.body.style.background = '';
+      }, 200);
       
       // Auto-advance logic for GRR mode
       if (isGRRMode && activeSession?.operators && activeSession?.parts) {
@@ -751,6 +772,98 @@ export default function Timer() {
                   Excel 다운로드
                 </Button>
                 <Button variant="outline" onClick={() => setShowExportDialog(false)}>
+                  취소
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Operator Change Dialog */}
+        <Dialog open={showOperatorDialog} onOpenChange={setShowOperatorDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>측정자 변경</DialogTitle>
+              <DialogDescription>
+                현재 세션의 측정자를 변경할 수 있습니다.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="new-operator">새 측정자 이름</Label>
+                <input
+                  id="new-operator"
+                  type="text"
+                  value={newOperatorName}
+                  onChange={(e) => setNewOperatorName(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="측정자 이름을 입력하세요"
+                />
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={() => {
+                    if (newOperatorName.trim()) {
+                      updateSession({ operatorName: newOperatorName.trim() });
+                      setNewOperatorName("");
+                      setShowOperatorDialog(false);
+                      toast({
+                        title: "측정자 변경 완료",
+                        description: `측정자가 ${newOperatorName.trim()}으로 변경되었습니다.`,
+                      });
+                    }
+                  }}
+                  disabled={!newOperatorName.trim()}
+                >
+                  변경
+                </Button>
+                <Button variant="outline" onClick={() => setShowOperatorDialog(false)}>
+                  취소
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Target Change Dialog */}
+        <Dialog open={showTargetDialog} onOpenChange={setShowTargetDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>대상 변경</DialogTitle>
+              <DialogDescription>
+                현재 세션의 측정 대상을 변경할 수 있습니다.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="new-target">새 대상 이름</Label>
+                <input
+                  id="new-target"
+                  type="text"
+                  value={newTargetName}
+                  onChange={(e) => setNewTargetName(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="대상 이름을 입력하세요"
+                />
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={() => {
+                    if (newTargetName.trim()) {
+                      updateSession({ targetName: newTargetName.trim() });
+                      setNewTargetName("");
+                      setShowTargetDialog(false);
+                      toast({
+                        title: "대상 변경 완료",
+                        description: `대상이 ${newTargetName.trim()}으로 변경되었습니다.`,
+                      });
+                    }
+                  }}
+                  disabled={!newTargetName.trim()}
+                >
+                  변경
+                </Button>
+                <Button variant="outline" onClick={() => setShowTargetDialog(false)}>
                   취소
                 </Button>
               </div>
