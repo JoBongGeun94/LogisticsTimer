@@ -33,6 +33,7 @@ interface MeasurementFormProps {
   onTargetChange?: (targetName: string) => void;
   selectedOperator?: string;
   selectedPart?: string;
+  onRefresh?: () => void;
   onOperatorSelect?: (operatorId: string) => void;
   onPartSelect?: (partId: string) => void;
   currentTrial?: number;

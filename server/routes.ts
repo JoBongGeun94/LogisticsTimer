@@ -112,14 +112,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create demo user if doesn't exist
       if (!user) {
-        user = await storage.upsertUserWithId(userId, {
-          email: req.user.claims.email,
-          firstName: req.user.claims.first_name,
-          lastName: req.user.claims.last_name,
-          profileImageUrl: req.user.claims.profile_image_url,
-          workerId: "W001",
-          role: "worker",
-        });
+        try {
+          user = await storage.upsertUserWithId(userId, {
+            email: req.user.claims.email,
+            firstName: req.user.claims.first_name,
+            lastName: req.user.claims.last_name,
+            profileImageUrl: req.user.claims.profile_image_url,
+            workerId: "AF-001",
+            role: "worker",
+          });
+        } catch (error) {
+          // If user creation fails due to duplicate, try to get existing user
+          user = await storage.getUser(userId);
+          if (!user) {
+            throw error;
+          }
+        }
       }
       
       res.json(user);

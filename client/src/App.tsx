@@ -12,19 +12,12 @@ import History from "@/pages/history";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
-
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : (
-        <>
-          <Route path="/" component={Timer} />
-          <Route path="/analysis" component={Analysis} />
-          <Route path="/history" component={History} />
-        </>
-      )}
+      <Route path="/" component={Landing} />
+      <Route path="/timer" component={Timer} />
+      <Route path="/analysis" component={Analysis} />
+      <Route path="/history" component={History} />
       <Route component={NotFound} />
     </Switch>
   );
