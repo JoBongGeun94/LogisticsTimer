@@ -128,13 +128,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Work session routes
+  // Work session routes with comprehensive validation
   app.post('/api/work-sessions', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const sessionData = insertWorkSessionSchema.parse(req.body);
       
-      const session = await storage.createWorkSession(userId, sessionData);
+      // Close any existing active sessions first
+      const existingSession = await storage.getActiveWorkSession(userId);
+      if (existingSession) {
+        await storage.updateWorkSession(existingSession.id, { isActive: false });
+      }
+      
+      // Create new session with proper initialization
+      const session = await storage.createWorkSession(userId, {
+        ...sessionData,
+        isActive: true,
+        startedAt: new Date()
+      });
+      
       res.json(session);
     } catch (error) {
       console.error("Error creating work session:", error);
@@ -169,14 +181,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessionId = parseInt(req.params.id);
       const updates = req.body;
       
-      // Validate that only allowed fields are being updated
-      const allowedFields = ['operatorName', 'targetName'];
+      // Comprehensive field validation for session updates
+      const allowedFields = ['operatorName', 'targetName', 'partNumber', 'isActive', 'operators', 'parts'];
       const validUpdates: any = {};
       
       for (const field of allowedFields) {
         if (updates[field] !== undefined) {
           validUpdates[field] = updates[field];
         }
+      }
+      
+      // Ensure the session belongs to the current user
+      const userId = req.user.claims.sub;
+      const existingSession = await storage.getWorkSessionById(sessionId);
+      
+      if (!existingSession || existingSession.userId !== userId) {
+        return res.status(404).json({ message: "Work session not found" });
       }
       
       const updatedSession = await storage.updateWorkSession(sessionId, validUpdates);
