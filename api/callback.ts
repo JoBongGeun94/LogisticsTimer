@@ -3,6 +3,7 @@ import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from '../shared/schema';
 import { eq } from 'drizzle-orm';
+import { signToken } from './jwt-utils';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema });
@@ -66,8 +67,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       .returning();
 
-    // Set session cookie
-    res.setHeader('Set-Cookie', `user_id=${user.id}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800`);
+    // Generate JWT token
+    const token = signToken({ userId: user.id, email: user.email || undefined });
+    
+    // Set secure cookie with JWT
+    res.setHeader('Set-Cookie', `auth_token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800`);
     
     // Redirect to home
     res.redirect(302, '/');
