@@ -38,32 +38,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'POST') {
       // Create new measurement
-      const requestBody = req.body;
-      const operatorName = requestBody.operatorName;
-      const partId = requestBody.partId;
-      const trialNumber = requestBody.trialNumber;
-      const timeInMs = requestBody.timeInMs;
-      const partName = requestBody.partName;
-      const taskType = requestBody.taskType;
-      const partNumber = requestBody.partNumber;
-      const attemptNumber = requestBody.attemptNumber;
+      const {
+        operatorName,
+        partId,
+        trialNumber,
+        timeInMs,
+        partName,
+        taskType,
+        partNumber,
+        attemptNumber
+      } = req.body;
 
-      const measurementData = {
-        sessionId: Number(sessionId),
-        userId: userId,
-        attemptNumber: attemptNumber || 1,
-        timeInMs: timeInMs,
-        taskType: taskType || "measurement",
-        partNumber: partNumber || null,
-        operatorName: operatorName || null,
-        partId: partId || null,
-        partName: partName || null,
-        trialNumber: trialNumber || 1
-      };
+      // Validate required fields
+      if (!timeInMs) {
+        return res.status(400).json({ error: 'timeInMs is required' });
+      }
 
       const [newMeasurement] = await db
         .insert(schema.measurements)
-        .values(measurementData)
+        .values({
+          sessionId: Number(sessionId),
+          userId: userId,
+          attemptNumber: attemptNumber || 1,
+          timeInMs: Number(timeInMs),
+          taskType: taskType || "measurement",
+          partNumber: partNumber || null,
+          operatorName: operatorName || null,
+          partId: partId || null,
+          partName: partName || null,
+          trialNumber: trialNumber || 1
+        })
         .returning();
 
       return res.status(201).json(newMeasurement);
