@@ -13,7 +13,7 @@ import { SessionValidationService } from "@/lib/SessionValidationService";
 import { MeasurementForm } from "@/components/measurement-form";
 import { SessionManager } from "@/components/SessionManager";
 import { TimerControls } from "@/components/timer-controls";
-import { LapHistory } from "@/components/lap-history";
+import { MeasurementHistory } from "@/components/MeasurementHistory";
 import { Link } from "wouter";
 import { BarChart3, Download, LogOut, Moon, Sun, Settings, HelpCircle, Play, Pause, Square, RotateCcw, Users, CheckCircle2, Save, History } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
@@ -59,8 +59,7 @@ export default function Timer() {
     isCreatingSession,
     canStartMeasurement,
     createSession,
-    updateSession,
-    completeSession
+    updateSession
   } = useSessionState();
 
   // Timer state
@@ -155,7 +154,8 @@ export default function Timer() {
         duration: measurementCount >= totalRequired ? 8000 : 5000,
       });
       
-      resetTimer();
+      // Auto-stop timer after successful measurement recording
+      stopTimer();
       
       // Visual feedback
       document.body.style.background = 'linear-gradient(135deg, #10b981, #059669)';
@@ -486,7 +486,7 @@ export default function Timer() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-blue-600 dark:text-blue-400">공군 종합보급창</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">ID: {user.id}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">ID: {user?.id || 'AF-001'}</p>
               </div>
             </div>
             
@@ -675,13 +675,12 @@ export default function Timer() {
 
           {/* Recent Measurements */}
           {measurements.length > 0 && (
-            <LapHistory 
+            <MeasurementHistory 
               measurements={measurements.filter(m => 
                 !activeSession?.operators || 
                 (m.operatorName === activeSession.operators.find((op: any) => op.id === selectedOperator)?.name &&
                  m.partName === activeSession?.parts?.find((p: any) => p.id === selectedPart)?.name)
               ).slice(-5)} 
-              currentTrial={currentTrial}
             />
           )}
         </main>
@@ -708,15 +707,15 @@ export default function Timer() {
                       </div>
                       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                         <div className="text-sm text-gray-500 dark:text-gray-400">평균 시간</div>
-                        <div className="text-2xl font-bold">{formatTime(stats.mean)}</div>
+                        <div className="text-2xl font-bold">{formatTime(stats.average || 0)}</div>
                       </div>
                       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                         <div className="text-sm text-gray-500 dark:text-gray-400">최소 시간</div>
-                        <div className="text-2xl font-bold">{formatTime(stats.min)}</div>
+                        <div className="text-2xl font-bold">{formatTime(stats.min || 0)}</div>
                       </div>
                       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                         <div className="text-sm text-gray-500 dark:text-gray-400">최대 시간</div>
-                        <div className="text-2xl font-bold">{formatTime(stats.max)}</div>
+                        <div className="text-2xl font-bold">{formatTime(stats.max || 0)}</div>
                       </div>
                     </div>
                   );
