@@ -9,7 +9,7 @@ import { withSecurityHeaders } from '../security-headers';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema });
 
-export default withSecurityHeaders(async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -69,4 +69,6 @@ export default withSecurityHeaders(async function handler(req: VercelRequest, re
     console.error('Unexpected auth/user error:', unexpectedError);
     return res.status(500).json({ error: 'Internal server error' });
   }
-});
+}
+
+export default withSecurityHeaders(handler);
