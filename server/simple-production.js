@@ -4,6 +4,10 @@ import { fileURLToPath } from 'url';
 import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from 'ws';
+
+// Configure neon for serverless
+import { neonConfig } from '@neondatabase/serverless';
+neonConfig.webSocketConstructor = ws;
 import { eq, desc } from 'drizzle-orm';
 import { pgTable, varchar, timestamp, text, integer, real, jsonb, index } from 'drizzle-orm/pg-core';
 
@@ -49,6 +53,9 @@ const measurements = pgTable("measurements", {
 });
 
 // Database setup
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set");
+}
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema: { users, workSessions, measurements } });
 
@@ -258,6 +265,16 @@ app.get("/api/work-sessions/history/operators-targets", simpleAuth, async (req, 
     console.error("Error fetching operators and targets:", error);
     res.status(500).json({ message: "Failed to fetch operators and targets" });
   }
+});
+
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Test endpoint
+app.get("/api/test", (req, res) => {
+  res.json({ message: "API is working", env: process.env.NODE_ENV });
 });
 
 // Serve index.html for all non-API routes
