@@ -35,11 +35,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           attemptNumber: attemptNumber || 1,
           timeInMs,
           taskType: taskType || "measurement",
-          partNumber,
-          operatorName,
-          partId,
-          partName,
-          trialNumber
+          partNumber: partNumber || null,
+          operatorName: operatorName || null,
+          partId: partId || null,
+          partName: partName || null,
+          trialNumber: trialNumber || 1
         })
         .returning();
 
