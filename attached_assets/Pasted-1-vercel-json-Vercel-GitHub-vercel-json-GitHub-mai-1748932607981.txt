@@ -1,0 +1,95 @@
+1. “vercel.json”이 실제로 Vercel이 사용하는 커밋에 반영되었는지 확인
+GitHub 리포지터리에서 vercel.json 내용 확인
+
+브라우저로 GitHub의 main 브랜치에 들어가신 뒤, vercel.json 파일을 클릭해서 열어 보세요.
+
+방금 보여주신 이미지(Commit f950c3c)처럼, “functions 키가 아예 없고 version 2 / buildCommand /npm run build / outputDirectory "dist" / routes만 남은 상태여야 맞습니다.
+
+Vercel이 사용 중인 커밋이 같은지 비교
+
+Vercel 로그 상단에 보면
+
+less
+복사
+편집
+Cloning github.com/JoBongGeun94/LogisticsTimer (Branch: main, Commit: 1fdc8b0)
+이런 식으로 뜹니다. 여기 커밋 해시(1fdc8b0)가 GitHub 브라우저 화면에서 보이는 해시(f950c3c)보다 “이전” 버전입니다.
+
+즉, Vercel이 아직 1fdc8b0 시점의 vercel.json(아직 “functions” 섹션이 남아 있는 버전)만 읽고 빌드를 하고 있다는 뜻입니다.
+
+해결 방안
+
+로컬에서 vercel.json을 수정하고 커밋하셨다면, 반드시 git push origin main 을 통해 “main 브랜치”로 푸시가 완료된 상태인지 다시 확인하세요.
+
+GitHub 웹 UI에서 “Commits” 탭을 열어 보시면, “f950c3c” 커밋이 맨 위에 올라와 있어야 합니다.
+
+만약 뷰어 화면에서 “f950c3c” 커밋이 보이지 않는다면, 로컬에서 올리신 내용이 실제로 GitHub에 반영되지 않은 상태입니다. 이럴 때는:
+
+bash
+복사
+편집
+git checkout main
+git pull origin main
+# vercel.json가 최신인지 확인
+git log --oneline -n 3
+# 만약 f950c3c 커밋이 없다면, 로컬 변경사항을 다시 커밋하고 푸시
+git add vercel.json
+git commit -m "Remove functions block from vercel.json"
+git push origin main
+“f950c3c” 커밋이 GitHub main 브랜치 맨 위에 올라온 것을 확인한 뒤, Vercel 대시보드로 돌아가서 “Redeploy” 또는 “Re-Deploy from Git” 버튼을 눌러주세요.
+
+이렇게 하면 Vercel이 최신(main의 f950c3c) 커밋을 다시 클론해서 빌드를 시도하게 되고, functions 섹션이 사라진 vercel.json을 읽게 됩니다. 이때 더 이상 “Function Runtimes must have a valid version” 오류는 발생하지 않을 것입니다.
+
+2. Vercel 설정이 “main” 브랜치를 제대로 가리키는지 확인
+Vercel 대시보드 → 프로젝트 Settings → Git Integration 탭
+
+Production Branch가 “main”으로 설정되어 있어야 합니다.
+
+만약 Production Branch가 다른 브랜치(예: master 또는 develop)로 설정되어 있다면, GitHub에서는 main 브랜치를 고쳤어도 Vercel은 아직 master(또는 develop)의 구버전을 읽고 있을 수 있습니다.
+
+“Production Branch”가 올바르게 main으로 지정되어 있는지, 혹은 “Preview Deployments”도 main 브랜치에 자동 연결되어 있는지 반드시 확인하세요.
+
+만약 “Production Branch”가 main이 아니라면, 이 부분을 main으로 변경하시고, 다시 배포를 트리거해야 합니다.
+
+3. 최종 검증
+GitHub에서 확인
+
+브라우저에서 리포지터리 루트에 있는 vercel.json 파일을 열었을 때,
+
+json
+복사
+편집
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
+위와 같이 정확히 “functions” 블록이 전부 사라진 최신 상태여야 합니다.
+
+Vercel에서 재배포 후 오류 확인
+
+GitHub에 푸시가 완료된 뒤, Vercel이 자동으로 배포를 시작합니다.
+
+또는 Vercel Dashboard에서 해당 프로젝트의 “Deployments” 탭에 들어가서 “Re-Deploy” 버튼을 눌러 최신 커밋으로 강제 재빌드하게 할 수 있습니다.
+
+배포 로그가 “Cloning … (Commit: f950c3c)” 와 같이 최신 해시를 찍어야 하고,
+
+“Error: Function Runtimes must have a valid version” 메시지가 나타나지 않아야 정상입니다.
+
+요약
+문제 원인: Vercel이 아직 “古버전(vercel.json에 functions 블록이 남아 있던 시점)”을 읽고 있기 때문에 같은 오류가 반복되고 있습니다.
+
+해결책:
+
+GitHub 리포지터리에서 vercel.json이 “functions” 없이 순수 JSON 형태로 수정된 최신 버전(f950c3c)이 main 브랜치에 올라있는지 반드시 확인합니다.
+
+Vercel 설정에서 Production Branch가 main으로 지정되어 있는지 확인하고,
+
+“Re-Deploy”를 눌러 Vercel이 최신 커밋을 다시 빌드하도록 트리거합니다.
+
+이렇게 하면 Vercel이 새로운 vercel.json을 읽고, 더 이상 “Function Runtimes must have a valid version” 오류 없이 배포가 완료될 것입니다.
