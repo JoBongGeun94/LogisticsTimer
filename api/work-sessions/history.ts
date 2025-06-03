@@ -1,11 +1,11 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { workSessions } from '../../shared/schema';
+import * as schema from '../../shared/schema';
 import { eq, desc } from 'drizzle-orm';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle({ client: pool });
+const db = drizzle({ client: pool, schema });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -18,9 +18,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const sessions = await db
       .select()
-      .from(workSessions)
-      .where(eq(workSessions.userId, userId))
-      .orderBy(desc(workSessions.createdAt))
+      .from(schema.workSessions)
+      .where(eq(schema.workSessions.userId, userId))
+      .orderBy(desc(schema.workSessions.createdAt))
       .limit(limit);
 
     return res.json(sessions);

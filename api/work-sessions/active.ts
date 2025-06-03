@@ -1,11 +1,11 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { workSessions } from '../../shared/schema';
+import * as schema from '../../shared/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle({ client: pool });
+const db = drizzle({ client: pool, schema });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -15,12 +15,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Get active work session
       const [activeSession] = await db
         .select()
-        .from(workSessions)
+        .from(schema.workSessions)
         .where(and(
-          eq(workSessions.userId, userId),
-          isNull(workSessions.completedAt)
+          eq(schema.workSessions.userId, userId),
+          isNull(schema.workSessions.completedAt)
         ))
-        .orderBy(workSessions.createdAt)
+        .orderBy(schema.workSessions.createdAt)
         .limit(1);
 
       return res.json(activeSession || null);
@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { taskType, partNumber, operatorName, targetName, operators, parts, trialsPerOperator } = req.body;
 
       const [newSession] = await db
-        .insert(workSessions)
+        .insert(schema.workSessions)
         .values({
           userId,
           taskType,
