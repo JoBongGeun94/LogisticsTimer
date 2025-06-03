@@ -9,7 +9,7 @@ import { lazy, Suspense } from "react";
 
 // SOLID Principle: Open/Closed - 지연 로딩으로 확장 가능한 구조
 const Landing = lazy(() => import("@/pages/landing").then(module => ({ default: module.default })));
-const Timer = lazy(() => import("@/pages/timer").then(module => ({ default: module.default })));
+const Timer = lazy(() => import("@/pages/timer-fixed").then(module => ({ default: module.default })));
 const Analysis = lazy(() => import("@/pages/analysis").then(module => ({ default: module.default })));
 const History = lazy(() => import("@/pages/history").then(module => ({ default: module.default })));
 const NotFound = lazy(() => import("@/pages/not-found").then(module => ({ default: module.default })));

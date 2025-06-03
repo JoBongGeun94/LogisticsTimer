@@ -10,6 +10,8 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { formatTime, calculateStatistics, getHighPrecisionTime, validateMeasurementAccuracy } from "@/lib/timer-utils";
 import { SessionValidationService } from "@/lib/SessionValidationService";
+import { TimerAutoStopService } from "@/lib/TimerAutoStopService";
+import { SessionDisplayService } from "@/lib/SessionDisplayService";
 import { MeasurementForm } from "@/components/measurement-form";
 import { SessionManager } from "@/components/SessionManager";
 import { TimerControls } from "@/components/timer-controls";
@@ -155,13 +157,10 @@ export default function Timer() {
       });
       
       // Auto-stop timer after successful measurement recording
-      stopTimer();
-      
-      // Visual feedback
-      document.body.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-      setTimeout(() => {
-        document.body.style.background = '';
-      }, 200);
+      const autoStopService = TimerAutoStopService.getInstance();
+      autoStopService.stopTimerAfterMeasurement(stopTimer, isRunning, () => {
+        autoStopService.provideVisualFeedback();
+      });
       
       // Auto-advance logic for GRR mode
       if (isGRRMode && activeSession?.operators && activeSession?.parts) {
