@@ -2,7 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from '../../../shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { verifyToken, extractTokenFromRequest } from '../../jwt-utils';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -32,14 +32,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .select()
         .from(schema.measurements)
         .where(eq(schema.measurements.sessionId, Number(sessionId)))
-        .orderBy(schema.measurements.createdAt);
+        .orderBy(desc(schema.measurements.createdAt));
 
       return res.json(sessionMeasurements);
     }
 
     if (req.method === 'POST') {
       // Create new measurement
-      const { operatorName, partId, trialNumber, timeInMs, partName, taskType, partNumber, attemptNumber } = req.body;
+      const { 
+        operatorName, 
+        partId, 
+        trialNumber, 
+        timeInMs, 
+        partName, 
+        taskType, 
+        partNumber, 
+        attemptNumber 
+      } = req.body;
 
       const [newMeasurement] = await db
         .insert(schema.measurements)
