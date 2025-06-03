@@ -2,7 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from '../../../shared/schema';
-import { eq, asc } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { verifyToken, extractTokenFromRequest } from '../../jwt-utils';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -31,24 +31,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const sessionMeasurements = await db
         .select()
         .from(schema.measurements)
-        .where(eq(schema.measurements.sessionId, Number(sessionId)))
-        .orderBy(asc(schema.measurements.createdAt));
+        .where(eq(schema.measurements.sessionId, Number(sessionId)));
 
       return res.json(sessionMeasurements);
     }
 
     if (req.method === 'POST') {
       // Create new measurement
-      const { 
-        operatorName, 
-        partId, 
-        trialNumber, 
-        timeInMs, 
-        partName, 
-        taskType, 
-        partNumber, 
-        attemptNumber 
-      } = req.body;
+      const requestBody = req.body;
+      const operatorName = requestBody.operatorName;
+      const partId = requestBody.partId;
+      const trialNumber = requestBody.trialNumber;
+      const timeInMs = requestBody.timeInMs;
+      const partName = requestBody.partName;
+      const taskType = requestBody.taskType;
+      const partNumber = requestBody.partNumber;
+      const attemptNumber = requestBody.attemptNumber;
 
       const [newMeasurement] = await db
         .insert(schema.measurements)
@@ -71,17 +69,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'DELETE') {
       const { measurementId } = req.body;
+      
+      if (!measurementId) {
+        return res.status(400).json({ error: 'Measurement ID is required' });
+      }
 
       await db
         .delete(schema.measurements)
         .where(eq(schema.measurements.id, measurementId));
 
-      return res.json({ success: true });
+      return res.status(200).json({ success: true });
     }
 
-    res.status(405).json({ message: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
-    console.error('Measurement API error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('Measurements API error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
