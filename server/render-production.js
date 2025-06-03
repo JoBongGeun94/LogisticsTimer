@@ -222,7 +222,18 @@ app.get('/api/work-sessions/active', demoAuth, async (req, res) => {
       .orderBy(desc(workSessions.createdAt))
       .limit(1);
     
-    res.json(session || null);
+    if (session) {
+      // Parse JSON strings back to arrays
+      const processedSession = {
+        ...session,
+        operators: session.operators ? JSON.parse(session.operators) : [],
+        parts: session.parts ? JSON.parse(session.parts) : []
+      };
+      console.log('Returning active session:', JSON.stringify(processedSession, null, 2));
+      res.json(processedSession);
+    } else {
+      res.json(null);
+    }
   } catch (error) {
     console.error("Error fetching active session:", error);
     res.status(500).json({ message: "Failed to fetch active session" });
@@ -231,14 +242,32 @@ app.get('/api/work-sessions/active', demoAuth, async (req, res) => {
 
 app.post('/api/work-sessions', demoAuth, async (req, res) => {
   try {
+    console.log('Creating work session with data:', JSON.stringify(req.body, null, 2));
+    
+    const sessionData = {
+      ...req.body,
+      userId: req.user.claims.sub,
+      // Ensure arrays are properly handled
+      operators: req.body.operators ? JSON.stringify(req.body.operators) : null,
+      parts: req.body.parts ? JSON.stringify(req.body.parts) : null,
+      trialsPerOperator: req.body.trialsPerOperator || 3,
+      isCompleted: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    console.log('Processed session data:', JSON.stringify(sessionData, null, 2));
+    
     const [session] = await db
       .insert(workSessions)
-      .values({ ...req.body, userId: req.user.claims.sub })
+      .values(sessionData)
       .returning();
+      
+    console.log('Created session:', JSON.stringify(session, null, 2));
     res.json(session);
   } catch (error) {
     console.error("Error creating work session:", error);
-    res.status(500).json({ message: "Failed to create work session" });
+    res.status(500).json({ message: "Failed to create work session", error: error.message });
   }
 });
 
@@ -329,19 +358,26 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Initialize database before starting server
-initializeDatabase().then(() => {
-  const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV}`);
-  });
-
-  process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully');
-    server.close(() => {
-      console.log('Process terminated');
+// Initialize database before starting server with comprehensive error handling
+initializeDatabase()
+  .then(() => {
+    console.log('Starting server after successful database initialization...');
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
+      console.log(`Server ready to accept connections`);
     });
+
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received, shutting down gracefully');
+      server.close(() => {
+        console.log('Process terminated');
+      });
+    });
+  })
+  .catch((error) => {
+    console.error('Failed to initialize database, cannot start server:', error);
+    process.exit(1);
   });
-});
 
 export default app;

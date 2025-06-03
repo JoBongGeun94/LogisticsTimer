@@ -133,7 +133,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/work-sessions', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const sessionData = insertWorkSessionSchema.parse(req.body);
+      console.log('Creating work session with data:', JSON.stringify(req.body, null, 2));
+      
+      // Ensure arrays are properly handled for Gage R&R mode
+      const sessionData = {
+        ...req.body,
+        operators: req.body.operators || [],
+        parts: req.body.parts || [],
+        trialsPerOperator: req.body.trialsPerOperator || 3
+      };
+      
+      const validatedData = insertWorkSessionSchema.parse(sessionData);
+      console.log('Validated session data:', JSON.stringify(validatedData, null, 2));
       
       // Close any existing active sessions first
       const existingSession = await storage.getActiveWorkSession(userId);
@@ -143,10 +154,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create new session with proper initialization
       const session = await storage.createWorkSession(userId, {
-        ...sessionData,
+        ...validatedData,
         isActive: true,
         startedAt: new Date()
       });
+      
+      console.log('Created session:', JSON.stringify(session, null, 2));
       
       res.json(session);
     } catch (error) {
