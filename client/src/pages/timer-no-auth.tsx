@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatTime, calculateStatistics, getHighPrecisionTime, validateMeasurementAccuracy } from "@/lib/timer-utils";
 import { MeasurementForm } from "@/components/measurement-form";
-import { TimerControls } from "@/components/timer-controls";
+import { EnhancedTimerControls } from "@/components/enhanced-timer-controls";
 import { StatisticsDisplay } from "@/components/statistics-display";
 import { MeasurementsList } from "@/components/measurements-list";
 import { SessionForm } from "@/components/session-form";
