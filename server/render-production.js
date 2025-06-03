@@ -85,9 +85,9 @@ const demoAuth = async (req, res, next) => {
       .insert(users)
       .values({
         id: "demo-user-001",
-        email: "demo@company.com",
-        firstName: "Demo",
-        lastName: "User",
+        email: "supply@airforce.mil.kr",
+        firstName: "공군",
+        lastName: "종합보급창",
       })
       .onConflictDoNothing();
     
