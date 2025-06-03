@@ -1,11 +1,11 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { measurements } from '../../../shared/schema';
+import * as schema from '../../../shared/schema';
 import { eq } from 'drizzle-orm';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle({ client: pool });
+const db = drizzle({ client: pool, schema });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -16,9 +16,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Get measurements for session
       const sessionMeasurements = await db
         .select()
-        .from(measurements)
-        .where(eq(measurements.sessionId, Number(sessionId)))
-        .orderBy(measurements.createdAt);
+        .from(schema.measurements)
+        .where(eq(schema.measurements.sessionId, Number(sessionId)))
+        .orderBy(schema.measurements.createdAt);
 
       return res.json(sessionMeasurements);
     }
@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { operatorName, partId, trialNumber, timeInMs, partName, taskType, partNumber, attemptNumber } = req.body;
 
       const [newMeasurement] = await db
-        .insert(measurements)
+        .insert(schema.measurements)
         .values({
           sessionId: Number(sessionId),
           userId,
@@ -50,8 +50,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { measurementId } = req.body;
 
       await db
-        .delete(measurements)
-        .where(eq(measurements.id, measurementId));
+        .delete(schema.measurements)
+        .where(eq(schema.measurements.id, measurementId));
 
       return res.json({ success: true });
     }

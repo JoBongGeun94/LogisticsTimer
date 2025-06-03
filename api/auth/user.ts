@@ -1,11 +1,11 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { users } from '../../shared/schema';
+import * as schema from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle({ client: pool });
+const db = drizzle({ client: pool, schema });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -15,12 +15,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Demo user for development
     const demoUserId = "demo-user-001";
-    let user = await db.select().from(users).where(eq(users.id, demoUserId)).then(rows => rows[0]);
+    let user = await db.select().from(schema.users).where(eq(schema.users.id, demoUserId)).then(rows => rows[0]);
     
     // Create demo user if doesn't exist
     if (!user) {
       const [newUser] = await db
-        .insert(users)
+        .insert(schema.users)
         .values({
           id: demoUserId,
           email: "demo@company.com",
