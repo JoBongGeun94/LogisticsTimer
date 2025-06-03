@@ -153,7 +153,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(measurements)
       .where(eq(measurements.sessionId, sessionId))
-      .orderBy(measurements.attemptNumber);
+      .orderBy(measurements.createdAt);
   }
 
   async deleteMeasurement(id: number): Promise<void> {

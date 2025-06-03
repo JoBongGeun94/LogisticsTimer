@@ -298,12 +298,20 @@ export default function Timer() {
     },
   });
 
-  // Timer functions
+  // Timer functions with error handling
   const startTimer = () => {
+    if (!activeSession) {
+      toast({
+        title: "세션 필요",
+        description: "먼저 작업 정보를 설정해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const now = Date.now();
     
     if (!isRunning && !isPaused) {
-      // Starting fresh
       setAccumulatedTime(0);
       setCurrentTime(0);
     }
@@ -311,6 +319,11 @@ export default function Timer() {
     setLastStartTime(now);
     setIsRunning(true);
     setIsPaused(false);
+    
+    // Clear any existing interval to prevent memory leaks
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
     
     const id = setInterval(() => {
       const elapsed = Date.now() - now;
@@ -357,10 +370,28 @@ export default function Timer() {
   };
 
   const lapTimer = () => {
-    if ((isRunning || isPaused) && activeSession && currentTime > 0) {
+    if (!activeSession) {
+      toast({
+        title: "세션 필요",
+        description: "먼저 작업 정보를 설정해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (currentTime <= 0) {
+      toast({
+        title: "측정 불가",
+        description: "타이머를 시작한 후 측정해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if ((isRunning || isPaused) && currentTime > 0) {
       saveMeasurement();
       
-      // Stop the timer completely (like pressing stop button)
+      // Complete timer reset after measurement
       if (intervalId) {
         clearInterval(intervalId);
         setIntervalId(null);
@@ -386,6 +417,7 @@ export default function Timer() {
   };
 
   const saveMeasurement = () => {
+    // Comprehensive validation before measurement
     if (!activeSession) {
       toast({
         title: "세션 필요",
@@ -395,11 +427,29 @@ export default function Timer() {
       return;
     }
 
-    // Check if Gage R&R mode requires operator and part selection
+    if (currentTime <= 0) {
+      toast({
+        title: "측정 시간 오류",
+        description: "유효한 측정 시간이 필요합니다. 타이머를 시작한 후 측정해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (currentTime > 3600000) { // 1시간 초과
+      toast({
+        title: "측정 시간 초과",
+        description: "측정 시간이 너무 깁니다. 1시간을 초과할 수 없습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Gage R&R mode validation
     if (activeSession.operators && activeSession.parts) {
       if (!selectedOperator || !selectedPart) {
         toast({
-          title: "⚠️ 선택 항목 확인",
+          title: "선택 항목 확인",
           description: !selectedOperator && !selectedPart ? 
             "GRR 모드에서는 측정자와 대상자를 모두 선택해야 합니다." :
             !selectedOperator ? "측정자를 선택해주세요." : "대상자를 선택해주세요.",
@@ -408,38 +458,49 @@ export default function Timer() {
         return;
       }
       
-      // Get operator name from selected operator
       const operator = activeSession.operators.find((op: any) => op.id === selectedOperator);
       const part = activeSession.parts.find((p: any) => p.id === selectedPart);
       
-      console.log("Recording measurement with:", {
-        selectedOperator,
-        selectedPart,
-        operatorName: operator?.name,
-        partName: part?.name
-      });
+      if (!operator || !part) {
+        toast({
+          title: "데이터 오류",
+          description: "선택된 측정자 또는 대상자 정보를 찾을 수 없습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
       
       createMeasurementMutation.mutate({
         sessionId: activeSession.id,
         attemptNumber: measurements.length + 1,
-        timeInMs: currentTime,
+        timeInMs: Math.round(currentTime), // 정수로 변환
         taskType: activeSession.taskType,
         partNumber: activeSession.partNumber || "",
-        operatorName: operator?.name || "",
+        operatorName: operator.name,
         partId: selectedPart,
-        partName: part?.name || "",
+        partName: part.name,
         trialNumber: currentTrial,
       });
     } else {
-      // Basic mode - single operator
+      // Basic mode validation
+      if (!activeSession.operatorName || activeSession.operatorName.trim() === '') {
+        toast({
+          title: "측정자 정보 필요",
+          description: "현재 측정자 정보를 입력해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       createMeasurementMutation.mutate({
         sessionId: activeSession.id,
         attemptNumber: measurements.length + 1,
-        timeInMs: currentTime,
+        timeInMs: Math.round(currentTime),
         taskType: activeSession.taskType,
         partNumber: activeSession.partNumber || "",
-        operatorName: activeSession.operatorName || "",
+        operatorName: activeSession.operatorName,
         partId: undefined,
+        partName: activeSession.targetName || "",
         trialNumber: 1,
       });
     }
