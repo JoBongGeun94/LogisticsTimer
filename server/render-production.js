@@ -77,20 +77,73 @@ app.use((req, res, next) => {
   next();
 });
 
+// Initialize database tables and demo user
+const initializeDatabase = async () => {
+  try {
+    // Create tables if they don't exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR PRIMARY KEY NOT NULL,
+        email VARCHAR UNIQUE,
+        first_name VARCHAR,
+        last_name VARCHAR,
+        profile_image_url VARCHAR,
+        worker_id VARCHAR UNIQUE,
+        role VARCHAR NOT NULL DEFAULT 'worker',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS work_sessions (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        operator_name VARCHAR,
+        part_id VARCHAR,
+        part_name VARCHAR,
+        target_time_ms INTEGER,
+        is_completed INTEGER DEFAULT 0,
+        task_type VARCHAR,
+        part_number VARCHAR,
+        created_at TIMESTAMP DEFAULT NOW(),
+        completed_at TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS measurements (
+        id SERIAL PRIMARY KEY,
+        session_id INTEGER NOT NULL REFERENCES work_sessions(id),
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        operator_name VARCHAR,
+        part_id VARCHAR,
+        trial_number INTEGER,
+        time_in_ms INTEGER NOT NULL,
+        part_name VARCHAR,
+        task_type VARCHAR,
+        part_number VARCHAR,
+        attempt_number INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Insert demo user
+    await pool.query(`
+      INSERT INTO users (id, email, first_name, last_name, worker_id, role) 
+      VALUES ('demo-user-001', 'supply@airforce.mil.kr', '공군', '종합보급창', 'AF-001', 'manager')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Database initialization error:', error);
+  }
+};
+
 // Simple demo user middleware
 const demoAuth = async (req, res, next) => {
   try {
-    // Ensure demo user exists
-    await db
-      .insert(users)
-      .values({
-        id: "demo-user-001",
-        email: "supply@airforce.mil.kr",
-        firstName: "공군",
-        lastName: "종합보급창",
-      })
-      .onConflictDoNothing();
-    
     req.user = { claims: { sub: "demo-user-001" } };
     next();
   } catch (error) {
@@ -231,15 +284,18 @@ app.use((err, req, res, next) => {
   });
 });
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-});
+// Initialize database before starting server
+initializeDatabase().then(() => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV}`);
+  });
 
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('Process terminated');
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      console.log('Process terminated');
+    });
   });
 });
 
