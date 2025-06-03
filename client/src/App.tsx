@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
-import Timer from "@/pages/timer-simple";
+import Timer from "@/pages/timer-no-auth";
 import Analysis from "@/pages/analysis";
 import History from "@/pages/history";
 import NotFound from "@/pages/not-found";
