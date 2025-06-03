@@ -19,31 +19,40 @@ export function parseTime(timeString: string): number {
   return (minutes * 60 + seconds) * 1000 + centiseconds * 10;
 }
 
-export function calculateStatistics(times: number[]) {
+export function calculateStatistics(measurements: any[]) {
+  const times = measurements.map(m => m.timeInMs || 0);
+  
   if (times.length === 0) {
-    return {
-      average: null,
-      min: null,
-      max: null,
-      standardDeviation: null,
-      variance: null,
-    };
+    return null;
   }
 
   const sum = times.reduce((acc, time) => acc + time, 0);
   const average = sum / times.length;
   const min = Math.min(...times);
   const max = Math.max(...times);
+  const range = max - min;
   
   const variance = times.reduce((acc, time) => acc + Math.pow(time - average, 2), 0) / times.length;
   const standardDeviation = Math.sqrt(variance);
+  const coefficientOfVariation = average > 0 ? standardDeviation / average : 0;
+  
+  // Calculate median
+  const sortedTimes = [...times].sort((a, b) => a - b);
+  const median = sortedTimes.length % 2 === 0
+    ? (sortedTimes[sortedTimes.length / 2 - 1] + sortedTimes[sortedTimes.length / 2]) / 2
+    : sortedTimes[Math.floor(sortedTimes.length / 2)];
 
   return {
-    average,
+    mean: average,
+    median,
     min,
     max,
+    range,
     standardDeviation,
     variance,
+    coefficientOfVariation,
+    count: times.length,
+    total: sum
   };
 }
 
