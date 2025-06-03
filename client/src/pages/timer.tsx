@@ -235,42 +235,7 @@ export default function Timer() {
     },
   });
 
-  // Update session mutation
-  const updateSessionMutation = useMutation({
-    mutationFn: async (updateData: {
-      operatorName?: string;
-      targetName?: string;
-    }) => {
-      const response = await apiRequest("PUT", `/api/work-sessions/${activeSession?.id}`, updateData);
-      return response.json();
-    },
-    onSuccess: () => {
-      // Force refresh session data
-      queryClient.invalidateQueries({ queryKey: ["/api/work-sessions/active"] });
-      toast({
-        title: "정보 업데이트",
-        description: "측정자 정보가 업데이트되었습니다.",
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "인증 오류",
-          description: "다시 로그인해주세요.",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "오류",
-        description: "정보를 업데이트할 수 없습니다.",
-        variant: "destructive",
-      });
-    },
-  });
+  // 세션 업데이트는 useSessionState에서 처리
 
   // Timer functions with error handling
   const startTimer = () => {
@@ -768,20 +733,27 @@ export default function Timer() {
 
         {/* Main Content */}
         <main className="p-4 space-y-4">
-          {/* Measurement Form */}
-          <MeasurementForm
-            onSessionCreate={(sessionData) => createSessionMutation.mutate(sessionData)}
+          {/* Session Manager */}
+          <SessionManager
             activeSession={activeSession}
-            isLoading={createSessionMutation.isPending}
-            onOperatorChange={(operatorName) => updateSessionMutation.mutate({ operatorName })}
-            onTargetChange={(targetName) => updateSessionMutation.mutate({ targetName })}
-            selectedOperator={selectedOperator}
-            selectedPart={selectedPart}
-            onOperatorSelect={handleOperatorSelect}
-            onPartSelect={handlePartSelect}
-            currentTrial={currentTrial}
-            measurements={measurements}
-          />
+            isSessionReady={isSessionReady}
+            isCreatingSession={isCreatingSession}
+            canStartMeasurement={canStartMeasurement}
+          >
+            <MeasurementForm
+              onSessionCreate={createSession}
+              activeSession={activeSession}
+              isLoading={isCreatingSession}
+              onOperatorChange={(operatorName) => updateSession({ operatorName })}
+              onTargetChange={(targetName) => updateSession({ targetName })}
+              selectedOperator={selectedOperator}
+              selectedPart={selectedPart}
+              onOperatorSelect={handleOperatorSelect}
+              onPartSelect={handlePartSelect}
+              currentTrial={currentTrial}
+              measurements={measurements}
+            />
+          </SessionManager>
 
 
 
@@ -820,7 +792,7 @@ export default function Timer() {
                 onStop={stopTimer}
                 onLap={lapTimer}
                 onReset={resetTimer}
-                disabled={!activeSession || createSessionMutation.isPending}
+                disabled={!canStartMeasurement}
               />
 
               {/* Enhanced Progress Display */}
