@@ -1,0 +1,119 @@
+M
+My Workspace
+LogisticsTimer
+Menu
+
+Search
+Ctrl+
+K
+
+New
+
+Upgrade
+
+
+q
+Dashboard
+LogisticsTimer
+Events
+Settings
+Monitor
+Logs
+Metrics
+Manage
+Environment
+Shell
+Scaling
+Previews
+Disks
+Jobs
+
+Changelog
+Invite a friend
+
+Contact support
+Render Status
+Web Service
+LogisticsTimer
+Node
+Free
+Upgrade your instance
+
+Connect
+
+Manual Deploy
+JoBongGeun94 / LogisticsTimer
+main
+https://logisticstimer.onrender.com
+
+Your free instance will spin down with inactivity, which can delay requests by 50 seconds or more.
+Upgrade now
+June 3, 2025 at 4:33 PM
+failed
+2e324d3
+Enable full application functionality and fix deployment issues on Render Updates the Render start command, imports the TypeScript route, and adds a complete server file with database integration. Replit-Commit-Author: Agent Replit-Commit-Session-Id: d4c02ffc-4516-4a7f-a650-2e8036c44c28 Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/c1b01720-9b72-48d4-87b6-3c9fe1b51c1b/3fd9edc6-34de-4250-85fb-2dd9116f5f55.jpg
+
+Rollback
+LogisticsTimer
+Logs
+
+Logs
+
+All logs
+Search
+Search
+
+Live tail
+GMT+9
+Menu
+  npm audit fix --force
+Some issues need review, and may require choosing
+a different dependency.
+Run `npm audit` for details.
+> rest-express@1.0.0 build
+> vite build
+vite v5.4.14 building for production...
+transforming...
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ 2522 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                   1.70 kB │ gzip:   0.91 kB
+../dist/assets/index-BWfSawDS.css   73.13 kB │ gzip:  12.45 kB
+../dist/assets/index-CPt1xz-a.js   856.71 kB │ gzip: 244.73 kB
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 6.12s
+==> Uploading build...
+==> Uploaded in 8.6s. Compression took 3.2s
+==> Build successful 🎉
+==> Deploying...
+==> Running 'node server/production-complete.js'
+file:///opt/render/project/src/node_modules/openid-client/build/index.js:89
+    const err = new TypeError(message, { cause });
+                ^
+TypeError: "clientId" must be a non-empty string
+    at CodedTypeError (file:///opt/render/project/src/node_modules/openid-client/build/index.js:89:17)
+    at new Configuration (file:///opt/render/project/src/node_modules/openid-client/build/index.js:463:19)
+    at Module.discovery (file:///opt/render/project/src/node_modules/openid-client/build/index.js:244:22)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async memoize.maxAge (file:///opt/render/project/src/server/production-complete.js:148:12)
+    at async file:///opt/render/project/src/server/production-complete.js:256:16 {
+  code: 'ERR_INVALID_ARG_TYPE',
+  [cause]: undefined
+}
+Node.js v22.14.0
+==> Exited with status 1
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+Need better ways to work with logs? Try theRender CLIor set up a log stream integration 
+
+0 services selected:
+
+Move
+
+Generate Blueprint
+

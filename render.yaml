@@ -3,7 +3,7 @@ services:
     name: logistics-timer
     env: node
     buildCommand: npm run build
-    startCommand: node server/production-complete.js
+    startCommand: node server/simple-production.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -13,3 +13,7 @@ services:
         value: 8apaqejlpoGoyust8bru2Ridrad220ap
       - key: SESSION_SECRET
         value: trej9joph7chlspitOp6wuvotaXiyiwa
+      - key: REPL_ID
+        value: logistics-timer-app
+      - key: REPLIT_DOMAINS
+        value: logisticstimer.onrender.com
