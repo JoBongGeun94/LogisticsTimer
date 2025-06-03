@@ -48,20 +48,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const partNumber = requestBody.partNumber;
       const attemptNumber = requestBody.attemptNumber;
 
+      const measurementData = {
+        sessionId: Number(sessionId),
+        userId: userId,
+        attemptNumber: attemptNumber || 1,
+        timeInMs: timeInMs,
+        taskType: taskType || "measurement",
+        partNumber: partNumber || null,
+        operatorName: operatorName || null,
+        partId: partId || null,
+        partName: partName || null,
+        trialNumber: trialNumber || 1
+      };
+
       const [newMeasurement] = await db
         .insert(schema.measurements)
-        .values({
-          sessionId: Number(sessionId),
-          userId: userId,
-          attemptNumber: attemptNumber || 1,
-          timeInMs: timeInMs,
-          taskType: taskType || "measurement",
-          partNumber: partNumber || null,
-          operatorName: operatorName || null,
-          partId: partId || null,
-          partName: partName || null,
-          trialNumber: trialNumber || 1
-        })
+        .values(measurementData)
         .returning();
 
       return res.status(201).json(newMeasurement);

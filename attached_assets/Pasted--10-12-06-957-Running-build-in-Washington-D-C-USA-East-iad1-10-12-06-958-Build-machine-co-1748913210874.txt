@@ -1,0 +1,74 @@
+[10:12:06.957] Running build in Washington, D.C., USA (East) – iad1
+[10:12:06.958] Build machine configuration: 2 cores, 8 GB
+[10:12:07.041] Cloning github.com/JoBongGeun94/LogisticsTimer (Branch: main, Commit: 282fd7e)
+[10:12:07.075] Skipping build cache, deployment was triggered without cache.
+[10:12:07.431] Cloning completed: 390.000ms
+[10:12:07.784] Running "vercel build"
+[10:12:08.225] Vercel CLI 42.2.0
+[10:12:08.940] Running "install" command: `npm install`...
+[10:12:14.350] npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+[10:12:14.405] npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+[10:12:20.988] 
+[10:12:20.989] added 597 packages, and audited 598 packages in 12s
+[10:12:20.990] 
+[10:12:20.990] 74 packages are looking for funding
+[10:12:20.990]   run `npm fund` for details
+[10:12:21.028] 
+[10:12:21.028] 11 vulnerabilities (8 moderate, 3 high)
+[10:12:21.028] 
+[10:12:21.028] To address issues that do not require attention, run:
+[10:12:21.028]   npm audit fix
+[10:12:21.028] 
+[10:12:21.028] To address all issues possible (including breaking changes), run:
+[10:12:21.028]   npm audit fix --force
+[10:12:21.029] 
+[10:12:21.029] Some issues need review, and may require choosing
+[10:12:21.029] a different dependency.
+[10:12:21.029] 
+[10:12:21.029] Run `npm audit` for details.
+[10:12:21.296] 
+[10:12:21.296] > rest-express@1.0.0 build
+[10:12:21.296] > vite build
+[10:12:21.296] 
+[10:12:21.540] [36mvite v5.4.14 [32mbuilding for production...[36m[39m
+[10:12:21.596] transforming...
+[10:12:21.857] Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+[10:12:21.857]   npx update-browserslist-db@latest
+[10:12:21.857]   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[10:12:28.787] [32m✓[39m 2522 modules transformed.
+[10:12:29.402] rendering chunks...
+[10:12:29.415] computing gzip size...
+[10:12:29.438] [2m../dist/[22m[32mindex.html                 [39m[1m[2m  1.70 kB[22m[1m[22m[2m │ gzip:   0.91 kB[22m
+[10:12:29.438] [2m../dist/[22m[2massets/[22m[35mindex-BWfSawDS.css  [39m[1m[2m 73.13 kB[22m[1m[22m[2m │ gzip:  12.45 kB[22m
+[10:12:29.438] [2m../dist/[22m[2massets/[22m[36mindex-CPt1xz-a.js   [39m[1m[33m856.71 kB[39m[22m[2m │ gzip: 244.73 kB[22m
+[10:12:29.438] [33m
+[10:12:29.439] (!) Some chunks are larger than 500 kB after minification. Consider:
+[10:12:29.439] - Using dynamic import() to code-split the application
+[10:12:29.439] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[10:12:29.439] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[10:12:29.439] [32m✓ built in 7.88s[39m
+[10:12:29.509] Installing dependencies...
+[10:12:30.462] 
+[10:12:30.463] up to date in 893ms
+[10:12:30.463] 
+[10:12:30.463] 74 packages are looking for funding
+[10:12:30.464]   run `npm fund` for details
+[10:12:30.670] Using TypeScript 5.6.3 (local user-provided)
+[10:12:38.728] Using TypeScript 5.6.3 (local user-provided)
+[10:12:39.281] api/measurements/session/[sessionId].ts(32,10): error TS2769: No overload matches this call.
+[10:12:39.282]   Overload 1 of 2, '(value: { sessionId: number | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; taskType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; timestamp?: SQL<...> | ... 3 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+[10:12:39.282]     Argument of type '{ sessionId: number; userId: string; operatorName: any; partId: any; trialNumber: any; timeInMs: any; partName: any; }' is not assignable to parameter of type '{ sessionId: number | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; taskType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; timestamp?: SQL<...> | ... 3 more ... | undefined; }'.
+[10:12:39.282]       Type '{ sessionId: number; userId: string; operatorName: any; partId: any; trialNumber: any; timeInMs: any; partName: any; }' is missing the following properties from type '{ sessionId: number | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; taskType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; timestamp?: SQL<...> | ... 3 more ... | undefined; }': taskType, attemptNumber
+[10:12:39.282]   Overload 2 of 2, '(values: { sessionId: number | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; taskType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; timestamp?: SQL<...> | ... 3 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+[10:12:39.283]     Object literal may only specify known properties, and 'sessionId' does not exist in type '{ sessionId: number | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; taskType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; timestamp?: SQL<...> | ... 3 more ... | undefined; }[]'.
+[10:12:39.283] api/measurements/session/[sessionId].ts(39,11): error TS18004: No value exists in scope for the shorthand property 'partName'. Either declare one or provide an initializer.
+[10:12:39.283] 
+[10:12:39.989] Using TypeScript 5.6.3 (local user-provided)
+[10:12:41.063] Using TypeScript 5.6.3 (local user-provided)
+[10:12:42.206] Using TypeScript 5.6.3 (local user-provided)
+[10:12:43.290] Using TypeScript 5.6.3 (local user-provided)
+[10:12:43.512] Using TypeScript 5.6.3 (local user-provided)
+[10:12:44.056] Build Completed in /vercel/output [35s]
+[10:12:44.257] Deploying outputs...
+[10:12:49.118] 
+[10:12:49.395] Deployment completed
