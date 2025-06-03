@@ -39,9 +39,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { sessionId } = req.query;
 
     if (req.method === 'GET') {
-      // Get measurements for session - fix TS2769 by using query builder properly
+      // Fix TS2769: Pass measurements table directly to select()
       const sessionMeasurements = await db
-        .select()
+        .select({
+          id: schema.measurements.id,
+          sessionId: schema.measurements.sessionId,
+          userId: schema.measurements.userId,
+          attemptNumber: schema.measurements.attemptNumber,
+          timeInMs: schema.measurements.timeInMs,
+          taskType: schema.measurements.taskType,
+          partNumber: schema.measurements.partNumber,
+          operatorName: schema.measurements.operatorName,
+          partId: schema.measurements.partId,
+          partName: schema.measurements.partName,
+          trialNumber: schema.measurements.trialNumber,
+          timestamp: schema.measurements.timestamp,
+          createdAt: schema.measurements.createdAt
+        })
         .from(schema.measurements)
         .where(eq(schema.measurements.sessionId, parseInt(sessionId as string)));
 
@@ -49,10 +63,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'POST') {
-      // Create new measurement - fix TS18004 by proper type declaration
+      // Fix TS18004: Explicit variable declarations to ensure scope
       const requestBody = req.body as MeasurementPayload;
       
-      // Extract values with explicit variable declarations to avoid scope issues
       const operatorName = requestBody.operatorName;
       const partId = requestBody.partId;
       const trialNumber = requestBody.trialNumber;
@@ -63,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const attemptNumber = requestBody.attemptNumber;
 
       // Validate required fields
-      if (!timeInMs) {
+      if (timeInMs === undefined || timeInMs === null) {
         return res.status(400).json({ error: 'timeInMs is required' });
       }
 
