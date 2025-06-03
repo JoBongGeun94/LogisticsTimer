@@ -518,12 +518,8 @@ export function MeasurementForm({
                         'Content-Type': 'application/json',
                       },
                     });
-                    // Force component refresh by triggering query invalidation
-                    if (onRefresh) {
-                      onRefresh();
-                    } else {
-                      window.location.reload();
-                    }
+                    // Refresh the page to show session creation form
+                    window.location.reload();
                   } catch (error) {
                     console.error('Error completing session:', error);
                   }

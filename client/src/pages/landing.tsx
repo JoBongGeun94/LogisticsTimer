@@ -137,7 +137,7 @@ export default function Landing() {
                   시스템 접속
                 </CardTitle>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  인증된 사용자만 접근 가능한 보안 시스템입니다
+                  인증된 사용자만 접근 가능한<br />보안 시스템입니다
                 </p>
               </CardHeader>
               <CardContent className="space-y-5">

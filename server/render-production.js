@@ -163,12 +163,27 @@ const initializeDatabase = async () => {
     // Insert demo user with proper error handling
     await pool.query(`
       INSERT INTO users (id, email, first_name, last_name, worker_id, role) 
-      VALUES ('demo-user-001', 'supply@airforce.mil.kr', '공군', '종합보급창', 'AF-001', 'manager')
+      VALUES ('AF-001', 'supply@airforce.mil.kr', '공군', '종합보급창', 'AF-001', 'manager')
       ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,
         first_name = EXCLUDED.first_name,
         last_name = EXCLUDED.last_name,
         updated_at = NOW();
+    `);
+
+    // Update any existing work sessions to use new user ID
+    await pool.query(`
+      UPDATE work_sessions SET user_id = 'AF-001' WHERE user_id = 'demo-user-001';
+    `);
+
+    // Update any existing measurements to use new user ID
+    await pool.query(`
+      UPDATE measurements SET user_id = 'AF-001' WHERE user_id = 'demo-user-001';
+    `);
+
+    // Remove old demo user if exists
+    await pool.query(`
+      DELETE FROM users WHERE id = 'demo-user-001';
     `);
 
     console.log('Database initialization completed successfully');
@@ -189,7 +204,15 @@ const initializeDatabase = async () => {
 // Simple demo user middleware
 const demoAuth = async (req, res, next) => {
   try {
-    req.user = { claims: { sub: "demo-user-001" } };
+    req.user = { 
+      claims: { 
+        sub: "AF-001",
+        email: "supply@airforce.mil.kr",
+        first_name: "공군",
+        last_name: "종합보급창",
+        profile_image_url: null
+      } 
+    };
     next();
   } catch (error) {
     console.error("Demo auth error:", error);
@@ -218,8 +241,8 @@ app.get('/api/work-sessions/active', demoAuth, async (req, res) => {
       .select()
       .from(workSessions)
       .where(eq(workSessions.userId, req.user.claims.sub))
-      .where(eq(workSessions.isCompleted, 0))
-      .orderBy(desc(workSessions.createdAt))
+      .where(eq(workSessions.is_active, true))
+      .orderBy(desc(workSessions.created_at))
       .limit(1);
     
     if (session) {
@@ -303,6 +326,25 @@ app.post('/api/measurements/session/:sessionId', demoAuth, async (req, res) => {
   } catch (error) {
     console.error("Error creating measurement:", error);
     res.status(500).json({ message: "Failed to create measurement" });
+  }
+});
+
+app.put('/api/work-sessions/:id/complete', demoAuth, async (req, res) => {
+  try {
+    const sessionId = parseInt(req.params.id);
+    const [session] = await db
+      .update(workSessions)
+      .set({ 
+        is_active: false,
+        completed_at: new Date()
+      })
+      .where(eq(workSessions.id, sessionId))
+      .returning();
+    
+    res.json(session);
+  } catch (error) {
+    console.error("Error completing work session:", error);
+    res.status(500).json({ message: "Failed to complete work session" });
   }
 });
 
