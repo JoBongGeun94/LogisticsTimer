@@ -55,7 +55,7 @@ interface User {
 }
 
 export default function Timer() {
-  const { user, isLoading } = useAuth() as { user: User | null; isLoading: boolean };
+  // Authentication removed - direct access
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
