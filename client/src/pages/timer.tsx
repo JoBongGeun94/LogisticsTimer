@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-// Authentication removed
+import { useAuth } from "@/hooks/useAuth";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { formatTime, calculateStatistics, getHighPrecisionTime, validateMeasurementAccuracy } from "@/lib/timer-utils";
 import { MeasurementForm } from "@/components/measurement-form";
@@ -55,7 +56,7 @@ interface User {
 }
 
 export default function Timer() {
-  // Authentication removed - direct access
+  const { user, isLoading } = useAuth() as { user: User | null; isLoading: boolean };
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
