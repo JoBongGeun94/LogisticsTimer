@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: logistics-timer
+    env: node
+    buildCommand: npm run build
+    startCommand: node server/production.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: postgresql://logistics-timer_owner:npg_H8UZJeYIuSO5@ep-icy-dew-a1keey0h-pooler.ap-southeast-1.aws.neon.tech/logistics-timer?sslmode=require
+      - key: JWT_SECRET
+        value: 8apaqejlpoGoyust8bru2Ridrad220ap
+      - key: SESSION_SECRET
+        value: trej9joph7chlspitOp6wuvotaXiyiwa
