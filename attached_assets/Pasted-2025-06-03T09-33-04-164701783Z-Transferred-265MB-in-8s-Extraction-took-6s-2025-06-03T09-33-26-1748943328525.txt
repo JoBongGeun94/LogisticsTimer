@@ -1,0 +1,144 @@
+2025-06-03T09:33:04.164701783Z ==> Transferred 265MB in 8s. Extraction took 6s.
+2025-06-03T09:33:26.298701226Z ==> Using Node.js version 22.14.0 (default)
+2025-06-03T09:33:26.325164332Z ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+2025-06-03T09:33:26.462565461Z ==> Using Bun version 1.1.0 (default)
+2025-06-03T09:33:26.462586102Z ==> Docs on specifying a bun version: https://render.com/docs/bun-version
+2025-06-03T09:33:26.51044025Z ==> Running build command 'npm install; npm run build'...
+2025-06-03T09:33:28.069994802Z 
+2025-06-03T09:33:28.070016012Z up to date, audited 612 packages in 1s
+2025-06-03T09:33:28.070021122Z 
+2025-06-03T09:33:28.070025012Z 74 packages are looking for funding
+2025-06-03T09:33:28.070029362Z   run `npm fund` for details
+2025-06-03T09:33:28.134216281Z 
+2025-06-03T09:33:28.136024878Z 11 vulnerabilities (8 moderate, 3 high)
+2025-06-03T09:33:28.136031918Z 
+2025-06-03T09:33:28.136036788Z To address issues that do not require attention, run:
+2025-06-03T09:33:28.136040708Z   npm audit fix
+2025-06-03T09:33:28.136044398Z 
+2025-06-03T09:33:28.136048878Z To address all issues possible (including breaking changes), run:
+2025-06-03T09:33:28.136053368Z   npm audit fix --force
+2025-06-03T09:33:28.136056808Z 
+2025-06-03T09:33:28.136060558Z Some issues need review, and may require choosing
+2025-06-03T09:33:28.136064529Z a different dependency.
+2025-06-03T09:33:28.136068069Z 
+2025-06-03T09:33:28.136072369Z Run `npm audit` for details.
+2025-06-03T09:33:28.332936512Z 
+2025-06-03T09:33:28.332959742Z > rest-express@1.0.0 build
+2025-06-03T09:33:28.332963612Z > vite build
+2025-06-03T09:33:28.332966282Z 
+2025-06-03T09:33:28.590902491Z vite v5.4.14 building for production...
+2025-06-03T09:33:28.643860302Z transforming...
+2025-06-03T09:33:28.941180197Z Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+2025-06-03T09:33:28.941194927Z   npx update-browserslist-db@latest
+2025-06-03T09:33:28.941198678Z   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+2025-06-03T09:33:34.572492127Z ✓ 2525 modules transformed.
+2025-06-03T09:33:35.014823436Z rendering chunks...
+2025-06-03T09:33:35.024785037Z computing gzip size...
+2025-06-03T09:33:35.045779032Z ../dist/index.html                     1.70 kB │ gzip:   0.91 kB
+2025-06-03T09:33:35.045895034Z ../dist/assets/image01-le3y2fG8.png  209.51 kB
+2025-06-03T09:33:35.045934195Z ../dist/assets/index-Kcqykdgw.css     77.07 kB │ gzip:  13.06 kB
+2025-06-03T09:33:35.046043127Z ../dist/assets/index-gi8zuxLE.js     865.08 kB │ gzip: 246.72 kB
+2025-06-03T09:33:35.04616524Z 
+2025-06-03T09:33:35.04617333Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2025-06-03T09:33:35.04617785Z - Using dynamic import() to code-split the application
+2025-06-03T09:33:35.04618228Z - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+2025-06-03T09:33:35.04618665Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+2025-06-03T09:33:35.046364624Z ✓ built in 6.43s
+2025-06-03T09:33:36.333494174Z ==> Uploading build...
+2025-06-03T09:33:45.767231152Z ==> Uploaded in 6.2s. Compression took 3.2s
+2025-06-03T09:33:46.364889564Z ==> Build successful 🎉
+2025-06-03T09:34:10.792134606Z ==> Deploying...
+2025-06-03T09:35:05.761732627Z ==> Running 'node server/render-production.js'
+2025-06-03T09:35:10.857770036Z Starting database initialization...
+2025-06-03T09:35:11.385199912Z Database initialization error: error: duplicate key value violates unique constraint "users_email_key"
+2025-06-03T09:35:11.385218274Z     at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-06-03T09:35:11.385220494Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-06-03T09:35:11.385222404Z     at async initializeDatabase (file:///opt/render/project/src/server/render-production.js:164:5) {
+2025-06-03T09:35:11.385224224Z   length: 214,
+2025-06-03T09:35:11.385225964Z   severity: 'ERROR',
+2025-06-03T09:35:11.385227744Z   code: '23505',
+2025-06-03T09:35:11.385229574Z   detail: 'Key (email)=(supply@airforce.mil.kr) already exists.',
+2025-06-03T09:35:11.385231304Z   hint: undefined,
+2025-06-03T09:35:11.385232935Z   position: undefined,
+2025-06-03T09:35:11.385234635Z   internalPosition: undefined,
+2025-06-03T09:35:11.385236285Z   internalQuery: undefined,
+2025-06-03T09:35:11.385237975Z   where: undefined,
+2025-06-03T09:35:11.385239595Z   schema: 'public',
+2025-06-03T09:35:11.385241295Z   table: 'users',
+2025-06-03T09:35:11.385242965Z   column: undefined,
+2025-06-03T09:35:11.385244645Z   dataType: undefined,
+2025-06-03T09:35:11.385246305Z   constraint: 'users_email_key',
+2025-06-03T09:35:11.385248246Z   file: 'nbtinsert.c',
+2025-06-03T09:35:11.385251176Z   line: '666',
+2025-06-03T09:35:11.385254456Z   routine: '_bt_check_unique'
+2025-06-03T09:35:11.385257346Z }
+2025-06-03T09:35:11.385483893Z Failed to initialize database, cannot start server: error: duplicate key value violates unique constraint "users_email_key"
+2025-06-03T09:35:11.385495394Z     at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-06-03T09:35:11.385498504Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-06-03T09:35:11.385501094Z     at async initializeDatabase (file:///opt/render/project/src/server/render-production.js:164:5) {
+2025-06-03T09:35:11.385503415Z   length: 214,
+2025-06-03T09:35:11.385505765Z   severity: 'ERROR',
+2025-06-03T09:35:11.385507965Z   code: '23505',
+2025-06-03T09:35:11.385510365Z   detail: 'Key (email)=(supply@airforce.mil.kr) already exists.',
+2025-06-03T09:35:11.385512605Z   hint: undefined,
+2025-06-03T09:35:11.385514805Z   position: undefined,
+2025-06-03T09:35:11.385517185Z   internalPosition: undefined,
+2025-06-03T09:35:11.385519426Z   internalQuery: undefined,
+2025-06-03T09:35:11.385521856Z   where: undefined,
+2025-06-03T09:35:11.385524026Z   schema: 'public',
+2025-06-03T09:35:11.385526296Z   table: 'users',
+2025-06-03T09:35:11.385528716Z   column: undefined,
+2025-06-03T09:35:11.385531297Z   dataType: undefined,
+2025-06-03T09:35:11.385533787Z   constraint: 'users_email_key',
+2025-06-03T09:35:11.385536447Z   file: 'nbtinsert.c',
+2025-06-03T09:35:11.385538827Z   line: '666',
+2025-06-03T09:35:11.385541097Z   routine: '_bt_check_unique'
+2025-06-03T09:35:11.385543237Z }
+2025-06-03T09:35:12.148128035Z ==> Exited with status 1
+2025-06-03T09:35:12.308498088Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+2025-06-03T09:35:17.244817886Z ==> Running 'node server/render-production.js'
+2025-06-03T09:35:22.241524558Z Starting database initialization...
+2025-06-03T09:35:22.937893153Z Database initialization error: error: duplicate key value violates unique constraint "users_email_key"
+2025-06-03T09:35:22.937914905Z     at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-06-03T09:35:22.937918085Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-06-03T09:35:22.937920545Z     at async initializeDatabase (file:///opt/render/project/src/server/render-production.js:164:5) {
+2025-06-03T09:35:22.937922985Z   length: 214,
+2025-06-03T09:35:22.937925845Z   severity: 'ERROR',
+2025-06-03T09:35:22.937927906Z   code: '23505',
+2025-06-03T09:35:22.937930636Z   detail: 'Key (email)=(supply@airforce.mil.kr) already exists.',
+2025-06-03T09:35:22.937933246Z   hint: undefined,
+2025-06-03T09:35:22.937935806Z   position: undefined,
+2025-06-03T09:35:22.937938896Z   internalPosition: undefined,
+2025-06-03T09:35:22.937941307Z   internalQuery: undefined,
+2025-06-03T09:35:22.937958378Z   where: undefined,
+2025-06-03T09:35:22.937960838Z   schema: 'public',
+2025-06-03T09:35:22.937963588Z   table: 'users',
+2025-06-03T09:35:22.937966628Z   column: undefined,
+2025-06-03T09:35:22.937969158Z   dataType: undefined,
+2025-06-03T09:35:22.937971899Z   constraint: 'users_email_key',
+2025-06-03T09:35:22.937974439Z   file: 'nbtinsert.c',
+2025-06-03T09:35:22.937976799Z   line: '666',
+2025-06-03T09:35:22.937979449Z   routine: '_bt_check_unique'
+2025-06-03T09:35:22.93798211Z }
+2025-06-03T09:35:22.938180854Z Failed to initialize database, cannot start server: error: duplicate key value violates unique constraint "users_email_key"
+2025-06-03T09:35:22.938187814Z     at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-06-03T09:35:22.938190085Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-06-03T09:35:22.938192175Z     at async initializeDatabase (file:///opt/render/project/src/server/render-production.js:164:5) {
+2025-06-03T09:35:22.938194045Z   length: 214,
+2025-06-03T09:35:22.938196505Z   severity: 'ERROR',
+2025-06-03T09:35:22.938198605Z   code: '23505',
+2025-06-03T09:35:22.938200566Z   detail: 'Key (email)=(supply@airforce.mil.kr) already exists.',
+2025-06-03T09:35:22.938202256Z   hint: undefined,
+2025-06-03T09:35:22.938203996Z   position: undefined,
+2025-06-03T09:35:22.938205816Z   internalPosition: undefined,
+2025-06-03T09:35:22.938207586Z   internalQuery: undefined,
+2025-06-03T09:35:22.938209236Z   where: undefined,
+2025-06-03T09:35:22.938211006Z   schema: 'public',
+2025-06-03T09:35:22.938212707Z   table: 'users',
+2025-06-03T09:35:22.938214427Z   column: undefined,
+2025-06-03T09:35:22.938216087Z   dataType: undefined,
+2025-06-03T09:35:22.938217757Z   constraint: 'users_email_key',
+2025-06-03T09:35:22.938219427Z   file: 'nbtinsert.c',
+2025-06-03T09:35:22.938221097Z   line: '666',
+2025-06-03T09:35:22.938222817Z   routine: '_bt_check_unique'
+2025-06-03T09:35:22.938224537Z }

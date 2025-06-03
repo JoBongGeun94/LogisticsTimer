@@ -82,6 +82,11 @@ const initializeDatabase = async () => {
   try {
     console.log('Starting database initialization...');
     
+    // Remove email unique constraint if it exists
+    await pool.query(`
+      ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
+    `).catch(() => {}); // Ignore error if constraint doesn't exist
+    
     // Create tables with complete schema matching local environment
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
