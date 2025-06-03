@@ -150,8 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(session);
     } catch (error) {
-      console.error("Error creating work session:", error);
-      res.status(500).json({ message: "Failed to create work session" });
+      ErrorHandlingService.handleSessionError(error, res);
     }
   });
 
@@ -161,8 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const session = await storage.getActiveWorkSession(userId);
       res.json(session);
     } catch (error) {
-      console.error("Error fetching active work session:", error);
-      res.status(500).json({ message: "Failed to fetch active work session" });
+      ErrorHandlingService.handleSessionError(error, res);
     }
   });
 
@@ -339,17 +337,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Measurement routes
+  // Measurement routes with comprehensive validation
   app.post('/api/measurements', demoAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertMeasurementSchema.parse(req.body);
       
+      // Validate measurement constraints
+      if (validatedData.timeInMs <= 0) {
+        return res.status(400).json({ 
+          message: "측정 시간은 0보다 커야 합니다",
+          code: "INVALID_TIME"
+        });
+      }
+      
+      if (validatedData.timeInMs > 3600000) {
+        return res.status(400).json({ 
+          message: "측정 시간이 1시간을 초과할 수 없습니다",
+          code: "TIME_EXCEEDED"
+        });
+      }
+      
+      // Verify session exists and belongs to user
+      const session = await storage.getWorkSessionById(validatedData.sessionId);
+      if (!session || session.userId !== userId) {
+        return res.status(404).json({ 
+          message: "세션을 찾을 수 없습니다",
+          code: "SESSION_NOT_FOUND"
+        });
+      }
+      
       const measurement = await storage.createMeasurement(validatedData.sessionId, userId, validatedData);
       res.json(measurement);
     } catch (error) {
-      console.error("Error creating measurement:", error);
-      res.status(500).json({ message: "Failed to create measurement" });
+      ErrorHandlingService.handleMeasurementError(error, res);
     }
   });
 
@@ -359,8 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const measurements = await storage.getMeasurementsBySession(sessionId);
       res.json(measurements);
     } catch (error) {
-      console.error("Error fetching measurements:", error);
-      res.status(500).json({ message: "Failed to fetch measurements" });
+      ErrorHandlingService.handleDatabaseError(error, res);
     }
   });
 
