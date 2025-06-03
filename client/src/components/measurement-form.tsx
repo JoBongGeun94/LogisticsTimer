@@ -81,8 +81,10 @@ export function MeasurementForm({
         id: `op_${Date.now()}`,
         name: newOperatorName.trim()
       };
-      setOperators([...operators, newOperator]);
+      const updatedOperators = [...operators, newOperator];
+      setOperators(updatedOperators);
       setNewOperatorName("");
+      console.log("Added operator:", newOperator, "Total operators:", updatedOperators.length);
     }
   };
 
@@ -96,8 +98,10 @@ export function MeasurementForm({
         id: `part_${Date.now()}`,
         name: newPartName.trim()
       };
-      setParts([...parts, newPart]);
+      const updatedParts = [...parts, newPart];
+      setParts(updatedParts);
       setNewPartName("");
+      console.log("Added part:", newPart, "Total parts:", updatedParts.length);
     }
   };
 
@@ -159,31 +163,41 @@ export function MeasurementForm({
     if (useAdvancedMode) {
       // Gage R&R 모드: 최소 2명의 측정자와 1개 이상의 부품 필요
       if (taskType && operators.length >= 2 && parts.length >= 1) {
-        onSessionCreate({
-          taskType,
+        const sessionData = {
+          taskType: 'gage-rr', // Gage R&R 모드임을 명시
           partNumber: partNumber || undefined,
           operatorName: operators[0]?.name, // 첫 번째 측정자를 기본으로 설정
           targetName: targetName || "Gage R&R 분석",
-          operators,
-          parts,
-          trialsPerOperator,
-        });
+          operators: operators,
+          parts: parts,
+          trialsPerOperator: trialsPerOperator,
+        };
+        console.log("Creating Gage R&R session with data:", sessionData);
+        onSessionCreate(sessionData);
         // 리셋
         setTaskType("");
         setPartNumber("");
         setOperators([]);
         setParts([]);
         setTrialsPerOperator(3);
+      } else {
+        console.error("Gage R&R validation failed:", {
+          taskType,
+          operatorsCount: operators.length,
+          partsCount: parts.length
+        });
       }
     } else {
       // 기본 모드: 기존 로직
       if (taskType && operatorName && targetName) {
-        onSessionCreate({
+        const sessionData = {
           taskType,
           partNumber: partNumber || undefined,
           operatorName,
           targetName,
-        });
+        };
+        console.log("Creating basic session with data:", sessionData);
+        onSessionCreate(sessionData);
         setTaskType("");
         setPartNumber("");
         setOperatorName("");
