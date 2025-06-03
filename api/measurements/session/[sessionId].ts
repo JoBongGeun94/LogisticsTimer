@@ -3,25 +3,27 @@ import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from '../../../shared/schema';
 import { eq } from 'drizzle-orm';
+import { verifyToken, extractTokenFromRequest } from '../../jwt-utils';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    // Get user ID from cookie
-    const cookies = req.headers.cookie?.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
-      return acc;
-    }, {} as Record<string, string>) || {};
-
-    const userId = cookies.user_id;
-
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    // Extract and verify JWT token
+    const token = extractTokenFromRequest(req);
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
     }
 
+    const payload = verifyToken(token);
+    
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    const userId = payload.userId;
     const { sessionId } = req.query;
 
     if (req.method === 'GET') {

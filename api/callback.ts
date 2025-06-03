@@ -9,10 +9,23 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { code } = req.query;
+  const { code, state } = req.query;
 
   if (!code) {
     return res.status(400).json({ error: 'Authorization code not provided' });
+  }
+
+  // Verify state parameter for CSRF protection
+  const cookies = req.headers.cookie?.split(';').reduce((acc: Record<string, string>, cookie: string) => {
+    const [key, value] = cookie.trim().split('=');
+    acc[key] = value;
+    return acc;
+  }, {}) || {};
+
+  const storedState = cookies.oauth_state;
+  
+  if (!storedState || storedState !== state) {
+    return res.status(400).json({ error: 'Invalid state parameter' });
   }
 
   try {
@@ -70,8 +83,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Generate JWT token
     const token = signToken({ userId: user.id, email: user.email || undefined });
     
-    // Set secure cookie with JWT
-    res.setHeader('Set-Cookie', `auth_token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800`);
+    // Set secure cookie with JWT and clear state cookie
+    res.setHeader('Set-Cookie', [
+      `auth_token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800`,
+      `oauth_state=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`
+    ]);
     
     // Redirect to home
     res.redirect(302, '/');
