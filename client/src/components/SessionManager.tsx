@@ -67,18 +67,39 @@ export function SessionManager({
         
         {/* 세션 정보 표시 */}
         {activeSession && (
-          <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-sm space-y-1">
-              <div><strong>작업 유형:</strong> {activeSession.taskType}</div>
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">활성 세션</h3>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.location.reload()}
+                className="text-xs"
+              >
+                작업변경
+              </Button>
+            </div>
+            <div className="text-sm space-y-2 text-blue-900 dark:text-blue-100">
+              <div className="font-medium">
+                {activeSession.taskType === 'material_inspection' ? '물자검수팀' : 
+                 activeSession.taskType === 'gage-rr' ? 'Gage R&R 분석' :
+                 activeSession.taskType}
+              </div>
               {activeSession.partNumber && (
-                <div><strong>공정번호:</strong> {activeSession.partNumber}</div>
+                <div className="text-xs">공정세부번호: {activeSession.partNumber}</div>
               )}
-              {activeSession.operatorName && (
-                <div><strong>측정자:</strong> {activeSession.operatorName}</div>
-              )}
-              {activeSession.targetName && (
-                <div><strong>대상:</strong> {activeSession.targetName}</div>
-              )}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {activeSession.operatorName && (
+                  <div>
+                    <span className="text-blue-600 dark:text-blue-400">측정자:</span> {activeSession.operatorName}
+                  </div>
+                )}
+                {activeSession.targetName && (
+                  <div>
+                    <span className="text-blue-600 dark:text-blue-400">대상:</span> {activeSession.targetName}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
