@@ -1,0 +1,24 @@
+{
+  "name": "스마트 인시수 타이머",
+  "short_name": "인시수 타이머",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1976D2",
+  "description": "물류 현장 작업자를 위한 정밀한 작업 시간 측정 및 Gage R&R 통계 분석 시스템",
+  "icons": [
+    {
+      "src": "/generated-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/generated-icon.png", 
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "lang": "ko",
+  "orientation": "portrait"
+}

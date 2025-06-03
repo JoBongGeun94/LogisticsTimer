@@ -4,11 +4,12 @@ import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { verifyToken, extractTokenFromRequest } from '../jwt-utils';
+import { withSecurityHeaders } from '../security-headers';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default withSecurityHeaders(async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -68,4 +69,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Unexpected auth/user error:', unexpectedError);
     return res.status(500).json({ error: 'Internal server error' });
   }
-}
+});
