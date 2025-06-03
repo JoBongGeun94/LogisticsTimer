@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useSessionState } from "@/hooks/useSessionState";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { formatTime, calculateStatistics, getHighPrecisionTime, validateMeasurementAccuracy } from "@/lib/timer-utils";
 import { MeasurementForm } from "@/components/measurement-form";
+import { SessionManager } from "@/components/SessionManager";
 import { TimerControls } from "@/components/timer-controls";
 import { LapHistory } from "@/components/lap-history";
 import { Link } from "wouter";
@@ -61,6 +63,16 @@ export default function Timer() {
   const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
 
+  // SOLID Principle: Single Responsibility - 세션 상태 관리 분리
+  const {
+    activeSession,
+    isSessionReady,
+    isCreatingSession,
+    canStartMeasurement,
+    createSession,
+    updateSession,
+  } = useSessionState(user?.id);
+
   const [currentTime, setCurrentTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -98,14 +110,6 @@ export default function Timer() {
     }
   }, [user, isLoading, toast]);
 
-  // Fetch active work session
-  const { data: activeSession, refetch: refetchActiveSession } = useQuery<WorkSession>({
-    queryKey: ["/api/work-sessions/active"],
-    enabled: !!user,
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
-
   // Fetch measurements for active session
   const { data: measurements = [], refetch: refetchMeasurements } = useQuery<Measurement[]>({
     queryKey: [`/api/measurements/session/${activeSession?.id}`],
@@ -127,41 +131,7 @@ export default function Timer() {
 
 
 
-  // Create work session mutation
-  const createSessionMutation = useMutation({
-    mutationFn: async (sessionData: { taskType: string; partNumber?: string }) => {
-      const response = await apiRequest("POST", "/api/work-sessions", sessionData);
-      return response.json();
-    },
-    onSuccess: async () => {
-      // 즉시 활성 세션 데이터 새로고침
-      await queryClient.invalidateQueries({ queryKey: ["/api/work-sessions/active"] });
-      await refetchActiveSession();
-      
-      toast({
-        title: "작업 세션 시작",
-        description: "새로운 작업 세션이 시작되었습니다. 측정을 시작하세요.",
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "인증 오류",
-          description: "다시 로그인해주세요.",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "오류",
-        description: "작업 세션을 시작할 수 없습니다.",
-        variant: "destructive",
-      });
-    },
-  });
+  // 세션 생성 로직은 useSessionState 훅에서 처리
 
   // Create measurement mutation
   const createMeasurementMutation = useMutation({
