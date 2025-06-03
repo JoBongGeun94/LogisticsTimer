@@ -277,11 +277,13 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "API is working", env: process.env.NODE_ENV });
 });
 
+// Catch-all for undefined API routes
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found', path: req.path, method: req.method });
+});
+
 // Serve index.html for all non-API routes
 app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API endpoint not found' });
-  }
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
