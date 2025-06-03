@@ -13,25 +13,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Demo user for development
-    const demoUserId = "demo-user-001";
-    let user = await db.select().from(schema.users).where(eq(schema.users.id, demoUserId)).then(rows => rows[0]);
+    // Get user ID from cookie
+    const cookies = req.headers.cookie?.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>) || {};
+
+    const userId = cookies.user_id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Get user from database
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
     
-    // Create demo user if doesn't exist
     if (!user) {
-      const [newUser] = await db
-        .insert(schema.users)
-        .values({
-          id: demoUserId,
-          email: "demo@company.com",
-          firstName: "데모",
-          lastName: "사용자",
-          profileImageUrl: null,
-          workerId: "W001",
-          role: "worker",
-        })
-        .returning();
-      user = newUser;
+      return res.status(404).json({ error: 'User not found' });
     }
     
     res.json(user);

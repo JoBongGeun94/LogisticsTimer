@@ -9,7 +9,18 @@ const db = drizzle({ client: pool, schema });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const userId = "demo-user-001"; // Demo user
+    // Get user ID from cookie
+    const cookies = req.headers.cookie?.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>) || {};
+
+    const userId = cookies.user_id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
     if (req.method === 'GET') {
       // Get active work session
