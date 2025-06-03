@@ -160,7 +160,7 @@ const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS IDX_session_expire ON sessions (expire);
     `);
 
-    // Insert demo user with proper error handling
+    // Insert demo user with comprehensive conflict handling
     await pool.query(`
       INSERT INTO users (id, email, first_name, last_name, worker_id, role) 
       VALUES ('AF-001', 'supply@airforce.mil.kr', '공군', '종합보급창', 'AF-001', 'manager')
@@ -169,6 +169,13 @@ const initializeDatabase = async () => {
         first_name = EXCLUDED.first_name,
         last_name = EXCLUDED.last_name,
         updated_at = NOW();
+    `);
+    
+    // Handle email uniqueness constraint by updating existing user with same email
+    await pool.query(`
+      UPDATE users 
+      SET id = 'AF-001', worker_id = 'AF-001', role = 'manager', updated_at = NOW()
+      WHERE email = 'supply@airforce.mil.kr' AND id != 'AF-001';
     `);
 
     // Update any existing work sessions to use new user ID
