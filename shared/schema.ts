@@ -153,6 +153,8 @@ export const insertWorkSessionSchema = createInsertSchema(workSessions).pick({
   operators: true,
   parts: true,
   trialsPerOperator: true,
+  isActive: true,
+  startedAt: true,
 });
 
 export const insertMeasurementSchema = createInsertSchema(measurements).pick({
