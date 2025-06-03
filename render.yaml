@@ -1,19 +1,28 @@
 services:
   - type: web
     name: logistics-timer
-    env: node
-    buildCommand: npm run build
-    startCommand: node server/production-sync.js
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        value: postgresql://logistics-timer_owner:npg_H8UZJeYIuSO5@ep-icy-dew-a1keey0h-pooler.ap-southeast-1.aws.neon.tech/logistics-timer?sslmode=require
-      - key: JWT_SECRET
-        value: 8apaqejlpoGoyust8bru2Ridrad220ap
-      - key: SESSION_SECRET
-        value: trej9joph7chlspitOp6wuvotaXiyiwa
-      - key: REPL_ID
-        value: logistics-timer-app
-      - key: REPLIT_DOMAINS
-        value: logisticstimer.onrender.com
+      - key: NODE_VERSION
+        value: 18.19.0
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
+      - path: /static/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
