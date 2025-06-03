@@ -3,7 +3,7 @@ services:
     name: logistics-timer
     env: node
     buildCommand: npm run build
-    startCommand: node server/production.js
+    startCommand: node server/production-complete.js
     envVars:
       - key: NODE_ENV
         value: production
