@@ -37,13 +37,13 @@ function calculateAverageSessionDuration(sessions: any[]) {
 
 // Simple demo authentication middleware
 const demoAuth = (req: any, res: any, next: any) => {
-  // Create a demo user session
+  // Create a demo user session with consistent ID
   req.user = {
     claims: {
-      sub: "demo-user-001",
-      email: "demo@company.com",
-      first_name: "데모",
-      last_name: "사용자",
+      sub: "AF-001",
+      email: "supply@airforce.mil.kr",
+      first_name: "공군",
+      last_name: "종합보급창",
       profile_image_url: null
     }
   };
