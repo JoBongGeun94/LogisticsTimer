@@ -160,23 +160,50 @@ const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS IDX_session_expire ON sessions (expire);
     `);
 
-    // Insert demo user with comprehensive conflict handling
-    await pool.query(`
-      INSERT INTO users (id, email, first_name, last_name, worker_id, role) 
-      VALUES ('AF-001', 'supply@airforce.mil.kr', '공군', '종합보급창', 'AF-001', 'manager')
-      ON CONFLICT (id) DO UPDATE SET
-        email = EXCLUDED.email,
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        updated_at = NOW();
-    `);
-    
-    // Handle email uniqueness constraint by updating existing user with same email
-    await pool.query(`
-      UPDATE users 
-      SET id = 'AF-001', worker_id = 'AF-001', role = 'manager', updated_at = NOW()
-      WHERE email = 'supply@airforce.mil.kr' AND id != 'AF-001';
-    `);
+    // Safe user initialization with proper conflict resolution
+    try {
+      // First, check if user with this email exists
+      const existingUser = await pool.query(`
+        SELECT id FROM users WHERE email = 'supply@airforce.mil.kr';
+      `);
+      
+      if (existingUser.rows.length > 0) {
+        // Update existing user to have correct ID and details
+        await pool.query(`
+          UPDATE users 
+          SET id = 'AF-001', 
+              first_name = '공군', 
+              last_name = '종합보급창', 
+              worker_id = 'AF-001', 
+              role = 'manager',
+              updated_at = NOW()
+          WHERE email = 'supply@airforce.mil.kr';
+        `);
+        console.log('Updated existing user with email supply@airforce.mil.kr');
+      } else {
+        // Insert new user
+        await pool.query(`
+          INSERT INTO users (id, email, first_name, last_name, worker_id, role) 
+          VALUES ('AF-001', 'supply@airforce.mil.kr', '공군', '종합보급창', 'AF-001', 'manager');
+        `);
+        console.log('Created new user AF-001');
+      }
+    } catch (userError) {
+      console.log('User initialization handled:', userError.message);
+      // Try to ensure user exists with correct ID
+      await pool.query(`
+        INSERT INTO users (id, email, first_name, last_name, worker_id, role) 
+        VALUES ('AF-001', 'supply@airforce.mil.kr', '공군', '종합보급창', 'AF-001', 'manager')
+        ON CONFLICT (id) DO NOTHING
+        ON CONFLICT (email) DO UPDATE SET
+          id = 'AF-001',
+          first_name = '공군',
+          last_name = '종합보급창',
+          worker_id = 'AF-001',
+          role = 'manager',
+          updated_at = NOW();
+      `);
+    }
 
     // Update any existing work sessions to use new user ID
     await pool.query(`
