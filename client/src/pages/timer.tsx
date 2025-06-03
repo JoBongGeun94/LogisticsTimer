@@ -9,6 +9,7 @@ import { useSessionState } from "@/hooks/useSessionState";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { formatTime, calculateStatistics, getHighPrecisionTime, validateMeasurementAccuracy } from "@/lib/timer-utils";
+import { SessionValidationService } from "@/lib/SessionValidationService";
 import { MeasurementForm } from "@/components/measurement-form";
 import { SessionManager } from "@/components/SessionManager";
 import { TimerControls } from "@/components/timer-controls";
@@ -384,19 +385,29 @@ export default function Timer() {
       return;
     }
 
-    // Gage R&R mode validation
-    if (activeSession.operators && activeSession.parts) {
-      if (!selectedOperator || !selectedPart) {
-        toast({
-          title: "선택 항목 확인",
-          description: !selectedOperator && !selectedPart ? 
-            "GRR 모드에서는 측정자와 대상자를 모두 선택해야 합니다." :
-            !selectedOperator ? "측정자를 선택해주세요." : "대상자를 선택해주세요.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
+    // SOLID-based validation using SessionValidationService
+    const validationService = new SessionValidationService({
+      taskType: activeSession.taskType,
+      operatorName: activeSession.operatorName,
+      targetName: activeSession.targetName,
+      operators: activeSession.operators,
+      parts: activeSession.parts,
+      selectedOperator,
+      selectedPart
+    });
+    
+    const validation = validationService.validate();
+    if (!validation.canStart) {
+      toast({
+        title: "선택 항목 확인",
+        description: validation.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // GRR mode specific validation for operators and parts
+    if (activeSession.taskType === 'gage-rr' && activeSession.operators && activeSession.parts) {
       const operator = activeSession.operators.find((op: any) => op.id === selectedOperator);
       const part = activeSession.parts.find((p: any) => p.id === selectedPart);
       
@@ -408,6 +419,7 @@ export default function Timer() {
         });
         return;
       }
+    }
       
       createMeasurementMutation.mutate({
         sessionId: activeSession.id,
