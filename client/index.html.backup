@@ -1,0 +1,21 @@
+{
+  "name": "LogisticsTimer",
+  "short_name": "Timer",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#000000",
+  "description": "정밀 작업 시간 측정 및 Gage R&R 분석 도구",
+  "icons": [
+    {
+      "src": "/generated-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/generated-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
