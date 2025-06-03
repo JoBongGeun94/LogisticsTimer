@@ -1,0 +1,102 @@
+2025-06-03T09:36:39.841185564Z ==> Cloning from https://github.com/JoBongGeun94/LogisticsTimer
+2025-06-03T09:36:41.143502625Z ==> Checking out commit 0dc6abaa5bbc448ed7e927536c1d32c079baebbf in branch main
+2025-06-03T09:36:42.423861576Z ==> Downloading cache...
+2025-06-03T09:36:55.780012683Z ==> Transferred 265MB in 8s. Extraction took 5s.
+2025-06-03T09:37:08.136636894Z ==> Using Node.js version 22.14.0 (default)
+2025-06-03T09:37:08.162556057Z ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+2025-06-03T09:37:08.299217795Z ==> Using Bun version 1.1.0 (default)
+2025-06-03T09:37:08.299237336Z ==> Docs on specifying a bun version: https://render.com/docs/bun-version
+2025-06-03T09:37:08.34624268Z ==> Running build command 'npm install; npm run build'...
+2025-06-03T09:37:10.187188936Z 
+2025-06-03T09:37:10.187215488Z up to date, audited 612 packages in 2s
+2025-06-03T09:37:10.187224098Z 
+2025-06-03T09:37:10.187233698Z 74 packages are looking for funding
+2025-06-03T09:37:10.187236999Z   run `npm fund` for details
+2025-06-03T09:37:10.223075659Z 
+2025-06-03T09:37:10.22309912Z 11 vulnerabilities (8 moderate, 3 high)
+2025-06-03T09:37:10.223102481Z 
+2025-06-03T09:37:10.223106521Z To address issues that do not require attention, run:
+2025-06-03T09:37:10.223109761Z   npm audit fix
+2025-06-03T09:37:10.223112461Z 
+2025-06-03T09:37:10.223115881Z To address all issues possible (including breaking changes), run:
+2025-06-03T09:37:10.223119921Z   npm audit fix --force
+2025-06-03T09:37:10.223122521Z 
+2025-06-03T09:37:10.223125372Z Some issues need review, and may require choosing
+2025-06-03T09:37:10.223128372Z a different dependency.
+2025-06-03T09:37:10.223131052Z 
+2025-06-03T09:37:10.223134692Z Run `npm audit` for details.
+2025-06-03T09:37:10.372049471Z 
+2025-06-03T09:37:10.372072452Z > rest-express@1.0.0 build
+2025-06-03T09:37:10.372083712Z > vite build
+2025-06-03T09:37:10.372086043Z 
+2025-06-03T09:37:10.583824062Z vite v5.4.14 building for production...
+2025-06-03T09:37:10.654611635Z transforming...
+2025-06-03T09:37:11.037381939Z Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+2025-06-03T09:37:11.03740109Z   npx update-browserslist-db@latest
+2025-06-03T09:37:11.03740543Z   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+2025-06-03T09:37:16.497304905Z ✓ 2525 modules transformed.
+2025-06-03T09:37:17.065467896Z rendering chunks...
+2025-06-03T09:37:17.075140483Z computing gzip size...
+2025-06-03T09:37:17.097241397Z ../dist/index.html                     1.70 kB │ gzip:   0.91 kB
+2025-06-03T09:37:17.097335481Z ../dist/assets/image01-le3y2fG8.png  209.51 kB
+2025-06-03T09:37:17.097384254Z ../dist/assets/index-Kcqykdgw.css     77.07 kB │ gzip:  13.06 kB
+2025-06-03T09:37:17.097554441Z ../dist/assets/index-gi8zuxLE.js     865.08 kB │ gzip: 246.72 kB
+2025-06-03T09:37:17.097717638Z 
+2025-06-03T09:37:17.097728429Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2025-06-03T09:37:17.097733289Z - Using dynamic import() to code-split the application
+2025-06-03T09:37:17.097737679Z - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+2025-06-03T09:37:17.097742179Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+2025-06-03T09:37:17.098020142Z ✓ built in 6.48s
+2025-06-03T09:37:19.074972342Z ==> Uploading build...
+2025-06-03T09:37:30.2333309Z ==> Uploaded in 8.1s. Compression took 3.1s
+2025-06-03T09:37:31.756002365Z ==> Build successful 🎉
+2025-06-03T09:37:41.397504973Z ==> Deploying...
+2025-06-03T09:38:03.785541334Z ==> Running 'node server/render-production.js'
+2025-06-03T09:38:08.882400092Z Starting database initialization...
+2025-06-03T09:38:09.370107589Z Database initialization error: error: duplicate key value violates unique constraint "users_worker_id_key"
+2025-06-03T09:38:09.370123319Z     at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-06-03T09:38:09.370126089Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-06-03T09:38:09.370128239Z     at async initializeDatabase (file:///opt/render/project/src/server/render-production.js:169:5) {
+2025-06-03T09:38:09.370130559Z   length: 210,
+2025-06-03T09:38:09.370133009Z   severity: 'ERROR',
+2025-06-03T09:38:09.370135139Z   code: '23505',
+2025-06-03T09:38:09.370137479Z   detail: 'Key (worker_id)=(AF-001) already exists.',
+2025-06-03T09:38:09.370139599Z   hint: undefined,
+2025-06-03T09:38:09.370142129Z   position: undefined,
+2025-06-03T09:38:09.37014484Z   internalPosition: undefined,
+2025-06-03T09:38:09.370147469Z   internalQuery: undefined,
+2025-06-03T09:38:09.370150249Z   where: undefined,
+2025-06-03T09:38:09.3701529Z   schema: 'public',
+2025-06-03T09:38:09.37015538Z   table: 'users',
+2025-06-03T09:38:09.37015796Z   column: undefined,
+2025-06-03T09:38:09.3701602Z   dataType: undefined,
+2025-06-03T09:38:09.37016327Z   constraint: 'users_worker_id_key',
+2025-06-03T09:38:09.37016551Z   file: 'nbtinsert.c',
+2025-06-03T09:38:09.37016762Z   line: '666',
+2025-06-03T09:38:09.37016978Z   routine: '_bt_check_unique'
+2025-06-03T09:38:09.37017213Z }
+2025-06-03T09:38:09.370338263Z Failed to initialize database, cannot start server: error: duplicate key value violates unique constraint "users_worker_id_key"
+2025-06-03T09:38:09.370345653Z     at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-06-03T09:38:09.370349033Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-06-03T09:38:09.370352324Z     at async initializeDatabase (file:///opt/render/project/src/server/render-production.js:169:5) {
+2025-06-03T09:38:09.370354994Z   length: 210,
+2025-06-03T09:38:09.370357874Z   severity: 'ERROR',
+2025-06-03T09:38:09.370360694Z   code: '23505',
+2025-06-03T09:38:09.370363674Z   detail: 'Key (worker_id)=(AF-001) already exists.',
+2025-06-03T09:38:09.370366114Z   hint: undefined,
+2025-06-03T09:38:09.370368884Z   position: undefined,
+2025-06-03T09:38:09.370372054Z   internalPosition: undefined,
+2025-06-03T09:38:09.370374864Z   internalQuery: undefined,
+2025-06-03T09:38:09.370377794Z   where: undefined,
+2025-06-03T09:38:09.370380624Z   schema: 'public',
+2025-06-03T09:38:09.370383674Z   table: 'users',
+2025-06-03T09:38:09.370386834Z   column: undefined,
+2025-06-03T09:38:09.370389824Z   dataType: undefined,
+2025-06-03T09:38:09.370393174Z   constraint: 'users_worker_id_key',
+2025-06-03T09:38:09.370396154Z   file: 'nbtinsert.c',
+2025-06-03T09:38:09.370399045Z   line: '666',
+2025-06-03T09:38:09.370402085Z   routine: '_bt_check_unique'
+2025-06-03T09:38:09.370404995Z }
+2025-06-03T09:38:10.871536409Z ==> Exited with status 1
+2025-06-03T09:38:11.037050692Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+2025-06-03T09:38:17.322391215Z ==> Running 'node server/render-production.js'

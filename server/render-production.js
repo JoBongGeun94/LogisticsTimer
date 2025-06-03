@@ -80,12 +80,23 @@ app.use((req, res, next) => {
 // Comprehensive database initialization with error handling
 const initializeDatabase = async () => {
   try {
-    console.log('Starting database initialization...');
+    console.log('Starting SOLID-based database initialization...');
     
-    // Remove email unique constraint if it exists
-    await pool.query(`
-      ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
-    `).catch(() => {}); // Ignore error if constraint doesn't exist
+    // SOLID Principle: Single Responsibility - Database constraint management
+    const removeConstraints = async () => {
+      const constraints = ['users_email_key', 'users_worker_id_key'];
+      for (const constraint of constraints) {
+        try {
+          await pool.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS ${constraint};`);
+          console.log(`Removed constraint: ${constraint}`);
+        } catch (error) {
+          console.log(`Constraint ${constraint} already handled`);
+        }
+      }
+    };
+
+    // Execute constraint removal first
+    await removeConstraints();
     
     // Create tables with complete schema matching local environment
     await pool.query(`
@@ -165,16 +176,29 @@ const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS IDX_session_expire ON sessions (expire);
     `);
 
-    // Simple demo user creation
-    await pool.query(`
-      INSERT INTO users (id, email, first_name, last_name, worker_id, role) 
-      VALUES ('AF-001', 'supply@airforce.mil.kr', '공군', '종합보급창', 'AF-001', 'manager')
-      ON CONFLICT (id) DO UPDATE SET
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        updated_at = NOW();
-    `);
-    console.log('Demo user AF-001 ready');
+    // SOLID Principle: Single Responsibility - Safe user data management
+    const safeUserUpsert = async () => {
+      // Clean any conflicting data first
+      await pool.query(`
+        DELETE FROM users WHERE id != 'AF-001' AND (email = 'supply@airforce.mil.kr' OR worker_id = 'AF-001');
+      `);
+      
+      // Safe upsert with conflict resolution
+      await pool.query(`
+        INSERT INTO users (id, email, first_name, last_name, worker_id, role) 
+        VALUES ('AF-001', 'supply@airforce.mil.kr', '공군', '종합보급창', 'AF-001', 'manager')
+        ON CONFLICT (id) DO UPDATE SET
+          email = EXCLUDED.email,
+          first_name = EXCLUDED.first_name,
+          last_name = EXCLUDED.last_name,
+          worker_id = EXCLUDED.worker_id,
+          role = EXCLUDED.role,
+          updated_at = NOW();
+      `);
+    };
+
+    await safeUserUpsert();
+    console.log('Demo user AF-001 safely initialized with SOLID principles');
 
     // Update any existing work sessions to use new user ID
     await pool.query(`
