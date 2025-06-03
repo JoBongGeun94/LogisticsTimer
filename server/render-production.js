@@ -77,10 +77,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize database tables and demo user
+// Comprehensive database initialization with error handling
 const initializeDatabase = async () => {
   try {
-    // Create tables if they don't exist
+    console.log('Starting database initialization...');
+    
+    // Create tables with complete schema matching local environment
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR PRIMARY KEY NOT NULL,
@@ -99,15 +101,17 @@ const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS work_sessions (
         id SERIAL PRIMARY KEY,
         user_id VARCHAR NOT NULL REFERENCES users(id),
-        operator_name VARCHAR,
-        part_id VARCHAR,
-        part_name VARCHAR,
-        target_time_ms INTEGER,
-        is_completed INTEGER DEFAULT 0,
-        task_type VARCHAR,
+        task_type VARCHAR NOT NULL,
         part_number VARCHAR,
-        created_at TIMESTAMP DEFAULT NOW(),
-        completed_at TIMESTAMP
+        operator_name VARCHAR,
+        target_name VARCHAR,
+        operators JSONB,
+        parts JSONB,
+        trials_per_operator INTEGER DEFAULT 3,
+        started_at TIMESTAMP DEFAULT NOW(),
+        completed_at TIMESTAMP,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW()
       );
     `);
 
@@ -116,28 +120,69 @@ const initializeDatabase = async () => {
         id SERIAL PRIMARY KEY,
         session_id INTEGER NOT NULL REFERENCES work_sessions(id),
         user_id VARCHAR NOT NULL REFERENCES users(id),
+        attempt_number INTEGER NOT NULL,
+        time_in_ms INTEGER NOT NULL,
+        task_type VARCHAR NOT NULL,
+        part_number VARCHAR,
         operator_name VARCHAR,
         part_id VARCHAR,
-        trial_number INTEGER,
-        time_in_ms INTEGER NOT NULL,
         part_name VARCHAR,
-        task_type VARCHAR,
-        part_number VARCHAR,
-        attempt_number INTEGER,
+        trial_number INTEGER DEFAULT 1,
+        timestamp TIMESTAMP DEFAULT NOW(),
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
 
-    // Insert demo user
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS analysis_results (
+        id SERIAL PRIMARY KEY,
+        session_id INTEGER NOT NULL REFERENCES work_sessions(id),
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        repeatability REAL,
+        reproducibility REAL,
+        grr REAL,
+        part_contribution REAL,
+        operator_contribution REAL,
+        is_acceptable BOOLEAN,
+        total_variation REAL,
+        analysis_data JSONB,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Create sessions table for authentication
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        sid VARCHAR PRIMARY KEY,
+        sess JSONB NOT NULL,
+        expire TIMESTAMP NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS IDX_session_expire ON sessions (expire);
+    `);
+
+    // Insert demo user with proper error handling
     await pool.query(`
       INSERT INTO users (id, email, first_name, last_name, worker_id, role) 
       VALUES ('demo-user-001', 'supply@airforce.mil.kr', '공군', '종합보급창', 'AF-001', 'manager')
-      ON CONFLICT (id) DO NOTHING;
+      ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        updated_at = NOW();
     `);
 
-    console.log('Database initialized successfully');
+    console.log('Database initialization completed successfully');
+    
+    // Verify tables exist
+    const tableCheck = await pool.query(`
+      SELECT table_name FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name IN ('users', 'work_sessions', 'measurements', 'analysis_results');
+    `);
+    console.log('Created tables:', tableCheck.rows.map(r => r.table_name));
+    
   } catch (error) {
     console.error('Database initialization error:', error);
+    throw error; // Re-throw to prevent server start if DB init fails
   }
 };
 

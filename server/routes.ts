@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertWorkSessionSchema, insertMeasurementSchema, insertAnalysisResultSchema } from "@shared/schema";
 import { z } from "zod";
 import * as XLSX from 'xlsx';
+import { ErrorHandlingService } from "./ErrorHandlingService";
 
 // Helper functions for analytics
 function calculateDailyActivity(sessions: any[]) {
