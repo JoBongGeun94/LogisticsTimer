@@ -46,9 +46,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(201).json(newMeasurement);
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
+    if (req.method === 'DELETE') {
+      const { measurementId } = req.body;
+
+      await db
+        .delete(measurements)
+        .where(eq(measurements.id, measurementId));
+
+      return res.json({ success: true });
+    }
+
+    res.status(405).json({ message: 'Method not allowed' });
   } catch (error) {
-    console.error("Error handling measurements:", error);
-    res.status(500).json({ message: "Failed to handle measurements" });
+    console.error('Measurement API error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 }
