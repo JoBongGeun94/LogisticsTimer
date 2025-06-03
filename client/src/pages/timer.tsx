@@ -99,10 +99,11 @@ export default function Timer() {
   }, [user, isLoading, toast]);
 
   // Fetch active work session
-  const { data: activeSession } = useQuery<WorkSession>({
+  const { data: activeSession, refetch: refetchActiveSession } = useQuery<WorkSession>({
     queryKey: ["/api/work-sessions/active"],
     enabled: !!user,
     retry: false,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch measurements for active session
@@ -132,11 +133,14 @@ export default function Timer() {
       const response = await apiRequest("POST", "/api/work-sessions", sessionData);
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/work-sessions/active"] });
+    onSuccess: async () => {
+      // 즉시 활성 세션 데이터 새로고침
+      await queryClient.invalidateQueries({ queryKey: ["/api/work-sessions/active"] });
+      await refetchActiveSession();
+      
       toast({
         title: "작업 세션 시작",
-        description: "새로운 작업 세션이 시작되었습니다.",
+        description: "새로운 작업 세션이 시작되었습니다. 측정을 시작하세요.",
       });
     },
     onError: (error) => {
@@ -846,7 +850,7 @@ export default function Timer() {
                 onStop={stopTimer}
                 onLap={lapTimer}
                 onReset={resetTimer}
-                disabled={!activeSession}
+                disabled={!activeSession || createSessionMutation.isPending}
               />
 
               {/* Enhanced Progress Display */}
