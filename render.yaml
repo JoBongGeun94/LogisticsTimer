@@ -2,7 +2,7 @@ services:
   - type: web
     name: logistics-timer
     runtime: static
-    buildCommand: npm ci && npm run build
+    buildCommand: rm -rf node_modules dist .cache && npm ci && npm run build
     staticPublishPath: ./dist
     pullRequestPreviewsEnabled: true
     headers:
@@ -14,7 +14,14 @@ services:
         value: nosniff
       - path: /*
         name: X-XSS-Protection
-        value: 1; mode=block
-      - path: /assets/*
+        value: "1; mode=block"
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
         name: Cache-Control
-        value: public, max-age=31536000, immutable
+        value: "no-cache, no-store, must-revalidate"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
