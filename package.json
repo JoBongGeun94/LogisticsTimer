@@ -1,6 +1,6 @@
 {
   "name": "logistics-timer-enhanced",
-  "version": "3.0.0",
+  "version": "3.0.2",
   "type": "module",
   "description": "고도화된 물류 작업현장 Gage R&R 분석 시스템 - 전문 측정시스템분석(MSA) 도구",
   "keywords": [
