@@ -1492,7 +1492,7 @@ const EnhancedLogisticsTimer = () => {
                       type="text"
                       value={sessionName}
                       onChange={(e) => setSessionName(e.target.value)}
-                      placeholder="예: 포장작업_0602"
+                      placeholder="예: 검수-000-001"
                       className={`w-full p-3 border rounded-lg text-sm ${theme.input}`}
                     />
                   </div>
@@ -1532,7 +1532,7 @@ const EnhancedLogisticsTimer = () => {
                           newOperators[index] = e.target.value;
                           setOperators(newOperators);
                         }}
-                        placeholder={`측정자 ${index + 1} (예: 조봉근)`}
+                        placeholder={`측정자 ${index + 1} (예: 6급 조봉근)`}
                         className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
                       />
                       {operators.length > 1 && (
@@ -1568,7 +1568,7 @@ const EnhancedLogisticsTimer = () => {
                           newTargets[index] = e.target.value;
                           setTargets(newTargets);
                         }}
-                        placeholder={`대상자 ${index + 1} (예: 이나영)`}
+                        placeholder={`대상자 ${index + 1} (예: 8급 이나영)`}
                         className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
                       />
                       {targets.length > 1 && (
