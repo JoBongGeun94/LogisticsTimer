@@ -2,7 +2,7 @@ services:
   - type: web
     name: logistics-timer
     runtime: static
-    buildCommand: rm -rf dist node_modules/.cache .vite && npm ci && npm run build
+    buildCommand: rm -rf dist && npm ci && npm run build
     staticPublishPath: ./dist
     pullRequestPreviewsEnabled: true
     headers:
@@ -13,26 +13,20 @@ services:
       - path: "/assets/*.js"
         name: Content-Type
         value: application/javascript
-      - path: "/assets/*.json"
-        name: Content-Type
-        value: application/json
       - path: "*.css"
         name: Content-Type
         value: text/css
       - path: "*.js"
         name: Content-Type
         value: application/javascript
-      # 캐시 제어 (HTML 강제 새로고침)
+      # HTML 캐시 무효화
       - path: "/"
-        name: Cache-Control
-        value: no-cache, no-store, must-revalidate
-      - path: "/index.html"
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
       - path: "*.html"
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
-      # Asset 파일 캐시 (해시 기반이므로 긴 캐시)
+      # Asset 파일 캐시
       - path: "/assets/*"
         name: Cache-Control
         value: public, max-age=31536000, immutable
@@ -40,6 +34,3 @@ services:
       - path: "/*"
         name: X-Content-Type-Options
         value: nosniff
-      - path: "/*"
-        name: X-Frame-Options
-        value: DENY
