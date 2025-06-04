@@ -1,46 +1,54 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
     minify: 'terser',
-    target: 'esnext',
+    terserOptions: {
+      compress: {
+        drop_console: false,
+        drop_debugger: true,
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
           icons: ['lucide-react']
         },
-        chunkFileNames: 'assets/[name]-[hash].js',
-        entryFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]'
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.')
+          const extType = info[info.length - 1]
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(extType)) {
+            return `assets/images/[name]-[hash][extname]`
+          }
+          if (/css/i.test(extType)) {
+            return `assets/css/[name]-[hash][extname]`
+          }
+          return `assets/[name]-[hash][extname]`
+        },
+        chunkFileNames: 'assets/js/[name]-[hash].js',
+        entryFileNames: 'assets/js/[name]-[hash].js'
       }
     },
-    chunkSizeWarningLimit: 1000
+    // 캐시 무효화를 위한 설정
+    emptyOutDir: true,
+    target: 'es2020',
+    cssCodeSplit: true,
   },
   server: {
-    host: '0.0.0.0',
     port: 3000,
-    strictPort: true
+    host: true,
+    cors: true,
   },
   preview: {
-    host: '0.0.0.0',
-    port: 3000,
-    strictPort: true
+    port: 4173,
+    host: true,
   },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './src')
-    }
-  },
-  define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
-  }
+  // 파일 확장자별 처리 설정
+  assetsInclude: ['**/*.svg', '**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif'],
 })
