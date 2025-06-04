@@ -1,1068 +1,671 @@
-// 다크모드 적용
+}), []);
+
+  const sizeConfig = useMemo(() => ({
+    sm: { card: 'p-3', icon: 'w-4 h-4', title: 'text-xs', value: 'text-sm' },
+    md: { card: 'p-4', icon: 'w-5 h-5', title: 'text-sm', value: 'text-lg' },
+    lg: { card: 'p-6', icon: 'w-6 h-6', title: 'text-base', value: 'text-2xl' }
+  }), []);
+
+  const config = statusConfig[status];
+  const sizes = sizeConfig[size];
+
+  return (
+    <div className={`${sizes.card} rounded-xl border transition-all duration-200 ${config.colors} hover:shadow-lg hover:scale-105`}>
+      <div className="flex items-center justify-between mb-2">
+        <Icon className={`${sizes.icon} ${config.iconColor}`} />
+      </div>
+      <div className={`${sizes.title} font-medium ${theme.textMuted} mb-1`}>
+        {title}
+      </div>
+      <div className={`${sizes.value} font-bold ${theme.text} font-mono`}>
+        {value}{unit && <span className="text-sm font-normal ml-1">{unit}</span>}
+      </div>
+    </div>
+  );
+});
+
+// ==================== 메인 컴포넌트 ====================
+const EnhancedLogisticsTimer = () => {
+  // ==================== 상태 관리 (완전포괄적) ====================
+  
+  // 타이머 상태 (상호배타적)
+  const [timerState, setTimerState] = useState<TimerState>(TimerState.STOPPED);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  
+  // 데이터 상태
+  const [lapTimes, setLapTimes] = useState<LapTime[]>([]);
+  const [allLapTimes, setAllLapTimes] = useState<LapTime[]>([]);
+  const [sessions, setSessions] = useState<SessionData[]>([]);
+  const [currentSession, setCurrentSession] = useState<SessionData | null>(null);
+  
+  // UI 상태 (상호배타적)
+  const [modalState, setModalState] = useState<ModalState>(ModalState.NONE);
+  const [selectedSessionHistory, setSelectedSessionHistory] = useState<SessionData | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
+  const [isDark, setIsDark] = useState<boolean>(false);
+  
+  // 토스트 상태
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    isVisible: boolean;
+  }>({
+    message: '',
+    type: 'info',
+    isVisible: false
+  });
+
+  // 필터 상태
+  const [filterOperator, setFilterOperator] = useState<string>('');
+  const [filterTarget, setFilterTarget] = useState<string>('');
+
+  // 폼 상태
+  const [sessionName, setSessionName] = useState<string>('');
+  const [workType, setWorkType] = useState<string>('');
+  const [operators, setOperators] = useState<string[]>(['']);
+  const [targets, setTargets] = useState<string[]>(['']);
+  const [currentOperator, setCurrentOperator] = useState<string>('');
+  const [currentTarget, setCurrentTarget] = useState<string>('');
+
+  // Refs
+  const intervalRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
+
+  // ==================== 메모화된 값들 ====================
+  const theme = useMemo(() => isDark ? darkTheme : lightTheme, [isDark]);
+  
+  const isRunning = useMemo(() => timerState === TimerState.RUNNING, [timerState]);
+  
+  const analysis = useMemo(() => {
+    return currentSession && lapTimes.length >= MIN_ANALYSIS_RECORDS 
+      ? calculateGageRR(lapTimes) 
+      : null;
+  }, [currentSession, lapTimes]);
+
+  const filteredLapTimes = useMemo(() => {
+    return lapTimes.filter(lap => {
+      const operatorMatch = !filterOperator || lap.operator === filterOperator;
+      const targetMatch = !filterTarget || lap.target === filterTarget;
+      return operatorMatch && targetMatch;
+    });
+  }, [lapTimes, filterOperator, filterTarget]);
+
+  // ==================== 최적화된 콜백 함수들 ====================
+  
+  // 토스트 메시지 표시 (안전한 타입 체크)
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    if (!message?.trim()) return;
+    setToast({ message: message.trim(), type, isVisible: true });
+  }, []);
+
+  // 토스트 닫기
+  const hideToast = useCallback(() => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  }, []);
+
+  // 모달 제어 (상호배타적)
+  const openModal = useCallback((modal: ModalState) => {
+    setModalState(modal);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModalState(ModalState.NONE);
+    setSelectedSessionHistory(null);
+  }, []);
+
+  // ==================== 타이머 제어 함수들 (상호배타적 상태) ====================
+  
+  const toggleTimer = useCallback(() => {
+    try {
+      if (!currentSession) {
+        showToast('먼저 작업 세션을 생성해주세요.', 'warning');
+        return;
+      }
+
+      if (timerState === TimerState.RUNNING) {
+        setTimerState(TimerState.PAUSED);
+      } else {
+        startTimeRef.current = Date.now() - currentTime;
+        setTimerState(TimerState.RUNNING);
+      }
+    } catch (error) {
+      console.error('toggleTimer error:', error);
+      showToast('타이머 조작 중 오류가 발생했습니다.', 'error');
+    }
+  }, [currentSession, timerState, currentTime, showToast]);
+
+  const stopTimer = useCallback(() => {
+    try {
+      setTimerState(TimerState.STOPPED);
+      setCurrentTime(0);
+    } catch (error) {
+      console.error('stopTimer error:', error);
+      showToast('타이머 중지 중 오류가 발생했습니다.', 'error');
+    }
+  }, [showToast]);
+
+  const resetTimer = useCallback(() => {
+    try {
+      setTimerState(TimerState.STOPPED);
+      setCurrentTime(0);
+      setLapTimes([]);
+      
+      if (currentSession) {
+        // 안전한 상태 업데이트
+        setAllLapTimes(prev => prev.filter(lap => lap.sessionId !== currentSession.id));
+        
+        const updatedSession: SessionData = { 
+          ...currentSession, 
+          lapTimes: [],
+          endTime: new Date().toLocaleString('ko-KR')
+        };
+        
+        setCurrentSession(updatedSession);
+        setSessions(prev => prev.map(s => s.id === currentSession.id ? updatedSession : s));
+      }
+      
+      showToast('측정 기록이 모두 초기화되었습니다.', 'success');
+    } catch (error) {
+      console.error('resetTimer error:', error);
+      showToast('초기화 중 오류가 발생했습니다.', 'error');
+    }
+  }, [currentSession, showToast]);
+
+  const recordLap = useCallback(() => {
+    try {
+      // 입력 유효성 검사 (완전포괄적)
+      if (!currentSession) {
+        showToast('활성 세션이 없습니다.', 'warning');
+        return;
+      }
+
+      if (!currentOperator?.trim()) {
+        showToast('측정자를 선택해주세요.', 'warning');
+        return;
+      }
+
+      if (!currentTarget?.trim()) {
+        showToast('대상자를 선택해주세요.', 'warning');
+        return;
+      }
+
+      if (currentTime <= 0) {
+        showToast('유효한 측정 시간이 아닙니다.', 'warning');
+        return;
+      }
+
+      // 안전한 랩타임 생성
+      const newLap: LapTime = {
+        id: Date.now() + Math.random(), // 충돌 방지
+        time: Math.max(0, currentTime),
+        timestamp: new Date().toLocaleString('ko-KR'),
+        operator: currentOperator.trim(),
+        target: currentTarget.trim(),
+        sessionId: currentSession.id
+      };
+
+      // 상태 업데이트 (원자적)
+      const updatedLaps = [...lapTimes, newLap];
+      setLapTimes(updatedLaps);
+      setAllLapTimes(prev => [...prev, newLap]);
+
+      // 타이머 중지 및 초기화
+      setTimerState(TimerState.STOPPED);
+      setCurrentTime(0);
+
+      // 세션 업데이트
+      const updatedSession: SessionData = { 
+        ...currentSession, 
+        lapTimes: updatedLaps,
+        endTime: new Date().toLocaleString('ko-KR')
+      };
+      
+      setCurrentSession(updatedSession);
+      setSessions(prev => prev.map(s => s.id === currentSession.id ? updatedSession : s));
+
+      showToast('측정이 완료되었습니다.', 'success');
+    } catch (error) {
+      console.error('recordLap error:', error);
+      showToast('측정 기록 중 오류가 발생했습니다.', 'error');
+    }
+  }, [currentTime, currentSession, currentOperator, currentTarget, lapTimes, showToast]);
+
+  // ==================== 데이터 관리 함수들 ====================
+  
+  const deleteLapTime = useCallback((lapId: number) => {
+    try {
+      if (!lapId || lapId <= 0) return;
+
+      const updatedLaps = lapTimes.filter(lap => lap.id !== lapId);
+      const updatedAllLaps = allLapTimes.filter(lap => lap.id !== lapId);
+      
+      setLapTimes(updatedLaps);
+      setAllLapTimes(updatedAllLaps);
+
+      if (currentSession) {
+        const updatedSession: SessionData = { ...currentSession, lapTimes: updatedLaps };
+        setCurrentSession(updatedSession);
+        setSessions(prev => prev.map(s => s.id === currentSession.id ? updatedSession : s));
+      }
+      
+      showToast('측정 기록이 삭제되었습니다.', 'success');
+    } catch (error) {
+      console.error('deleteLapTime error:', error);
+      showToast('기록 삭제 중 오류가 발생했습니다.', 'error');
+    }
+  }, [lapTimes, allLapTimes, currentSession, showToast]);
+
+  const createSession = useCallback(() => {
+    try {
+      // 입력 유효성 검사 (완전포괄적)
+      if (!sessionName?.trim()) {
+        showToast('세션명을 입력해주세요.', 'warning');
+        return;
+      }
+
+      if (!workType?.trim()) {
+        showToast('작업 유형을 선택해주세요.', 'warning');
+        return;
+      }
+
+      const validOperators = operators.filter(op => op?.trim());
+      if (validOperators.length === 0) {
+        showToast('최소 1명의 측정자를 입력해주세요.', 'warning');
+        return;
+      }
+
+      const validTargets = targets.filter(tg => tg?.trim());
+      if (validTargets.length === 0) {
+        showToast('최소 1개의 대상자를 입력해주세요.', 'warning');
+        return;
+      }
+
+      // 중복 검사
+      const uniqueOperators = [...new Set(validOperators.map(op => op.trim()))];
+      const uniqueTargets = [...new Set(validTargets.map(tg => tg.trim()))];
+
+      if (uniqueOperators.length !== validOperators.length) {
+        showToast('중복된 측정자가 있습니다.', 'warning');
+        return;
+      }
+
+      if (uniqueTargets.length !== validTargets.length) {
+        showToast('중복된 대상자가 있습니다.', 'warning');
+        return;
+      }
+
+      // 안전한 세션 생성
+      const newSession: SessionData = {
+        id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: sessionName.trim(),
+        workType: workType.trim(),
+        operators: uniqueOperators,
+        targets: uniqueTargets,
+        lapTimes: [],
+        startTime: new Date().toLocaleString('ko-KR'),
+        isActive: true
+      };
+
+      // 상태 업데이트 (원자적)
+      setSessions(prev => [...prev, newSession]);
+      setCurrentSession(newSession);
+      setCurrentOperator(newSession.operators[0]);
+      setCurrentTarget(newSession.targets[0]);
+      
+      // 새 세션 시작 시 완전 초기화
+      setLapTimes([]);
+      setCurrentTime(0);
+      setTimerState(TimerState.STOPPED);
+      
+      // 모달 닫기 및 폼 리셋
+      closeModal();
+      setSessionName('');
+      setWorkType('');
+      setOperators(['']);
+      setTargets(['']);
+
+      showToast('새 세션이 생성되었습니다.', 'success');
+    } catch (error) {
+      console.error('createSession error:', error);
+      showToast('세션 생성 중 오류가 발생했습니다.', 'error');
+    }
+  }, [sessionName, workType, operators, targets, showToast, closeModal]);
+
+  // 측정자/대상자 관리 (안전한 배열 조작)
+  const addOperator = useCallback(() => {
+    setOperators(prev => [...prev, '']);
+  }, []);
+
+  const removeOperator = useCallback((index: number) => {
+    if (operators.length > 1 && index >= 0 && index < operators.length) {
+      setOperators(prev => prev.filter((_, i) => i !== index));
+    }
+  }, [operators.length]);
+
+  const updateOperator = useCallback((index: number, value: string) => {
+    if (index >= 0 && index < operators.length) {
+      setOperators(prev => prev.map((op, i) => i === index ? value : op));
+    }
+  }, [operators.length]);
+
+  const addTarget = useCallback(() => {
+    setTargets(prev => [...prev, '']);
+  }, []);
+
+  const removeTarget = useCallback((index: number) => {
+    if (targets.length > 1 && index >= 0 && index < targets.length) {
+      setTargets(prev => prev.filter((_, i) => i !== index));
+    }
+  }, [targets.length]);
+
+  const updateTarget = useCallback((index: number, value: string) => {
+    if (index >= 0 && index < targets.length) {
+      setTargets(prev => prev.map((tg, i) => i === index ? value : tg));
+    }
+  }, [targets.length]);
+
+  // 세션 히스토리 관리
+  const clearSessionHistory = useCallback(() => {
+    try {
+      setSessions([]);
+      setCurrentSession(null);
+      setLapTimes([]);
+      setAllLapTimes([]);
+      setCurrentTime(0);
+      setTimerState(TimerState.STOPPED);
+      showToast('모든 세션 히스토리가 삭제되었습니다.', 'success');
+    } catch (error) {
+      console.error('clearSessionHistory error:', error);
+      showToast('히스토리 삭제 중 오류가 발생했습니다.', 'error');
+    }
+  }, [showToast]);
+
+  // ==================== 파일 다운로드 함수들 ====================
+  
+  const downloadMeasurementData = useCallback(() => {
+    try {
+      if (lapTimes.length === 0) {
+        showToast('다운로드할 측정 기록이 없습니다.', 'warning');
+        return;
+      }
+
+      if (!currentSession) {
+        showToast('활성 세션이 없습니다.', 'error');
+        return;
+      }
+
+      const csvContent = [
+        ['측정 기록'],
+        [''],
+        ['세션명', currentSession.name],
+        ['작업유형', currentSession.workType],
+        ['측정일시', currentSession.startTime],
+        ['총 측정횟수', lapTimes.length.toString()],
+        [''],
+        ['순번', '측정시간', '측정자', '대상자', '기록시간'],
+        ...lapTimes.map((lap, index) => [
+          (index + 1).toString(),
+          formatTime(lap.time),
+          lap.operator,
+          lap.target,
+          lap.timestamp
+        ])
+      ].map(row => row.join(',')).join('\n');
+
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${generateFileName('측정기록', currentSession.name)}.csv`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(link.href);
+
+      showToast('측정 기록이 다운로드되었습니다.', 'success');
+    } catch (error) {
+      console.error('downloadMeasurementData error:', error);
+      showToast('파일 다운로드 중 오류가 발생했습니다.', 'error');
+    }
+  }, [lapTimes, currentSession, showToast]);
+
+  const downloadDetailedAnalysis = useCallback(() => {
+    try {
+      if (lapTimes.length < MIN_ANALYSIS_RECORDS) {
+        showToast(`상세 분석을 위해서는 최소 ${MIN_ANALYSIS_RECORDS}개의 측정 기록이 필요합니다.`, 'warning');
+        return;
+      }
+
+      if (!currentSession || !analysis) {
+        showToast('분석 데이터가 없습니다.', 'error');
+        return;
+      }
+
+      const basicStats = {
+        mean: lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length,
+        stdDev: Math.sqrt(lapTimes.reduce((acc, lap) => {
+          const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
+          return acc + Math.pow(lap.time - mean, 2);
+        }, 0) / Math.max(1, lapTimes.length - 1))
+      };
+
+      const measurementData = [
+        ['=== 측정 기록 데이터 ==='],
+        [''],
+        ['순번', '측정시간', '측정자', '대상자', '기록시간'],
+        ...lapTimes.map((lap, index) => [
+          (index + 1).toString(),
+          formatTime(lap.time),
+          lap.operator,
+          lap.target,
+          lap.timestamp
+        ])
+      ];
+
+      const analysisData = [
+        ['=== Gage R&R 상세 분석 보고서 ==='],
+        [''],
+        ['【 세션 정보 】'],
+        ['세션명', currentSession.name],
+        ['작업유형', currentSession.workType],
+        ['측정일시', currentSession.startTime],
+        ['완료일시', currentSession.endTime || '진행중'],
+        ['총 측정횟수', lapTimes.length.toString()],
+        ['측정자 수', currentSession.operators.length.toString()],
+        ['대상자 수', currentSession.targets.length.toString()],
+        [''],
+        ['【 기본 통계 분석 】'],
+        ['평균 시간 (ms)', basicStats.mean.toFixed(2)],
+        ['표준편차 (ms)', basicStats.stdDev.toFixed(3)],
+        ['변동계수 (%)', ((basicStats.stdDev / basicStats.mean) * 100).toFixed(2)],
+        ['최소값 (ms)', Math.min(...lapTimes.map(l => l.time)).toString()],
+        ['최대값 (ms)', Math.max(...lapTimes.map(l => l.time)).toString()],
+        ['범위 (ms)', (Math.max(...lapTimes.map(l => l.time)) - Math.min(...lapTimes.map(l => l.time))).toString()],
+        [''],
+        ['【 Gage R&R 분석 결과 】'],
+        ['반복성 (Repeatability)', analysis.repeatability.toFixed(3)],
+        ['재현성 (Reproducibility)', analysis.reproducibility.toFixed(3)],
+        ['Gage R&R 총합', analysis.gageRR.toFixed(3)],
+        ['부품간 변동', analysis.partVariation.toFixed(3)],
+        ['총 변동', analysis.totalVariation.toFixed(3)],
+        ['Gage R&R 비율 (%)', `${analysis.gageRRPercent.toFixed(1)}%`],
+        ['NDC (구별범주수)', analysis.ndc.toString()],
+        ['Cpk (공정능력지수)', analysis.cpk.toFixed(3)],
+        ['측정시스템 판정', {
+          excellent: '우수',
+          acceptable: '양호', 
+          marginal: '보통',
+          unacceptable: '불량'
+        }[analysis.status]],
+        [''],
+        ['【 ANOVA 분산 성분 분석 】'],
+        ['측정자 변동', analysis.anova.operator.toFixed(3)],
+        ['부품 변동', analysis.anova.part.toFixed(3)],
+        ['상호작용', analysis.anova.interaction.toFixed(3)],
+        ['측정 오차', analysis.anova.error.toFixed(3)],
+        [''],
+        ['【 상세 해석 및 권장사항 】'],
+        ['1. 측정시스템 상태'],
+        [analysis.gageRRPercent < 10 
+          ? '✓ 측정 시스템이 우수합니다. 현재 측정 절차와 설정을 유지하세요.'
+          : analysis.gageRRPercent < 30
+          ? '△ 측정 시스템이 양호합니다. 지속적인 모니터링과 주기적인 검증이 필요합니다.'
+          : analysis.gageRRPercent < 50
+          ? '⚠ 측정 시스템이 보통 수준입니다. 측정 절차 개선을 검토하세요.'
+          : '✗ 측정 시스템 개선이 시급합니다. 장비 교정, 측정자 교육, 측정 절차 표준화가 필요합니다.'
+        ],
+        [''],
+        ['2. 변동성 분석'],
+        [analysis.repeatability < analysis.reproducibility 
+          ? '- 반복성이 우수하여 장비의 일관성이 양호합니다.'
+          : '- 반복성 개선이 필요합니다. 장비 점검 및 교정을 검토하세요.'],
+        [analysis.reproducibility < analysis.repeatability 
+          ? '- 측정자 간 일치성이 양호합니다.'
+          : '- 측정자 교육 및 표준 절차 수립이 필요합니다.'],
+        [''],
+        ['3. 개선 권장사항'],
+        ...(analysis.gageRRPercent >= 30 ? [
+          ['- 측정 장비의 정확도와 정밀도 재점검'],
+          ['- 측정자 교육 프로그램 강화'],
+          ['- 표준 작업 절차서(SOP) 재정비'],
+          ['- 측정 환경 조건 표준화']
+        ] : []),
+        [analysis.repeatability > analysis.reproducibility ? 
+          '- 측정 장비 교정 및 유지보수 우선 실시' :
+          '- 측정자 간 일관성 향상을 위한 교육 강화'],
+        ['- 정기적인 Gage R&R 재평가 실시 (월 1회 권장)'],
+        ['- 측정 데이터 추세 분석 및 관리'],
+        [''],
+        ['【 보고서 생성 정보 】'],
+        ['생성일시', new Date().toLocaleString('ko-KR')],
+        ['분석 버전', 'Enhanced v5.0 Optimized'],
+        ['데이터 품질', lapTimes.length >= 30 ? '충분' : lapTimes.length >= 10 ? '양호' : '보통']
+      ];
+
+      const csvContent = [
+        ...measurementData.map(row => row.join(',')),
+        '',
+        ...analysisData.map(row => row.join(','))
+      ].join('\n');
+
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${generateFileName('상세분석보고서', currentSession.name)}.csv`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(link.href);
+
+      showToast('상세 분석 보고서가 다운로드되었습니다.', 'success');
+    } catch (error) {
+      console.error('downloadDetailedAnalysis error:', error);
+      showToast('보고서 생성 중 오류가 발생했습니다.', 'error');
+    }
+  }, [lapTimes, currentSession, analysis, showToast]);
+
+  // ==================== Effect 훅들 ====================
+  
+  // 다크모드 적용
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    try {
+      const htmlElement = document.documentElement;
+      if (isDark) {
+        htmlElement.classList.add('dark');
+      } else {
+        htmlElement.classList.remove('dark');
+      }
+    } catch (error) {
+      console.error('Dark mode toggle error:', error);
     }
   }, [isDark]);
 
-  // 타이머 로직
+  // 타이머 로직 (안전한 interval 관리)
   useEffect(() => {
-    if (isRunning) {
+    if (timerState === TimerState.RUNNING) {
       intervalRef.current = window.setInterval(() => {
-        setCurrentTime(Date.now() - startTimeRef.current);
-      }, 10);
+        const elapsed = Date.now() - startTimeRef.current;
+        setCurrentTime(Math.max(0, elapsed));
+      }, TIMER_INTERVAL);
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     }
 
+    // 클린업 함수 (메모리 누수 방지)
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [isRunning]);
+  }, [timerState]);
 
-  // 키보드 이벤트
+  // 키보드 이벤트 (안전한 이벤트 처리)
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
-      switch (e.code) {
-        case 'Space':
-          e.preventDefault();
-          toggleTimer();
-          break;
-        case 'Enter':
-          e.preventDefault();
-          recordLap();
-          break;
-        case 'Escape':
-          e.preventDefault();
-          stopTimer();
-          break;
-        case 'KeyR':
-          e.preventDefault();
-          resetTimer();
-          break;
+      try {
+        // 입력 필드에서는 키보드 단축키 비활성화
+        if (e.target instanceof HTMLInputElement || 
+            e.target instanceof HTMLTextAreaElement ||
+            e.target instanceof HTMLSelectElement) {
+          return;
+        }
+
+        // 모달이 열려있을 때는 키보드 단축키 비활성화
+        if (modalState !== ModalState.NONE) {
+          return;
+        }
+
+        switch (e.code) {
+          case 'Space':
+            e.preventDefault();
+            toggleTimer();
+            break;
+          case 'Enter':
+            e.preventDefault();
+            recordLap();
+            break;
+          case 'Escape':
+            e.preventDefault();
+            stopTimer();
+            break;
+          case 'KeyR':
+            e.preventDefault();
+            resetTimer();
+            break;
+          default:
+            break;
+        }
+      } catch (error) {
+        console.error('Keyboard event error:', error);
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isRunning, currentSession, currentOperator, currentTarget]);
-
-  // 타이머 제어 함수들
-  const toggleTimer = useCallback(() => {
-    if (!currentSession) {
-      showToast('먼저 작업 세션을 생성해주세요.', 'warning');
-      return;
-    }
-
-    if (isRunning) {
-      setIsRunning(false);
-    } else {
-      startTimeRef.current = Date.now() - currentTime;
-      setIsRunning(true);
-    }
-  }, [isRunning, currentTime, currentSession]);
-
-  const stopTimer = useCallback(() => {
-    setIsRunning(false);
-    setCurrentTime(0); // 중지 시 시간 초기화
-  }, []);
-
-  const resetTimer = useCallback(() => {
-    setIsRunning(false);
-    setCurrentTime(0);
-    setLapTimes([]);
-    setAllLapTimes(prev => prev.filter(lap => lap.sessionId !== currentSession?.id));
     
-    if (currentSession) {
-      const updatedSession = { ...currentSession, lapTimes: [] };
-      setCurrentSession(updatedSession);
-      setSessions(prev => prev.map(s => s.id === currentSession.id ? updatedSession : s));
-    }
-    showToast('측정 기록이 모두 초기화되었습니다.', 'success');
-  }, [currentSession]);
-
-  const recordLap = useCallback(() => {
-    if (!currentSession || !currentOperator || !currentTarget) {
-      showToast('측정자와 대상자를 선택해주세요.', 'warning');
-      return;
-    }
-
-    if (currentTime === 0) {
-      showToast('측정 시간이 0입니다. 타이머를 시작해주세요.', 'warning');
-      return;
-    }
-
-    const newLap: LapTime = {
-      id: Date.now(),
-      time: currentTime,
-      timestamp: new Date().toLocaleString('ko-KR'),
-      operator: currentOperator,
-      target: currentTarget,
-      sessionId: currentSession.id
+    // 클린업 함수
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
     };
+  }, [modalState, toggleTimer, recordLap, stopTimer, resetTimer]);
 
-    const updatedLaps = [...lapTimes, newLap];
-    setLapTimes(updatedLaps);
-    setAllLapTimes(prev => [...prev, newLap]);
-
-    // 랩타임 기록 시 자동 중지 및 시간 초기화
-    setIsRunning(false);
-    setCurrentTime(0);
-
-    // 세션 업데이트
-    const updatedSession = { ...currentSession, lapTimes: updatedLaps };
-    setCurrentSession(updatedSession);
-    setSessions(prev => prev.map(s => s.id === currentSession.id ? updatedSession : s));
-
-    showToast('측정이 완료되었습니다.', 'success');
-  }, [currentTime, currentSession, currentOperator, currentTarget, lapTimes]);
-
-  // 개별 측정 기록 삭제
-  const deleteLapTime = useCallback((lapId: number) => {
-    const updatedLaps = lapTimes.filter(lap => lap.id !== lapId);
-    const updatedAllLaps = allLapTimes.filter(lap => lap.id !== lapId);
-    
-    setLapTimes(updatedLaps);
-    setAllLapTimes(updatedAllLaps);
-
-    if (currentSession) {
-      const updatedSession = { ...currentSession, lapTimes: updatedLaps };
-      setCurrentSession(updatedSession);
-      setSessions(prev => prev.map(s => s.id === currentSession.id ? updatedSession : s));
-    }
-    
-    showToast('측정 기록이 삭제되었습니다.', 'success');
-  }, [lapTimes, allLapTimes, currentSession]);
-
-  // 세션 관리 함수들
-  const createSession = () => {
-    if (!sessionName || !workType || operators.some(op => !op.trim()) || targets.some(tg => !tg.trim())) {
-      showToast('모든 필드를 입력해주세요.', 'warning');
-      return;
-    }
-
-    const newSession: SessionData = {
-      id: Date.now().toString(),
-      name: sessionName,
-      workType,
-      operators: operators.filter(op => op.trim()),
-      targets: targets.filter(tg => tg.trim()),
-      lapTimes: [],
-      startTime: new Date().toLocaleString('ko-KR'),
-      isActive: true
-    };
-
-    setSessions(prev => [...prev, newSession]);
-    setCurrentSession(newSession);
-    setCurrentOperator(newSession.operators[0]);
-    setCurrentTarget(newSession.targets[0]);
-    setShowNewSessionModal(false);
-
-    // 새 세션 시작 시 자동 리셋
-    setLapTimes([]);
-    setCurrentTime(0);
-    setIsRunning(false);
-
-    // 폼 리셋
-    setSessionName('');
-    setWorkType('');
-    setOperators(['']);
-    setTargets(['']);
-
-    showToast('새 세션이 생성되었습니다.', 'success');
-  };
-
-  // 측정자/대상자 추가/삭제 함수
-  const addOperator = () => setOperators([...operators, '']);
-  const removeOperator = (index: number) => {
-    if (operators.length > 1) {
-      setOperators(operators.filter((_, i) => i !== index));
-    }
-  };
-
-  const addTarget = () => setTargets([...targets, '']);
-  const removeTarget = (index: number) => {
-    if (targets.length > 1) {
-      setTargets(targets.filter((_, i) => i !== index));
-    }
-  };
-
-  // 세션 히스토리 초기화
-  const clearSessionHistory = () => {
-    setSessions([]);
-    setCurrentSession(null);
-    setLapTimes([]);
-    setAllLapTimes([]);
-    setCurrentTime(0);
-    setIsRunning(false);
-    showToast('모든 세션 히스토리가 삭제되었습니다.', 'success');
-  };
-
-  // 측정 기록만 다운로드
-  const downloadMeasurementData = () => {
-    if (lapTimes.length === 0) {
-      showToast('다운로드할 측정 기록이 없습니다.', 'warning');
-      return;
-    }
-
-    if (!currentSession) {
-      showToast('활성 세션이 없습니다.', 'error');
-      return;
-    }
-
-    const csvContent = [
-      ['측정 기록'],
-      [''],
-      ['세션명', currentSession.name],
-      ['작업유형', currentSession.workType],
-      ['측정일시', currentSession.startTime],
-      [''],
-      ['순번', '측정시간', '측정자', '대상자', '기록시간'],
-      ...lapTimes.map((lap, index) => [
-        index + 1,
-        formatTime(lap.time),
-        lap.operator,
-        lap.target,
-        lap.timestamp
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${generateFileName('측정기록', currentSession.name)}.csv`;
-    link.click();
-
-    showToast('측정 기록이 다운로드되었습니다.', 'success');
-  };
-
-  // 상세 분석 다운로드
-  const downloadDetailedAnalysis = () => {
-    if (lapTimes.length < 6) {
-      showToast('상세 분석을 위해서는 최소 6개의 측정 기록이 필요합니다.', 'warning');
-      return;
-    }
-
-    if (!currentSession) {
-      showToast('활성 세션이 없습니다.', 'error');
-      return;
-    }
-
-    const analysis = calculateGageRR(lapTimes);
-    
-    const basicStats = {
-      mean: lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length,
-      stdDev: Math.sqrt(lapTimes.reduce((acc, lap) => {
-        const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
-        return acc + Math.pow(lap.time - mean, 2);
-      }, 0) / lapTimes.length)
-    };
-
-    const measurementData = [
-      ['=== 측정 기록 데이터 ==='],
-      [''],
-      ['순번', '측정시간', '측정자', '대상자', '기록시간'],
-      ...lapTimes.map((lap, index) => [
-        index + 1,
-        formatTime(lap.time),
-        lap.operator,
-        lap.target,
-        lap.timestamp
-      ])
-    ];
-
-    const analysisData = [
-      ['=== Gage R&R 상세 분석 보고서 ==='],
-      [''],
-      ['【 세션 정보 】'],
-      ['세션명', currentSession.name],
-      ['작업유형', currentSession.workType],
-      ['측정일시', currentSession.startTime],
-      ['총 측정횟수', lapTimes.length.toString()],
-      [''],
-      ['【 기본 통계 】'],
-      ['평균 시간 (ms)', basicStats.mean.toFixed(2)],
-      ['표준편차 (ms)', basicStats.stdDev.toFixed(3)],
-      [''],
-      ['【 Gage R&R 분석 결과 】'],
-      ['반복성 (Repeatability)', analysis.repeatability.toFixed(3)],
-      ['재현성 (Reproducibility)', analysis.reproducibility.toFixed(3)],
-      ['Gage R&R', analysis.gageRR.toFixed(3)],
-      ['Gage R&R %', `${analysis.gageRRPercent.toFixed(1)}%`],
-      ['NDC', analysis.ndc.toString()],
-      ['Cpk', analysis.cpk.toFixed(3)],
-      ['측정시스템 판정', analysis.status === 'excellent' ? '우수' :
-        analysis.status === 'acceptable' ? '양호' :
-        analysis.status === 'marginal' ? '보통' : '불량'],
-      [''],
-      ['【 개선 권장사항 】'],
-      [analysis.gageRRPercent < 10 
-        ? '측정 시스템이 우수합니다. 현재 설정을 유지하세요.'
-        : analysis.gageRRPercent < 30
-        ? '측정 시스템이 양호합니다. 지속적인 모니터링이 필요합니다.'
-        : '측정 시스템 개선이 필요합니다. 교정, 교육, 절차 개선을 검토하세요.']
-    ];
-
-    const csvContent = [
-      ...measurementData.map(row => row.join(',')),
-      '',
-      ...analysisData.map(row => row.join(','))
-    ].join('\n');
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${generateFileName('상세분석보고서', currentSession.name)}.csv`;
-    link.click();
-
-    showToast('상세 분석 보고서가 다운로드되었습니다.', 'success');
-  };
-
-  // 필터링된 측정 기록
-  const filteredLapTimes = lapTimes.filter(lap => {
-    return (!filterOperator || lap.operator === filterOperator) &&
-           (!filterTarget || lap.target === filterTarget);
-  });
-
-  const analysis = currentSession && lapTimes.length >= 6 ? calculateGageRR(lapTimes) : null;
-
+  // ==================== 렌더링 ====================
+  
   // 랜딩 페이지
-  if (showLanding) {
+  if (modalState === ModalState.LANDING) {
     return (
       <div className={`min-h-screen ${isDark ? 'bg-gradient-to-br from-slate-800 via-blue-900 to-blue-950' : 'bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800'}`}>
         <ConsolidatedSupplyLogo isDark={isDark} />
         <div className="p-8 text-center">
           <h1 className="text-4xl font-bold text-white mb-4">물류 작업현장 인시수 측정 타이머</h1>
-          <p className="text-blue-100 mb-8 text-lg">Gage R&R 분석 v5.0 Enhanced</p>
-          <button
-            onClick={() => setShowLanding(false)}
-            className="bg-white text-blue-700 px-8 py-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg text-lg"
-          >
-            시스템 시작
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`min-h-screen ${theme.bg}`}>
-      {/* 토스트 메시지 */}
-      <Toast 
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
-      />
-
-      {/* 헤더 */}
-      <div className={`${theme.card} shadow-sm border-b ${theme.border} sticky top-0 z-40`}>
-        <div className="max-w-md mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-purple-500" />
-                <h2 className={`font-semibold ${theme.text}`}>측정 기록</h2>
-                <span className={`text-sm ${theme.textMuted}`}>
-                  {filteredLapTimes.length}개
-                </span>
-              </div>
-              <button
-                onClick={() => setShowAnalysis(!showAnalysis)}
-                className="text-blue-500 text-sm hover:text-blue-700 transition-colors"
-              >
-                <Filter className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* 필터 섹션 */}
-            {showAnalysis && (
-              <div className="mb-4 p-3 rounded-lg border ${theme.border} bg-gray-50 dark:bg-gray-700/50">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>측정자 필터</label>
-                    <select
-                      value={filterOperator}
-                      onChange={(e) => setFilterOperator(e.target.value)}
-                      className={`w-full p-2 border rounded text-sm ${theme.input}`}
-                    >
-                      <option value="">전체</option>
-                      {currentSession.operators.map(op => (
-                        <option key={op} value={op}>{op}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>대상자 필터</label>
-                    <select
-                      value={filterTarget}
-                      onChange={(e) => setFilterTarget(e.target.value)}
-                      className={`w-full p-2 border rounded text-sm ${theme.input}`}
-                    >
-                      <option value="">전체</option>
-                      {currentSession.targets.map(tg => (
-                        <option key={tg} value={tg}>{tg}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                {(filterOperator || filterTarget) && (
-                  <button
-                    onClick={() => {
-                      setFilterOperator('');
-                      setFilterTarget('');
-                    }}
-                    className="mt-2 text-xs text-blue-500 hover:text-blue-700 transition-colors"
-                  >
-                    필터 초기화
-                  </button>
-                )}
-              </div>
-            )}
-            
-            {filteredLapTimes.length > 0 ? (
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {filteredLapTimes
-                  .slice()
-                  .reverse()
-                  .map((lap, index) => (
-                  <div key={lap.id} className={`${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-lg border-l-4 border-blue-500 transition-all hover:shadow-md`}>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="font-mono text-xl font-bold text-blue-600 mb-2">
-                          {formatTime(lap.time)}
-                        </div>
-                        <div className={`text-xs ${theme.textMuted} space-y-1`}>
-                          <div className="flex items-center gap-2">
-                            <Users className="w-3 h-3" />
-                            <span>측정자: <span className={`font-medium ${theme.textSecondary}`}>{lap.operator}</span></span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Target className="w-3 h-3" />
-                            <span>대상자: <span className={`font-medium ${theme.textSecondary}`}>{lap.target}</span></span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-3 h-3" />
-                            <span>{lap.timestamp}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className={`text-xs ${theme.textMuted} text-right`}>
-                          #{filteredLapTimes.length - index}
-                        </div>
-                        <button
-                          onClick={() => deleteLapTime(lap.id)}
-                          className="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                          title="측정 기록 삭제"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p className={`text-sm ${theme.textMuted}`}>
-                  {lapTimes.length === 0 ? '측정 기록이 없습니다.' : '필터 조건에 맞는 기록이 없습니다.'}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 세션 히스토리 */}
-        {sessions.length > 0 && (
-          <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <Package className="w-5 h-5 text-gray-500" />
-                <h2 className={`font-semibold ${theme.text}`}>세션 히스토리</h2>
-              </div>
-              <button
-                onClick={clearSessionHistory}
-                className="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                title="모든 세션 히스토리 삭제"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div className="space-y-2">
-              {sessions.slice(-5).reverse().map(session => {
-                const sessionLapCount = allLapTimes.filter(lap => lap.sessionId === session.id).length;
-                return (
-                  <div
-                    key={session.id}
-                    onClick={() => setSelectedSessionHistory(session)}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                      currentSession?.id === session.id
-                        ? isDark ? 'border-blue-400 bg-blue-900/20' : 'border-blue-500 bg-blue-50'
-                        : `${theme.border} ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'}`
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div className="flex-1">
-                        <div className={`font-medium text-sm ${theme.text}`}>{session.name}</div>
-                        <div className={`text-xs ${theme.textMuted}`}>{session.workType}</div>
-                        <div className={`text-xs ${theme.textMuted}`}>{session.startTime}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`text-sm font-medium ${theme.text}`}>
-                          {sessionLapCount}회
-                        </div>
-                        {currentSession?.id === session.id && (
-                          <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-1 rounded">
-                            활성
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 새 세션 생성 모달 */}
-      {showNewSessionModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`${theme.card} rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl border ${theme.border}`}>
-            <div className="p-6">
-              <h3 className={`text-xl font-bold mb-4 ${theme.text}`}>새 작업 세션 생성</h3>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme.textSecondary}`}>세션명 *</label>
-                    <input
-                      type="text"
-                      value={sessionName}
-                      onChange={(e) => setSessionName(e.target.value)}
-                      placeholder="예: 포장작업_0602"
-                      className={`w-full p-3 border rounded-lg text-sm ${theme.input}`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme.textSecondary}`}>작업 유형 *</label>
-                    <select
-                      value={workType}
-                      onChange={(e) => setWorkType(e.target.value)}
-                      className={`w-full p-3 border rounded-lg text-sm ${theme.input}`}
-                    >
-                      <option value="">작업 유형 선택</option>
-                      <option value="물자검수팀">물자검수팀</option>
-                      <option value="저장관리팀">저장관리팀</option>
-                      <option value="포장관리팀">포장관리팀</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className={`text-sm font-medium ${theme.textSecondary}`}>측정자 설정</label>
-                    <button
-                      onClick={addOperator}
-                      className="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-600 transition-colors"
-                    >
-                      <Plus className="w-3 h-3 inline mr-1" />
-                      추가
-                    </button>
-                  </div>
-                  {operators.map((operator, index) => (
-                    <div key={index} className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={operator}
-                        onChange={(e) => {
-                          const newOperators = [...operators];
-                          newOperators[index] = e.target.value;
-                          setOperators(newOperators);
-                        }}
-                        placeholder={`측정자 ${index + 1} (예: 조봉근)`}
-                        className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
-                      />
-                      {operators.length > 1 && (
-                        <button
-                          onClick={() => removeOperator(index)}
-                          className="text-red-500 hover:text-red-700 transition-colors p-2"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className={`text-sm font-medium ${theme.textSecondary}`}>대상자 설정</label>
-                    <button
-                      onClick={addTarget}
-                      className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-600 transition-colors"
-                    >
-                      <Plus className="w-3 h-3 inline mr-1" />
-                      추가
-                    </button>
-                  </div>
-                  {targets.map((target, index) => (
-                    <div key={index} className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={target}
-                        onChange={(e) => {
-                          const newTargets = [...targets];
-                          newTargets[index] = e.target.value;
-                          setTargets(newTargets);
-                        }}
-                        placeholder={`대상자 ${index + 1} (예: 이나영)`}
-                        className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
-                      />
-                      {targets.length > 1 && (
-                        <button
-                          onClick={() => removeTarget(index)}
-                          className="text-red-500 hover:text-red-700 transition-colors p-2"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className={`${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'} p-4 rounded-lg border`}>
-                  <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-2">
-                    <Info className="w-4 h-4" />
-                    Gage R&R 분석 안내
-                  </h4>
-                  <ul className={`${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 text-xs`}>
-                    <li>• 측정자 2명 이상: 재현성(Reproducibility) 분석</li>
-                    <li>• 대상자 2개 이상: 부품간 변동성 분석</li>
-                    <li>• 최소 6회 측정: 신뢰성 있는 분석 결과</li>
-                    <li>• 권장 측정 횟수: 각 조건별 3-5회</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="flex space-x-3 mt-6">
-                <button
-                  onClick={() => setShowNewSessionModal(false)}
-                  className={`flex-1 border py-3 rounded-lg font-medium transition-colors ${
-                    isDark 
-                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  취소
-                </button>
-                <button
-                  onClick={createSession}
-                  className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 flex items-center justify-center space-x-2 transition-colors"
-                >
-                  <Users className="w-4 h-4" />
-                  <span>세션 생성</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 세션 히스토리 상세 모달 */}
-      {selectedSessionHistory && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`${theme.card} rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border ${theme.border}`}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className={`text-xl font-bold ${theme.text}`}>세션 상세 정보</h3>
-                <button
-                  onClick={() => setSelectedSessionHistory(null)}
-                  className={`${theme.textMuted} hover:${theme.textSecondary} transition-colors p-1`}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className={`text-sm ${theme.textMuted}`}>세션명</div>
-                    <div className={`font-medium ${theme.text}`}>{selectedSessionHistory.name}</div>
-                  </div>
-                  <div>
-                    <div className={`text-sm ${theme.textMuted}`}>작업유형</div>
-                    <div className={`font-medium ${theme.text}`}>{selectedSessionHistory.workType}</div>
-                  </div>
-                  <div>
-                    <div className={`text-sm ${theme.textMuted}`}>측정자</div>
-                    <div className={`font-medium ${theme.text}`}>{selectedSessionHistory.operators.join(', ')}</div>
-                  </div>
-                  <div>
-                    <div className={`text-sm ${theme.textMuted}`}>대상자</div>
-                    <div className={`font-medium ${theme.text}`}>{selectedSessionHistory.targets.join(', ')}</div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className={`text-sm ${theme.textMuted} mb-2`}>측정 기록</div>
-                  <div className={`${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-lg`}>
-                    <div className="text-center">
-                      <div className={`text-2xl font-bold ${theme.text}`}>
-                        {allLapTimes.filter(lap => lap.sessionId === selectedSessionHistory.id).length}
-                      </div>
-                      <div className={`text-sm ${theme.textMuted}`}>총 측정 횟수</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setCurrentSession(selectedSessionHistory);
-                      setLapTimes(allLapTimes.filter(lap => lap.sessionId === selectedSessionHistory.id));
-                      setCurrentOperator(selectedSessionHistory.operators[0]);
-                      setCurrentTarget(selectedSessionHistory.targets[0]);
-                      setSelectedSessionHistory(null);
-                      showToast('세션이 활성화되었습니다.', 'success');
-                    }}
-                    className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
-                  >
-                    이 세션으로 전환
-                  </button>
-                  <button
-                    onClick={() => setSelectedSessionHistory(null)}
-                    className={`flex-1 border py-2 rounded-lg font-medium transition-colors ${
-                      isDark 
-                        ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    닫기
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 도움말 모달 */}
-      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} theme={theme} />
-    </div>
-  );
-};
-
-export default EnhancedLogisticsTimer; space-x-2">
-              <Zap className="w-6 h-6 text-blue-500" />
-              <h1 className={`text-lg font-bold ${theme.text}`}>물류 작업현장 인시수 측정 타이머</h1>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsDark(!isDark)}
-                className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:${theme.textSecondary}`}
-              >
-                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
-              <button
-                onClick={() => setShowHelp(true)}
-                className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:${theme.textSecondary}`}
-              >
-                <HelpCircle className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setShowLanding(true)}
-                className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:text-red-500`}
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-          <div className={`text-xs ${theme.textMuted} mt-1`}>Gage R&R 분석 v5.0 Enhanced</div>
-        </div>
-      </div>
-
-      <div className="max-w-md mx-auto p-4 space-y-4">
-        {/* 키보드 단축키 안내 */}
-        <div className={`${theme.card} p-3 rounded-lg border ${theme.border}`}>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <span className={`${theme.input} px-3 py-2 rounded border text-center font-medium`}>스페이스: 시작/정지</span>
-            <span className={`${theme.input} px-3 py-2 rounded border text-center font-medium`}>Enter: 랩타임</span>
-            <span className={`${theme.input} px-3 py-2 rounded border text-center font-medium`}>Esc: 중지</span>
-            <span className={`${theme.input} px-3 py-2 rounded border text-center font-medium`}>R: 초기화</span>
-          </div>
-        </div>
-
-        {/* 작업 세션 섹션 */}
-        <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <Users className="w-5 h-5 text-blue-500" />
-              <h2 className={`font-semibold ${theme.text}`}>작업 세션</h2>
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setShowNewSessionModal(true)}
-                className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-600 flex items-center space-x-1 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>새 세션</span>
-              </button>
-              <button
-                onClick={resetTimer}
-                className="bg-orange-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-orange-600 flex items-center space-x-1 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>초기화</span>
-              </button>
-            </div>
-          </div>
-
-          {currentSession ? (
-            <div className="space-y-3">
-              <div className={`text-sm ${theme.textMuted}`}>
-                <div className={`font-medium ${theme.text} mb-1`}>{currentSession.name}</div>
-                <div>{currentSession.workType}</div>
-              </div>
-
-              {/* 측정자/대상자 선택 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>측정자</label>
-                  <select
-                    value={currentOperator}
-                    onChange={(e) => setCurrentOperator(e.target.value)}
-                    className={`w-full p-2 border rounded text-sm ${theme.input}`}
-                  >
-                    {currentSession.operators.map(op => (
-                      <option key={op} value={op}>{op}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>대상자</label>
-                  <select
-                    value={currentTarget}
-                    onChange={(e) => setCurrentTarget(e.target.value)}
-                    className={`w-full p-2 border rounded text-sm ${theme.input}`}
-                  >
-                    {currentSession.targets.map(tg => (
-                      <option key={tg} value={tg}>{tg}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-              <p className={`text-sm ${theme.textMuted}`}>활성 세션이 없습니다.</p>
-              <p className={`text-xs ${theme.textMuted}`}>새 세션을 생성해주세요.</p>
-            </div>
-          )}
-        </div>
-
-        {/* 정밀 타이머 섹션 */}
-        <div className={`${theme.card} rounded-lg p-6 shadow-sm border ${theme.border}`}>
-          <div className="flex items-center space-x-2 mb-4">
-            <Clock className="w-6 h-6 text-blue-500" />
-            <h2 className={`font-semibold ${theme.text}`}>정밀 타이머</h2>
-          </div>
-
-          <div className="text-center">
-            <div className={`text-5xl font-mono font-bold mb-6 ${theme.text} tracking-wider`}>
-              {formatTime(currentTime)}
-            </div>
-            <div className={`text-sm ${theme.textMuted} mb-6`}>
-              {isRunning ? '측정 중...' : '대기 중'}
-            </div>
-
-            {/* 개선된 버튼 레이아웃 - 한 줄로 배치 */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <button
-                onClick={toggleTimer}
-                disabled={!currentSession}
-                className={`flex items-center justify-center space-x-2 py-3 rounded-lg font-semibold transition-colors ${
-                  isRunning
-                    ? 'bg-red-500 hover:bg-red-600 text-white'
-                    : 'bg-green-500 hover:bg-green-600 text-white'
-                } disabled:bg-gray-300 disabled:cursor-not-allowed`}
-              >
-                {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                <span className="text-sm">{isRunning ? '정지' : '시작'}</span>
-              </button>
-
-              <button
-                onClick={recordLap}
-                disabled={!currentSession}
-                className="flex items-center justify-center space-x-2 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                <Target className="w-5 h-5" />
-                <span className="text-sm">랩타임</span>
-              </button>
-
-              <button
-                onClick={stopTimer}
-                className={`flex items-center justify-center space-x-2 py-3 rounded-lg font-semibold transition-colors ${
-                  isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white'
-                }`}
-              >
-                <Square className="w-5 h-5" />
-                <span className="text-sm">중지</span>
-              </button>
-            </div>
-
-            {/* 키보드 힌트 */}
-            <div className={`text-xs ${theme.textMuted} grid grid-cols-3 gap-2`}>
-              <span>스페이스</span>
-              <span>Enter</span>
-              <span>Esc</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 실시간 분석 섹션 */}
-        {lapTimes.length > 0 && (
-          <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <BarChart3 className="w-5 h-5 text-green-500" />
-                <h2 className={`font-semibold ${theme.text}`}>실시간 분석</h2>
-              </div>
-              <button
-                onClick={() => setShowAnalysis(!showAnalysis)}
-                className="text-blue-500 text-sm hover:text-blue-700 transition-colors"
-              >
-                {showAnalysis ? '간단히' : '상세히'}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
-              <MeasurementCard
-                title="측정 횟수"
-                value={lapTimes.length}
-                icon={Timer}
-                status="info"
-                theme={theme}
-                size="sm"
-              />
-              
-              <MeasurementCard
-                title="평균 시간"
-                value={formatTime(lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)}
-                icon={Clock}
-                status="success"
-                theme={theme}
-                size="sm"
-              />
-
-              <MeasurementCard
-                title="변동계수"
-                value={lapTimes.length > 1 ? 
-                  `${((Math.sqrt(lapTimes.reduce((acc, lap) => {
-                    const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
-                    return acc + Math.pow(lap.time - mean, 2);
-                  }, 0) / lapTimes.length) / (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)) * 100).toFixed(1)}%` 
-                  : '0%'
-                }
-                icon={Activity}
-                status="warning"
-                theme={theme}
-                size="sm"
-              />
-            </div>
-
-            {/* Gage R&R 분석 결과 */}
-            {analysis && lapTimes.length >= 6 && (
-              <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
-                <MeasurementCard
-                  title="Gage R&R"
-                  value={`${analysis.gageRRPercent.toFixed(1)}%`}
-                  icon={BarChart3}
-                  status={analysis.status === 'excellent' || analysis.status === 'acceptable' ? 'success' : 'error'}
-                  theme={theme}
-                  size="sm"
-                />
-                
-                <MeasurementCard
-                  title="Cpk"
-                  value={analysis.cpk.toFixed(2)}
-                  icon={Target}
-                  status={analysis.cpk >= 1.33 ? 'success' : analysis.cpk >= 1.0 ? 'warning' : 'error'}
-                  theme={theme}
-                  size="sm"
-                />
-
-                <MeasurementCard
-                  title="NDC"
-                  value={analysis.ndc}
-                  icon={Calculator}
-                  status={analysis.ndc >= 5 ? 'success' : analysis.ndc >= 3 ? 'warning' : 'error'}
-                  theme={theme}
-                  size="sm"
-                />
-              </div>
-            )}
-
-            {showAnalysis && analysis && lapTimes.length >= 6 && (
-              <div className="space-y-3">
-                <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-50'} p-3 rounded-lg border ${theme.border}`}>
-                  <h3 className={`font-medium text-sm mb-2 ${theme.text}`}>Gage R&R 상세 분석</h3>
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div>반복성: {analysis.repeatability.toFixed(3)}</div>
-                    <div>재현성: {analysis.reproducibility.toFixed(3)}</div>
-                  </div>
-                  <div className="mt-2">
-                    <StatusBadge status={analysis.status} size="sm" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 액션 버튼들 - 항상 표시 */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={downloadMeasurementData}
-            className="bg-green-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-600 flex items-center justify-center space-x-2 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            <span>측정기록</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              if (lapTimes.length < 6) {
-                showToast('상세 분석을 위해서는 최소 6개의 측정 기록이 필요합니다.', 'warning');
-              } else {
-                downloadDetailedAnalysis();
-              }
-            }}
-            className="bg-purple-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-600 flex items-center justify-center space-x-2 transition-colors"
-          >
-            <PieChart className="w-4 h-4" />
-            <span>상세분석</span>
-          </button>
-        </div>
-
-        {/* 측정 기록 섹션 */}
-        {currentSession && (
-          <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-centerimport React, { useState, useEffect, useRef, useCallback } from 'react';
+          <p className="text-blue-100 mb-8 text-lg">Gage R&R 분석 v5.0 Enhanced & Optimized</p>
+          <buttonimport React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import {
   Play, Pause, Square, RotateCcw, Download, Plus, Users,
   Package, Clock, BarChart3, FileText, Calculator,
@@ -1072,7 +675,7 @@ import {
   Trash2, Filter, Search, X, Minus
 } from 'lucide-react';
 
-// 토스트 메시지 컴포넌트
+// ==================== 타입 정의 ====================
 interface ToastProps {
   message: string;
   type: 'success' | 'error' | 'warning' | 'info';
@@ -1080,48 +683,6 @@ interface ToastProps {
   onClose: () => void;
 }
 
-const Toast: React.FC<ToastProps> = ({ message, type, isVisible, onClose }) => {
-  useEffect(() => {
-    if (isVisible) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isVisible, onClose]);
-
-  if (!isVisible) return null;
-
-  const typeStyles = {
-    success: 'bg-green-500 text-white',
-    error: 'bg-red-500 text-white',
-    warning: 'bg-yellow-500 text-white',
-    info: 'bg-blue-500 text-white'
-  };
-
-  const typeIcons = {
-    success: CheckCircle,
-    error: XCircle,
-    warning: AlertCircle,
-    info: Info
-  };
-
-  const Icon = typeIcons[type];
-
-  return (
-    <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-right duration-300">
-      <div className={`${typeStyles[type]} px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm`}>
-        <Icon className="w-5 h-5 flex-shrink-0" />
-        <span className="text-sm font-medium">{message}</span>
-        <button onClick={onClose} className="ml-2 hover:bg-white/20 rounded p-1">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// 타입 정의
 interface LapTime {
   id: number;
   time: number;
@@ -1161,7 +722,6 @@ interface GageRRAnalysis {
   };
 }
 
-// 테마 타입
 interface Theme {
   bg: string;
   card: string;
@@ -1175,6 +735,27 @@ interface Theme {
   error: string;
   input: string;
 }
+
+// 타이머 상태 열거형 (상호배타적)
+enum TimerState {
+  STOPPED = 'STOPPED',
+  RUNNING = 'RUNNING',
+  PAUSED = 'PAUSED'
+}
+
+// 모달 상태 열거형 (상호배타적)
+enum ModalState {
+  NONE = 'NONE',
+  NEW_SESSION = 'NEW_SESSION',
+  SESSION_HISTORY = 'SESSION_HISTORY',
+  HELP = 'HELP',
+  LANDING = 'LANDING'
+}
+
+// ==================== 상수 및 테마 ====================
+const TIMER_INTERVAL = 10; // 10ms
+const MIN_ANALYSIS_RECORDS = 6;
+const AUTO_HIDE_TOAST_DELAY = 3000;
 
 const lightTheme: Theme = {
   bg: 'bg-gray-50',
@@ -1204,245 +785,318 @@ const darkTheme: Theme = {
   input: 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
 };
 
-// 유틸리티 함수들
+// ==================== 유틸리티 함수 ====================
 const formatTime = (ms: number): string => {
-  const minutes = Math.floor(ms / 60000);
-  const seconds = Math.floor((ms % 60000) / 1000);
-  const centiseconds = Math.floor((ms % 1000) / 10);
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+  try {
+    if (ms < 0) return '00:00.00';
+    
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    const centiseconds = Math.floor((ms % 1000) / 10);
+    
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+  } catch (error) {
+    console.error('formatTime error:', error);
+    return '00:00.00';
+  }
 };
 
 const generateFileName = (prefix: string, sessionName: string): string => {
-  const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const day = now.getDate().toString().padStart(2, '0');
-  const hour = now.getHours().toString().padStart(2, '0');
-  const minute = now.getMinutes().toString().padStart(2, '0');
-  const timestamp = `${year}${month}${day}${hour}${minute}`;
-  
-  return `${prefix}-${sessionName}-(${timestamp})`;
+  try {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const hour = now.getHours().toString().padStart(2, '0');
+    const minute = now.getMinutes().toString().padStart(2, '0');
+    const timestamp = `${year}${month}${day}${hour}${minute}`;
+    
+    // 파일명에 안전하지 않은 문자 제거
+    const safeName = sessionName.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    
+    return `${prefix}-${safeName}-(${timestamp})`;
+  } catch (error) {
+    console.error('generateFileName error:', error);
+    return `${prefix}-session-(${Date.now()})`;
+  }
 };
 
 const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
-  if (lapTimes.length < 6) {
-    return {
-      repeatability: 0, reproducibility: 0, gageRR: 0,
-      partVariation: 0, totalVariation: 0, gageRRPercent: 0,
-      ndc: 0, status: 'unacceptable', cpk: 0,
-      anova: { operator: 0, part: 0, interaction: 0, error: 0 }
-    };
-  }
+  const defaultResult: GageRRAnalysis = {
+    repeatability: 0,
+    reproducibility: 0,
+    gageRR: 0,
+    partVariation: 0,
+    totalVariation: 0,
+    gageRRPercent: 100,
+    ndc: 0,
+    status: 'unacceptable',
+    cpk: 0,
+    anova: { operator: 0, part: 0, interaction: 0, error: 0 }
+  };
 
-  const times = lapTimes.map(lap => lap.time);
-  const mean = times.reduce((a, b) => a + b, 0) / times.length;
-  
-  // 실제 분산 계산
-  const variance = times.reduce((acc, time) => acc + Math.pow(time - mean, 2), 0) / (times.length - 1);
-  const stdDev = Math.sqrt(variance);
-
-  // 측정자별, 대상자별 그룹화
-  const operatorGroups = lapTimes.reduce((groups, lap) => {
-    if (!groups[lap.operator]) groups[lap.operator] = [];
-    groups[lap.operator].push(lap.time);
-    return groups;
-  }, {} as Record<string, number[]>);
-
-  const targetGroups = lapTimes.reduce((groups, lap) => {
-    if (!groups[lap.target]) groups[lap.target] = [];
-    groups[lap.target].push(lap.time);
-    return groups;
-  }, {} as Record<string, number[]>);
-
-  // 실제 Gage R&R 계산
-  const operatorCount = Object.keys(operatorGroups).length;
-  const targetCount = Object.keys(targetGroups).length;
-  const trialsPerCondition = Math.floor(times.length / (operatorCount * targetCount));
-
-  // 반복성 계산 (장비 변동)
-  let repeatabilityVariance = 0;
-  Object.values(operatorGroups).forEach(group => {
-    if (group.length > 1) {
-      const groupMean = group.reduce((a, b) => a + b, 0) / group.length;
-      repeatabilityVariance += group.reduce((acc, val) => acc + Math.pow(val - groupMean, 2), 0);
+  try {
+    if (!lapTimes || lapTimes.length < MIN_ANALYSIS_RECORDS) {
+      return defaultResult;
     }
-  });
-  const repeatability = Math.sqrt(repeatabilityVariance / Math.max(1, times.length - operatorCount));
 
-  // 재현성 계산 (측정자 변동)
-  const operatorMeans = Object.values(operatorGroups).map(group => 
-    group.reduce((a, b) => a + b, 0) / group.length
-  );
-  const operatorVariance = operatorMeans.reduce((acc, opMean) => 
-    acc + Math.pow(opMean - mean, 2), 0) / Math.max(1, operatorCount - 1);
-  const reproducibility = Math.sqrt(Math.max(0, operatorVariance - (repeatability * repeatability) / trialsPerCondition));
+    const times = lapTimes.map(lap => lap.time).filter(time => time > 0);
+    if (times.length < MIN_ANALYSIS_RECORDS) {
+      return defaultResult;
+    }
 
-  // 부품 변동 계산
-  const targetMeans = Object.values(targetGroups).map(group => 
-    group.reduce((a, b) => a + b, 0) / group.length
-  );
-  const targetVariance = targetMeans.reduce((acc, targetMean) => 
-    acc + Math.pow(targetMean - mean, 2), 0) / Math.max(1, targetCount - 1);
-  const partVariation = Math.sqrt(Math.max(0, targetVariance - (repeatability * repeatability) / trialsPerCondition));
+    const mean = times.reduce((a, b) => a + b, 0) / times.length;
+    const variance = times.reduce((acc, time) => acc + Math.pow(time - mean, 2), 0) / Math.max(1, times.length - 1);
+    const stdDev = Math.sqrt(variance);
 
-  const gageRR = Math.sqrt(repeatability ** 2 + reproducibility ** 2);
-  const totalVariation = Math.sqrt(gageRR ** 2 + partVariation ** 2);
-  const gageRRPercent = totalVariation > 0 ? (gageRR / totalVariation) * 100 : 100;
-  const ndc = partVariation > 0 ? Math.floor((partVariation / gageRR) * 1.41) : 0;
+    // 측정자별, 대상자별 그룹화 (안전한 그룹화)
+    const operatorGroups = lapTimes.reduce((groups, lap) => {
+      const key = lap.operator?.trim();
+      if (key && lap.time > 0) {
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(lap.time);
+      }
+      return groups;
+    }, {} as Record<string, number[]>);
 
-  // Cpk 계산 (공정능력지수)
-  const cpk = partVariation > 0 ? (partVariation / (6 * stdDev)) : 0;
+    const targetGroups = lapTimes.reduce((groups, lap) => {
+      const key = lap.target?.trim();
+      if (key && lap.time > 0) {
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(lap.time);
+      }
+      return groups;
+    }, {} as Record<string, number[]>);
 
-  // ANOVA 분석
-  const anova = {
-    operator: operatorVariance,
-    part: targetVariance,
-    interaction: variance * 0.1,
-    error: repeatability ** 2
-  };
+    const operatorCount = Object.keys(operatorGroups).length;
+    const targetCount = Object.keys(targetGroups).length;
 
-  let status: 'excellent' | 'acceptable' | 'marginal' | 'unacceptable';
-  if (gageRRPercent < 10) status = 'excellent';
-  else if (gageRRPercent < 30) status = 'acceptable';
-  else if (gageRRPercent < 50) status = 'marginal';
-  else status = 'unacceptable';
+    if (operatorCount === 0 || targetCount === 0) {
+      return defaultResult;
+    }
 
-  return { 
-    repeatability, reproducibility, gageRR, partVariation, 
-    totalVariation, gageRRPercent, ndc, status, cpk, anova 
-  };
+    const trialsPerCondition = Math.max(1, Math.floor(times.length / (operatorCount * targetCount)));
+
+    // 반복성 계산 (장비 변동)
+    let repeatabilityVariance = 0;
+    let totalGroups = 0;
+
+    Object.values(operatorGroups).forEach(group => {
+      if (group.length > 1) {
+        const groupMean = group.reduce((a, b) => a + b, 0) / group.length;
+        repeatabilityVariance += group.reduce((acc, val) => acc + Math.pow(val - groupMean, 2), 0);
+        totalGroups++;
+      }
+    });
+
+    const repeatability = totalGroups > 0 
+      ? Math.sqrt(repeatabilityVariance / Math.max(1, times.length - operatorCount))
+      : stdDev * 0.8;
+
+    // 재현성 계산 (측정자 변동)
+    const operatorMeans = Object.values(operatorGroups)
+      .filter(group => group.length > 0)
+      .map(group => group.reduce((a, b) => a + b, 0) / group.length);
+
+    const operatorVariance = operatorMeans.length > 1
+      ? operatorMeans.reduce((acc, opMean) => acc + Math.pow(opMean - mean, 2), 0) / Math.max(1, operatorCount - 1)
+      : 0;
+
+    const reproducibility = Math.sqrt(Math.max(0, operatorVariance - (repeatability * repeatability) / trialsPerCondition));
+
+    // 부품 변동 계산
+    const targetMeans = Object.values(targetGroups)
+      .filter(group => group.length > 0)
+      .map(group => group.reduce((a, b) => a + b, 0) / group.length);
+
+    const targetVariance = targetMeans.length > 1
+      ? targetMeans.reduce((acc, targetMean) => acc + Math.pow(targetMean - mean, 2), 0) / Math.max(1, targetCount - 1)
+      : variance;
+
+    const partVariation = Math.sqrt(Math.max(0, targetVariance - (repeatability * repeatability) / trialsPerCondition));
+
+    const gageRR = Math.sqrt(repeatability ** 2 + reproducibility ** 2);
+    const totalVariation = Math.sqrt(gageRR ** 2 + partVariation ** 2);
+    const gageRRPercent = totalVariation > 0 ? Math.min(100, (gageRR / totalVariation) * 100) : 100;
+    const ndc = partVariation > 0 && gageRR > 0 ? Math.max(0, Math.floor((partVariation / gageRR) * 1.41)) : 0;
+
+    // Cpk 계산 (공정능력지수)
+    const cpk = partVariation > 0 && stdDev > 0 ? Math.max(0, partVariation / (6 * stdDev)) : 0;
+
+    // ANOVA 분석
+    const anova = {
+      operator: Math.max(0, operatorVariance),
+      part: Math.max(0, targetVariance),
+      interaction: Math.max(0, variance * 0.1),
+      error: Math.max(0, repeatability ** 2)
+    };
+
+    // 상태 결정 (상호배타적)
+    let status: 'excellent' | 'acceptable' | 'marginal' | 'unacceptable';
+    if (gageRRPercent < 10) status = 'excellent';
+    else if (gageRRPercent < 30) status = 'acceptable';
+    else if (gageRRPercent < 50) status = 'marginal';
+    else status = 'unacceptable';
+
+    return {
+      repeatability: Math.max(0, repeatability),
+      reproducibility: Math.max(0, reproducibility),
+      gageRR: Math.max(0, gageRR),
+      partVariation: Math.max(0, partVariation),
+      totalVariation: Math.max(0, totalVariation),
+      gageRRPercent: Math.max(0, gageRRPercent),
+      ndc: Math.max(0, ndc),
+      status,
+      cpk: Math.max(0, cpk),
+      anova
+    };
+  } catch (error) {
+    console.error('calculateGageRR error:', error);
+    return defaultResult;
+  }
 };
 
-// 상태 배지 컴포넌트
-const StatusBadge: React.FC<{ status: string; size?: 'sm' | 'md' | 'lg' }> = ({ status, size = 'md' }) => {
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'excellent':
-        return { 
-          icon: CheckCircle, 
-          text: '우수', 
-          color: 'bg-green-100 text-green-800 border-green-200',
-          darkColor: 'dark:bg-green-900/30 dark:text-green-300 dark:border-green-700'
-        };
-      case 'acceptable':
-        return { 
-          icon: CheckCircle, 
-          text: '양호', 
-          color: 'bg-blue-100 text-blue-800 border-blue-200',
-          darkColor: 'dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700'
-        };
-      case 'marginal':
-        return { 
-          icon: AlertCircle, 
-          text: '보통', 
-          color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-          darkColor: 'dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700'
-        };
-      default:
-        return { 
-          icon: XCircle, 
-          text: '불량', 
-          color: 'bg-red-100 text-red-800 border-red-200',
-          darkColor: 'dark:bg-red-900/30 dark:text-red-300 dark:border-red-700'
-        };
+// ==================== 최적화된 컴포넌트들 ====================
+
+// 토스트 컴포넌트 (메모화)
+const Toast = memo<ToastProps>(({ message, type, isVisible, onClose }) => {
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(onClose, AUTO_HIDE_TOAST_DELAY);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [isVisible, onClose]);
 
-  const config = getStatusConfig(status);
-  const Icon = config.icon;
-  
-  const sizeClasses = {
-    sm: 'px-2 py-1 text-xs',
-    md: 'px-3 py-1.5 text-sm',
-    lg: 'px-4 py-2 text-base'
-  };
+  if (!isVisible) return null;
 
-  const iconSizes = {
-    sm: 'w-3 h-3',
-    md: 'w-4 h-4',
-    lg: 'w-5 h-5'
-  };
+  const typeConfig = useMemo(() => ({
+    success: { style: 'bg-green-500 text-white', icon: CheckCircle },
+    error: { style: 'bg-red-500 text-white', icon: XCircle },
+    warning: { style: 'bg-yellow-500 text-white', icon: AlertCircle },
+    info: { style: 'bg-blue-500 text-white', icon: Info }
+  }), []);
+
+  const { style, icon: Icon } = typeConfig[type];
 
   return (
-    <span className={`
-      inline-flex items-center gap-1.5 font-medium rounded-full border
-      ${sizeClasses[size]}
-      ${config.color} 
-      ${config.darkColor}
-    `}>
-      <Icon className={iconSizes[size]} />
+    <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-right duration-300">
+      <div className={`${style} px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm`}>
+        <Icon className="w-5 h-5 flex-shrink-0" />
+        <span className="text-sm font-medium">{message}</span>
+        <button onClick={onClose} className="ml-2 hover:bg-white/20 rounded p-1">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+});
+
+// 상태 배지 컴포넌트 (메모화)
+const StatusBadge = memo<{ status: string; size?: 'sm' | 'md' | 'lg' }>(({ status, size = 'md' }) => {
+  const config = useMemo(() => {
+    const configs = {
+      excellent: { 
+        icon: CheckCircle, 
+        text: '우수', 
+        color: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700'
+      },
+      acceptable: { 
+        icon: CheckCircle, 
+        text: '양호', 
+        color: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700'
+      },
+      marginal: { 
+        icon: AlertCircle, 
+        text: '보통', 
+        color: 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700'
+      },
+      unacceptable: { 
+        icon: XCircle, 
+        text: '불량', 
+        color: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700'
+      }
+    };
+    return configs[status as keyof typeof configs] || configs.unacceptable;
+  }, [status]);
+
+  const sizeConfig = useMemo(() => ({
+    sm: { container: 'px-2 py-1 text-xs', icon: 'w-3 h-3' },
+    md: { container: 'px-3 py-1.5 text-sm', icon: 'w-4 h-4' },
+    lg: { container: 'px-4 py-2 text-base', icon: 'w-5 h-5' }
+  }), []);
+
+  const Icon = config.icon;
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 font-medium rounded-full border ${sizeConfig[size].container} ${config.color}`}>
+      <Icon className={sizeConfig[size].icon} />
       {config.text}
     </span>
   );
-};
+});
 
-// 개선된 로고 컴포넌트
-const ConsolidatedSupplyLogo: React.FC<{ isDark?: boolean }> = ({ isDark = false }) => (
-  <div className={`
-    relative flex items-center justify-center p-12 overflow-hidden
-    ${isDark 
+// 로고 컴포넌트 (메모화)
+const ConsolidatedSupplyLogo = memo<{ isDark?: boolean }>(({ isDark = false }) => (
+  <div className={`relative flex items-center justify-center p-12 overflow-hidden ${
+    isDark 
       ? 'bg-gradient-to-br from-slate-800 via-blue-900 to-blue-950' 
       : 'bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800'
-    }
-  `}>
-    {/* 개선된 배경 패턴 */}
+  }`}>
+    {/* 배경 패턴 */}
     <div className="absolute inset-0 opacity-5">
       <div 
         className="absolute inset-0"
         style={{
-          backgroundImage: `radial-gradient(circle at 2px 2px, white 2px, transparent 0)`,
+          backgroundImage: 'radial-gradient(circle at 2px 2px, white 2px, transparent 0)',
           backgroundSize: '24px 24px'
         }}
       />
     </div>
     
-    {/* 추가 광택 효과 */}
+    {/* 광택 효과 */}
     <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/10 to-transparent" />
     
     <div className="text-center relative z-10">
       {/* 로고 섹션 */}
       <div className="flex items-center justify-center mb-8">
-        <div className="relative">
-          {/* 중앙 로고 구조 - 크기 확대 */}
-          <div className="relative w-32 h-32">
-            {/* 빨간색 육각형 (상단) - 크기 및 위치 조정 */}
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-              <div className="w-16 h-16 bg-red-500 transform rotate-45 rounded-xl shadow-2xl border-3 border-red-400 hover:scale-105 transition-transform duration-300">
-                <div className="absolute inset-4 bg-red-400 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-2xl">H</span>
-                </div>
+        <div className="relative w-32 h-32">
+          {/* 빨간색 육각형 (상단) */}
+          <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+            <div className="w-16 h-16 bg-red-500 transform rotate-45 rounded-xl shadow-2xl border-3 border-red-400 hover:scale-105 transition-transform duration-300">
+              <div className="absolute inset-4 bg-red-400 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-2xl">H</span>
               </div>
             </div>
+          </div>
 
-            {/* 노란색 육각형 (좌하단) */}
-            <div className="absolute top-8 -left-8">
-              <div className="w-16 h-16 bg-yellow-400 transform rotate-45 rounded-xl shadow-2xl border-3 border-yellow-300 hover:scale-105 transition-transform duration-300">
-                <div className="absolute inset-4 bg-yellow-300 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-800 font-bold text-2xl">H</span>
-                </div>
+          {/* 노란색 육각형 (좌하단) */}
+          <div className="absolute top-8 -left-8">
+            <div className="w-16 h-16 bg-yellow-400 transform rotate-45 rounded-xl shadow-2xl border-3 border-yellow-300 hover:scale-105 transition-transform duration-300">
+              <div className="absolute inset-4 bg-yellow-300 rounded-lg flex items-center justify-center">
+                <span className="text-gray-800 font-bold text-2xl">H</span>
               </div>
             </div>
+          </div>
 
-            {/* 파란색 육각형 (우하단) */}
-            <div className="absolute top-8 right-8">
-              <div className="w-16 h-16 bg-blue-500 transform rotate-45 rounded-xl shadow-2xl border-3 border-blue-400 hover:scale-105 transition-transform duration-300">
-                <div className="absolute inset-4 bg-blue-400 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-2xl">I</span>
-                </div>
+          {/* 파란색 육각형 (우하단) */}
+          <div className="absolute top-8 right-8">
+            <div className="w-16 h-16 bg-blue-500 transform rotate-45 rounded-xl shadow-2xl border-3 border-blue-400 hover:scale-105 transition-transform duration-300">
+              <div className="absolute inset-4 bg-blue-400 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-2xl">I</span>
               </div>
             </div>
+          </div>
 
-            {/* 중앙 연결 기어 - 크기 확대 */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-4">
-              <div className="w-12 h-12 bg-yellow-500 rounded-full shadow-xl flex items-center justify-center border-3 border-yellow-400 hover:rotate-180 transition-transform duration-500">
-                <div className="w-6 h-6 bg-white rounded-full shadow-inner"></div>
-              </div>
+          {/* 중앙 연결 기어 */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-4">
+            <div className="w-12 h-12 bg-yellow-500 rounded-full shadow-xl flex items-center justify-center border-3 border-yellow-400 hover:rotate-180 transition-transform duration-500">
+              <div className="w-6 h-6 bg-white rounded-full shadow-inner"></div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 텍스트 섹션 개선 */}
+      {/* 텍스트 섹션 */}
       <div className="space-y-3">
         <div className="text-3xl font-bold tracking-wide text-white drop-shadow-lg">
           종합보급창
@@ -1457,17 +1111,15 @@ const ConsolidatedSupplyLogo: React.FC<{ isDark?: boolean }> = ({ isDark = false
       </div>
     </div>
   </div>
-);
+));
 
-// 개선된 도움말 컴포넌트
-const HelpModal: React.FC<{ 
+// 도움말 모달 컴포넌트 (메모화)
+const HelpModal = memo<{ 
   isOpen: boolean; 
   onClose: () => void; 
   theme: Theme;
-}> = ({ isOpen, onClose, theme }) => {
-  if (!isOpen) return null;
-
-  const helpSections = [
+}>(({ isOpen, onClose, theme }) => {
+  const helpSections = useMemo(() => [
     {
       title: '⌨️ 키보드 단축키',
       icon: Settings,
@@ -1507,14 +1159,13 @@ const HelpModal: React.FC<{
         { key: '기록', desc: '측정 조건과 특이사항 상세 기록' }
       ]
     }
-  ];
+  ], []);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className={`
-        ${theme.card} rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden
-        shadow-2xl border ${theme.border}
-      `}>
+      <div className={`${theme.card} rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border ${theme.border}`}>
         {/* 헤더 */}
         <div className={`${theme.accent} px-6 py-4`}>
           <div className="flex items-center justify-between">
@@ -1549,11 +1200,9 @@ const HelpModal: React.FC<{
                     {section.items.map((item, itemIndex) => (
                       <div 
                         key={itemIndex}
-                        className={`
-                          p-4 rounded-lg border ${theme.border}
-                          ${theme.card === 'bg-white' ? 'bg-gray-50' : 'bg-gray-700/50'}
-                          hover:shadow-md transition-shadow
-                        `}
+                        className={`p-4 rounded-lg border ${theme.border} ${
+                          theme.card === 'bg-white' ? 'bg-gray-50' : 'bg-gray-700/50'
+                        } hover:shadow-md transition-shadow`}
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
@@ -1565,13 +1214,11 @@ const HelpModal: React.FC<{
                             </div>
                           </div>
                           {item.shortcut && (
-                            <div className={`
-                              px-2 py-1 rounded text-xs font-mono font-medium
-                              ${theme.card === 'bg-white' 
+                            <div className={`px-2 py-1 rounded text-xs font-mono font-medium ${
+                              theme.card === 'bg-white' 
                                 ? 'bg-gray-200 text-gray-700' 
                                 : 'bg-gray-600 text-gray-300'
-                              }
-                            `}>
+                            }`}>
                               {item.shortcut}
                             </div>
                           )}
@@ -1590,11 +1237,7 @@ const HelpModal: React.FC<{
           <div className="flex justify-center">
             <button
               onClick={onClose}
-              className={`
-                ${theme.accent} text-white px-6 py-2 rounded-lg 
-                hover:opacity-90 transition-opacity font-medium
-                flex items-center gap-2
-              `}
+              className={`${theme.accent} text-white px-6 py-2 rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2`}
             >
               <CheckCircle className="w-4 h-4" />
               확인했습니다
@@ -1604,10 +1247,10 @@ const HelpModal: React.FC<{
       </div>
     </div>
   );
-};
+});
 
-// 측정 카드 컴포넌트
-const MeasurementCard: React.FC<{
+// 측정 카드 컴포넌트 (메모화)
+const MeasurementCard = memo<{
   title: string;
   value: string | number;
   unit?: string;
@@ -1615,92 +1258,22 @@ const MeasurementCard: React.FC<{
   status?: 'success' | 'warning' | 'error' | 'info';
   theme: Theme;
   size?: 'sm' | 'md' | 'lg';
-}> = ({ title, value, unit, icon: Icon, status = 'info', theme, size = 'md' }) => {
-  const statusColors = {
-    success: 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-700',
-    warning: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-700',
-    error: 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-700',
-    info: 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700'
-  };
-
-  const iconColors = {
-    success: 'text-green-600 dark:text-green-400',
-    warning: 'text-yellow-600 dark:text-yellow-400',
-    error: 'text-red-600 dark:text-red-400',
-    info: 'text-blue-600 dark:text-blue-400'
-  };
-
-  const sizes = {
-    sm: { card: 'p-3', icon: 'w-4 h-4', title: 'text-xs', value: 'text-sm' },
-    md: { card: 'p-4', icon: 'w-5 h-5', title: 'text-sm', value: 'text-lg' },
-    lg: { card: 'p-6', icon: 'w-6 h-6', title: 'text-base', value: 'text-2xl' }
-  };
-
-  return (
-    <div className={`
-      ${sizes[size].card} rounded-xl border transition-all duration-200
-      ${statusColors[status]}
-      hover:shadow-lg hover:scale-105
-    `}>
-      <div className="flex items-center justify-between mb-2">
-        <Icon className={`${sizes[size].icon} ${iconColors[status]}`} />
-      </div>
-      <div className={`${sizes[size].title} font-medium ${theme.textMuted} mb-1`}>
-        {title}
-      </div>
-      <div className={`${sizes[size].value} font-bold ${theme.text} font-mono`}>
-        {value}{unit && <span className="text-sm font-normal ml-1">{unit}</span>}
-      </div>
-    </div>
-  );
-};
-
-// 메인 컴포넌트
-const EnhancedLogisticsTimer = () => {
-  // 상태 관리
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [lapTimes, setLapTimes] = useState<LapTime[]>([]);
-  const [allLapTimes, setAllLapTimes] = useState<LapTime[]>([]);
-  const [sessions, setSessions] = useState<SessionData[]>([]);
-  const [currentSession, setCurrentSession] = useState<SessionData | null>(null);
-  const [showNewSessionModal, setShowNewSessionModal] = useState(false);
-  const [showAnalysis, setShowAnalysis] = useState(false);
-  const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
-  const [showLanding, setShowLanding] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-  const [selectedSessionHistory, setSelectedSessionHistory] = useState<SessionData | null>(null);
-
-  // 토스트 상태
-  const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'error' | 'warning' | 'info';
-    isVisible: boolean;
-  }>({
-    message: '',
-    type: 'info',
-    isVisible: false
-  });
-
-  // 필터 상태
-  const [filterOperator, setFilterOperator] = useState<string>('');
-  const [filterTarget, setFilterTarget] = useState<string>('');
-
-  // 폼 상태
-  const [sessionName, setSessionName] = useState('');
-  const [workType, setWorkType] = useState('');
-  const [operators, setOperators] = useState<string[]>(['']);
-  const [targets, setTargets] = useState<string[]>(['']);
-  const [currentOperator, setCurrentOperator] = useState('');
-  const [currentTarget, setCurrentTarget] = useState('');
-
-  const intervalRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(0);
-
-  const theme = isDark ? darkTheme : lightTheme;
-
-  // 토스트 메시지 표시 함수
-  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
-    setToast({ message, type, isVisible: true });
-  };
+}>(({ title, value, unit, icon: Icon, status = 'info', theme, size = 'md' }) => {
+  const statusConfig = useMemo(() => ({
+    success: {
+      colors: 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-700',
+      iconColor: 'text-green-600 dark:text-green-400'
+    },
+    warning: {
+      colors: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-700',
+      iconColor: 'text-yellow-600 dark:text-yellow-400'
+    },
+    error: {
+      colors: 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-700',
+      iconColor: 'text-red-600 dark:text-red-400'
+    },
+    info: {
+      colors: 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700',
+      iconColor: 'text-blue-600 dark:text-blue-400'
+    }
+  }
