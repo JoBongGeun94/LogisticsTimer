@@ -1,227 +1,264 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Play, 
-  Pause, 
-  Square, 
-  Clock, 
-  BarChart3, 
-  Trash2, 
-  CheckCircle,
-  AlertCircle,
-  Users,
-  FileSpreadsheet,
-  History,
-  TrendingUp,
-  Award,
-  Activity,
-  Zap,
-  Sun,
-  Moon,
-  HelpCircle,
-  LogOut
+  Play, Pause, Square, RotateCcw, Download, Plus, Users, 
+  Package, Clock, BarChart3, FileText, Calculator, 
+  Zap, Target, Home, HelpCircle, RefreshCw, LogOut
 } from 'lucide-react';
 
-// 확장된 타입 정의
-interface TimerRecord {
-  id: string;
-  sessionId: string;
-  measurer: string;
+// 타입 정의
+interface LapTime {
+  id: number;
+  time: number;
+  timestamp: string;
+  operator: string;
   target: string;
-  part: string;
-  workType: string;
-  startTime: Date;
-  endTime: Date;
-  duration: number;
-  lapNumber: number;
-  status: 'completed' | 'outlier' | 'normal';
 }
 
-interface WorkSession {
+interface SessionData {
   id: string;
   name: string;
   workType: string;
-  measurers: string[];
-  parts: string[];
-  status: 'active' | 'paused' | 'completed';
-  createdAt: Date;
-  totalTime: number;
-  measurementCount: number;
+  operators: string[];
+  targets: string[];
+  lapTimes: LapTime[];
+  startTime: string;
+  endTime?: string;
+  isActive: boolean;
 }
 
 interface GageRRAnalysis {
-  totalGRR: number;
   repeatability: number;
   reproducibility: number;
-  partContribution: number;
-  qualityScore: number;
-  cv: number;
-  cpk: number;
-  outliers: number;
-}
-
-interface TimerState {
-  isRunning: boolean;
-  isPaused: boolean;
-  startTime: Date | null;
-  pausedTime: number;
-  currentTime: number;
-  lapTimes: number[];
-  currentSession: WorkSession | null;
-  currentMeasurer: string;
-  currentPart: string;
+  gageRR: number;
+  partVariation: number;
+  totalVariation: number;
+  gageRRPercent: number;
+  ndc: number;
+  status: 'excellent' | 'acceptable' | 'marginal' | 'unacceptable';
 }
 
 // 유틸리티 함수들
-const formatTime = (seconds: number): string => {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  const centiseconds = Math.floor((seconds % 1) * 100);
-  
-  if (hours > 0) {
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
-  }
-  return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+const formatTime = (ms: number): string => {
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  const centiseconds = Math.floor((ms % 1000) / 10);
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
 };
 
-const formatDate = (date: Date): string => {
-  return new Intl.DateTimeFormat('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).format(date);
-};
-
-// Gage R&R 분석 함수
-const calculateGageRR = (records: TimerRecord[]): GageRRAnalysis => {
-  if (records.length < 3) {
+const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
+  if (lapTimes.length < 6) {
     return {
-      totalGRR: 0,
-      repeatability: 0,
-      reproducibility: 0,
-      partContribution: 0,
-      qualityScore: 0,
-      cv: 0,
-      cpk: 0,
-      outliers: 0
+      repeatability: 0, reproducibility: 0, gageRR: 0,
+      partVariation: 0, totalVariation: 0, gageRRPercent: 0,
+      ndc: 0, status: 'unacceptable'
     };
   }
 
-  const durations = records.map(r => r.duration);
-  const mean = durations.reduce((a, b) => a + b, 0) / durations.length;
-  const variance = durations.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / durations.length;
+  const times = lapTimes.map(lap => lap.time);
+  const mean = times.reduce((a, b) => a + b, 0) / times.length;
+  const variance = times.reduce((acc, time) => acc + Math.pow(time - mean, 2), 0) / times.length;
   const stdDev = Math.sqrt(variance);
-  const cv = (stdDev / mean) * 100;
-
-  // 간소화된 GRR 계산 (실제로는 더 복잡한 통계 분석 필요)
-  const measurerGroups = records.reduce((acc, record) => {
-    if (!acc[record.measurer]) acc[record.measurer] = [];
-    acc[record.measurer].push(record.duration);
-    return acc;
-  }, {} as Record<string, number[]>);
-
-  const partGroups = records.reduce((acc, record) => {
-    if (!acc[record.part]) acc[record.part] = [];
-    acc[record.part].push(record.duration);
-    return acc;
-  }, {} as Record<string, number[]>);
-
-  const repeatability = cv < 10 ? cv * 0.8 : cv * 1.2;
-  const reproducibility = Object.keys(measurerGroups).length > 1 ? cv * 0.6 : 0;
-  const partContribution = Object.keys(partGroups).length > 1 ? 100 - repeatability - reproducibility : 70;
-  const totalGRR = repeatability + reproducibility;
-
-  // 품질 점수 계산
-  const qualityScore = Math.max(0, 100 - totalGRR * 2);
   
-  // 이상치 탐지 (IQR 방법)
-  const sortedDurations = [...durations].sort((a, b) => a - b);
-  const q1 = sortedDurations[Math.floor(sortedDurations.length * 0.25)];
-  const q3 = sortedDurations[Math.floor(sortedDurations.length * 0.75)];
-  const iqr = q3 - q1;
-  const outliers = durations.filter(d => d < q1 - 1.5 * iqr || d > q3 + 1.5 * iqr).length;
+  // 간소화된 Gage R&R 계산
+  const repeatability = stdDev * 0.8;
+  const reproducibility = stdDev * 0.6;
+  const gageRR = Math.sqrt(repeatability ** 2 + reproducibility ** 2);
+  const partVariation = stdDev * 1.2;
+  const totalVariation = Math.sqrt(gageRR ** 2 + partVariation ** 2);
+  const gageRRPercent = (gageRR / totalVariation) * 100;
+  const ndc = Math.floor((partVariation / gageRR) * 1.41);
 
-  return {
-    totalGRR: Math.min(100, totalGRR),
-    repeatability,
-    reproducibility,
-    partContribution: Math.max(0, partContribution),
-    qualityScore,
-    cv,
-    cpk: Math.max(0, (6 * stdDev) / (mean * 0.1)), // 간소화된 Cpk
-    outliers
-  };
+  let status: 'excellent' | 'acceptable' | 'marginal' | 'unacceptable';
+  if (gageRRPercent < 10) status = 'excellent';
+  else if (gageRRPercent < 30) status = 'acceptable';
+  else if (gageRRPercent < 50) status = 'marginal';
+  else status = 'unacceptable';
+
+  return { repeatability, reproducibility, gageRR, partVariation, totalVariation, gageRRPercent, ndc, status };
 };
 
-const STORAGE_KEYS = {
-  sessions: 'logistics-timer-sessions',
-  records: 'logistics-timer-records',
-  settings: 'logistics-timer-settings'
+// 로고 컴포넌트
+const ConsolidatedSupplyLogo = () => (
+  <div className="flex items-center justify-center p-8 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 text-white">
+    <div className="text-center">
+      <div className="flex items-center justify-center mb-4">
+        <div className="relative">
+          {/* 육각형 배경 */}
+          <div className="absolute inset-0 opacity-10">
+            <svg width="120" height="120" viewBox="0 0 120 120" className="fill-white">
+              {Array.from({length: 8}).map((_, i) => (
+                <g key={i}>
+                  {Array.from({length: 12}).map((_, j) => (
+                    <polygon
+                      key={j}
+                      points="6,10 14,10 18,17 14,24 6,24 2,17"
+                      transform={`translate(${(j % 6) * 16 + (i % 2) * 8},${i * 14}) scale(0.8)`}
+                      className="fill-current opacity-30"
+                    />
+                  ))}
+                </g>
+              ))}
+            </svg>
+          </div>
+          
+          {/* 중앙 육각형들 */}
+          <div className="relative z-10 flex items-center justify-center">
+            <div className="relative">
+              {/* 빨간색 육각형 */}
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <div className="w-12 h-12 bg-red-500 transform rotate-45 rounded-sm shadow-lg">
+                  <div className="absolute inset-2 bg-red-400 rounded-sm flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">H</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 노란색 육각형 */}
+              <div className="absolute top-4 -left-6">
+                <div className="w-12 h-12 bg-yellow-400 transform rotate-45 rounded-sm shadow-lg">
+                  <div className="absolute inset-2 bg-yellow-300 rounded-sm flex items-center justify-center">
+                    <span className="text-gray-800 font-bold text-lg">H</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 파란색 육각형 */}
+              <div className="absolute top-4 right-6">
+                <div className="w-12 h-12 bg-blue-500 transform rotate-45 rounded-sm shadow-lg">
+                  <div className="absolute inset-2 bg-blue-400 rounded-sm flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">I</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 중앙 연결 기어 */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-2">
+                <div className="w-8 h-8 bg-yellow-500 rounded-full shadow-md flex items-center justify-center">
+                  <div className="w-4 h-4 bg-white rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="text-xl font-bold mb-2">통합보급창</div>
+      <div className="text-sm opacity-90 mb-1">ROKAF CONSOLIDATED</div>
+      <div className="text-sm opacity-90">SUPPLY DEPOT</div>
+    </div>
+  </div>
+);
+
+// 도움말 컴포넌트
+const HelpModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full max-h-96 overflow-y-auto">
+        <div className="p-6">
+          <h3 className="text-lg font-bold mb-4">도움말</h3>
+          <div className="space-y-4 text-sm">
+            <div>
+              <h4 className="font-semibold text-blue-600">키보드 단축키</h4>
+              <ul className="mt-2 space-y-1 text-gray-600">
+                <li>• 스페이스바: 타이머 시작/정지</li>
+                <li>• Enter: 랩타임 기록</li>
+                <li>• Esc: 타이머 중지</li>
+                <li>• R: 타이머 리셋</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-blue-600">작업 유형</h4>
+              <ul className="mt-2 space-y-1 text-gray-600">
+                <li>• 물자검수팀: 물자 검수 작업</li>
+                <li>• 저장관리팀: 저장 관리 작업</li>
+                <li>• 포장관리팀: 포장 관리 작업</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-blue-600">Gage R&R 분석</h4>
+              <ul className="mt-2 space-y-1 text-gray-600">
+                <li>• 측정시스템의 반복성과 재현성 분석</li>
+                <li>• 최소 6회 이상 측정 필요</li>
+                <li>• 30% 미만: 양호, 30% 이상: 개선 필요</li>
+              </ul>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="mt-6 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export default function EnhancedLogisticsTimer() {
+// 메인 컴포넌트
+const EnhancedLogisticsTimer = () => {
   // 상태 관리
-  const [timerState, setTimerState] = useState<TimerState>({
-    isRunning: false,
-    isPaused: false,
-    startTime: null,
-    pausedTime: 0,
-    currentTime: 0,
-    lapTimes: [],
-    currentSession: null,
-    currentMeasurer: '',
-    currentPart: ''
-  });
-
-  const [sessions, setSessions] = useState<WorkSession[]>([]);
-  const [records, setRecords] = useState<TimerRecord[]>([]);
-  const [currentView, setCurrentView] = useState<'timer' | 'analysis' | 'history' | 'settings'>('timer');
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [notification, setNotification] = useState<{type: 'success' | 'error' | 'warning'; message: string} | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [lapTimes, setLapTimes] = useState<LapTime[]>([]);
+  const [sessions, setSessions] = useState<SessionData[]>([]);
+  const [currentSession, setCurrentSession] = useState<SessionData | null>(null);
+  const [showNewSessionModal, setShowNewSessionModal] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showLanding, setShowLanding] = useState(false);
   
-  // 새 세션 생성 상태
-  const [showNewSession, setShowNewSession] = useState(false);
-  const [newSessionForm, setNewSessionForm] = useState({
-    name: '',
-    workType: '',
-    measurers: [''],
-    parts: ['']
-  });
+  // 폼 상태
+  const [sessionName, setSessionName] = useState('');
+  const [workType, setWorkType] = useState('');
+  const [operators, setOperators] = useState<string[]>(['']);
+  const [targets, setTargets] = useState<string[]>(['']);
+  const [currentOperator, setCurrentOperator] = useState('');
+  const [currentTarget, setCurrentTarget] = useState('');
 
   const intervalRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
 
-  // 키보드 이벤트 처리
+  // 타이머 로직
   useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      // 입력 필드에 포커스가 있을 때는 키보드 단축키 비활성화
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-        return;
+    if (isRunning) {
+      intervalRef.current = window.setInterval(() => {
+        setCurrentTime(Date.now() - startTimeRef.current);
+      }, 10);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
       }
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isRunning]);
 
-      switch (event.code) {
+  // 키보드 이벤트
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      switch (e.code) {
         case 'Space':
-          event.preventDefault();
-          if (timerState.isRunning) {
-            togglePause();
-          } else {
-            startTimer();
-          }
+          e.preventDefault();
+          toggleTimer();
           break;
         case 'Enter':
-          event.preventDefault();
-          if (timerState.isRunning) {
-            recordLapTime();
-          }
+          e.preventDefault();
+          if (isRunning) recordLap();
           break;
         case 'Escape':
-          event.preventDefault();
+          e.preventDefault();
           stopTimer();
           break;
         case 'KeyR':
-          event.preventDefault();
+          e.preventDefault();
           resetTimer();
           break;
       }
@@ -229,1065 +266,607 @@ export default function EnhancedLogisticsTimer() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [timerState.isRunning]);
-
-  // 타이머 업데이트
-  useEffect(() => {
-    if (timerState.isRunning && !timerState.isPaused) {
-      intervalRef.current = setInterval(() => {
-        if (timerState.startTime) {
-          const now = Date.now();
-          const elapsed = (now - timerState.startTime.getTime()) / 1000 - timerState.pausedTime;
-          setTimerState(prev => ({ ...prev, currentTime: elapsed }));
-        }
-      }, 10);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [timerState.isRunning, timerState.isPaused, timerState.startTime, timerState.pausedTime]);
-
-  // 로컬 스토리지 로드/저장
-  useEffect(() => {
-    const savedSessions = localStorage.getItem(STORAGE_KEYS.sessions);
-    const savedRecords = localStorage.getItem(STORAGE_KEYS.records);
-    
-    if (savedSessions) {
-      try {
-        setSessions(JSON.parse(savedSessions).map((session: any) => ({
-          ...session,
-          createdAt: new Date(session.createdAt)
-        })));
-      } catch (error) {
-        console.error('Failed to load sessions:', error);
-      }
-    }
-
-    if (savedRecords) {
-      try {
-        setRecords(JSON.parse(savedRecords).map((record: any) => ({
-          ...record,
-          startTime: new Date(record.startTime),
-          endTime: new Date(record.endTime)
-        })));
-      } catch (error) {
-        console.error('Failed to load records:', error);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.sessions, JSON.stringify(sessions));
-  }, [sessions]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.records, JSON.stringify(records));
-  }, [records]);
-
-  // 알림 표시
-  const showNotification = useCallback((type: 'success' | 'error' | 'warning', message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), 3000);
-  }, []);
-
-  // 새 세션 생성
-  const createNewSession = () => {
-    if (!newSessionForm.name || !newSessionForm.workType) {
-      showNotification('error', '세션명과 작업 유형을 입력해주세요.');
-      return;
-    }
-
-    const newSession: WorkSession = {
-      id: Date.now().toString(),
-      name: newSessionForm.name,
-      workType: newSessionForm.workType,
-      measurers: newSessionForm.measurers.filter(m => m.trim()),
-      parts: newSessionForm.parts.filter(p => p.trim()),
-      status: 'active',
-      createdAt: new Date(),
-      totalTime: 0,
-      measurementCount: 0
-    };
-
-    setSessions(prev => [newSession, ...prev]);
-    setTimerState(prev => ({ 
-      ...prev, 
-      currentSession: newSession,
-      currentMeasurer: newSession.measurers[0] || '',
-      currentPart: newSession.parts[0] || ''
-    }));
-    setShowNewSession(false);
-    setNewSessionForm({ name: '', workType: '', measurers: [''], parts: [''] });
-    showNotification('success', '새 세션이 생성되었습니다.');
-  };
+  }, [isRunning]);
 
   // 타이머 제어 함수들
-  const startTimer = () => {
-    if (!timerState.currentSession) {
-      showNotification('error', '활성 세션을 선택해주세요.');
+  const toggleTimer = useCallback(() => {
+    if (!currentSession) {
+      alert('먼저 작업 세션을 생성해주세요.');
       return;
     }
-
-    if (!timerState.currentMeasurer || !timerState.currentPart) {
-      showNotification('error', '측정자와 부품을 선택해주세요.');
-      return;
-    }
-
-    const now = new Date();
-    setTimerState(prev => ({
-      ...prev,
-      isRunning: true,
-      isPaused: false,
-      startTime: now,
-      currentTime: 0,
-      pausedTime: 0,
-    }));
     
-    showNotification('success', '측정을 시작합니다.');
-  };
-
-  const togglePause = () => {
-    if (timerState.isPaused) {
-      setTimerState(prev => ({ ...prev, isPaused: false }));
-      showNotification('success', '측정을 재시작합니다.');
+    if (isRunning) {
+      setIsRunning(false);
     } else {
-      setTimerState(prev => ({ ...prev, isPaused: true }));
-      showNotification('success', '측정을 일시정지합니다.');
+      startTimeRef.current = Date.now() - currentTime;
+      setIsRunning(true);
     }
-  };
+  }, [isRunning, currentTime, currentSession]);
 
-  const recordLapTime = () => {
-    if (!timerState.isRunning || !timerState.currentSession) return;
+  const stopTimer = useCallback(() => {
+    setIsRunning(false);
+  }, []);
 
-    const lapTime = timerState.currentTime;
-    const endTime = new Date();
+  const resetTimer = useCallback(() => {
+    setIsRunning(false);
+    setCurrentTime(0);
+    setLapTimes([]);
+    if (currentSession) {
+      const updatedSession = { ...currentSession, lapTimes: [] };
+      setCurrentSession(updatedSession);
+      setSessions(prev => prev.map(s => s.id === currentSession.id ? updatedSession : s));
+    }
+  }, [currentSession]);
 
-    const newRecord: TimerRecord = {
-      id: Date.now().toString(),
-      sessionId: timerState.currentSession.id,
-      measurer: timerState.currentMeasurer,
-      target: timerState.currentPart,
-      part: timerState.currentPart,
-      workType: timerState.currentSession.workType,
-      startTime: timerState.startTime!,
-      endTime,
-      duration: lapTime,
-      lapNumber: timerState.lapTimes.length + 1,
-      status: 'normal'
+  const recordLap = useCallback(() => {
+    if (!currentSession || !currentOperator || !currentTarget) {
+      alert('측정자와 대상자를 선택해주세요.');
+      return;
+    }
+
+    const newLap: LapTime = {
+      id: Date.now(),
+      time: currentTime,
+      timestamp: new Date().toLocaleString('ko-KR'),
+      operator: currentOperator,
+      target: currentTarget
     };
 
-    setRecords(prev => [newRecord, ...prev]);
-    setTimerState(prev => ({ 
-      ...prev, 
-      lapTimes: [...prev.lapTimes, lapTime],
-      currentTime: 0,
-      startTime: new Date()
-    }));
+    const updatedLaps = [...lapTimes, newLap];
+    setLapTimes(updatedLaps);
+
+    // 랩타임 기록 시 자동 정지
+    setIsRunning(false);
 
     // 세션 업데이트
-    setSessions(prev => prev.map(session => 
-      session.id === timerState.currentSession?.id 
-        ? { ...session, measurementCount: session.measurementCount + 1 }
-        : session
-    ));
+    const updatedSession = { ...currentSession, lapTimes: updatedLaps };
+    setCurrentSession(updatedSession);
+    setSessions(prev => prev.map(s => s.id === currentSession.id ? updatedSession : s));
+  }, [currentTime, currentSession, currentOperator, currentTarget, lapTimes]);
 
-    showNotification('success', `랩타임 기록: ${formatTime(lapTime)}`);
-  };
-
-  const stopTimer = () => {
-    if (!timerState.isRunning) return;
-
-    if (timerState.currentTime > 0) {
-      recordLapTime();
+  // 세션 관리 함수들
+  const createSession = () => {
+    if (!sessionName || !workType || operators.some(op => !op.trim()) || targets.some(tg => !tg.trim())) {
+      alert('모든 필드를 입력해주세요.');
+      return;
     }
 
-    setTimerState(prev => ({
-      ...prev,
-      isRunning: false,
-      isPaused: false,
-      startTime: null,
-      currentTime: 0,
-      pausedTime: 0,
-    }));
-
-    showNotification('success', '측정을 완료했습니다.');
-  };
-
-  const resetTimer = () => {
-    setTimerState(prev => ({
-      ...prev,
-      isRunning: false,
-      isPaused: false,
-      startTime: null,
-      currentTime: 0,
-      pausedTime: 0,
-      lapTimes: []
-    }));
-    showNotification('success', '타이머를 초기화했습니다.');
-  };
-
-  // 분석 데이터 계산
-  const currentSessionRecords = records.filter(r => r.sessionId === timerState.currentSession?.id);
-  const gageRRAnalysis = calculateGageRR(currentSessionRecords);
-
-  // Excel 내보내기 (상세 분석 포함)
-  const exportToExcel = () => {
-    const analysisData = {
-      session: timerState.currentSession,
-      records: currentSessionRecords,
-      analysis: gageRRAnalysis,
-      exportTime: new Date()
+    const newSession: SessionData = {
+      id: Date.now().toString(),
+      name: sessionName,
+      workType,
+      operators: operators.filter(op => op.trim()),
+      targets: targets.filter(tg => tg.trim()),
+      lapTimes: [],
+      startTime: new Date().toLocaleString('ko-KR'),
+      isActive: true
     };
 
-    const dataStr = JSON.stringify(analysisData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `GageRR_분석_${timerState.currentSession?.workType || 'Unknown'}_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showNotification('success', '상세 분석 데이터가 내보내기되었습니다.');
+    setSessions(prev => [...prev, newSession]);
+    setCurrentSession(newSession);
+    setCurrentOperator(newSession.operators[0]);
+    setCurrentTarget(newSession.targets[0]);
+    setShowNewSessionModal(false);
+    
+    // 폼 리셋
+    setSessionName('');
+    setWorkType('');
+    setOperators(['']);
+    setTargets(['']);
   };
 
+  // Excel 다운로드 함수
+  const downloadExcel = () => {
+    if (!currentSession || lapTimes.length === 0) {
+      alert('다운로드할 데이터가 없습니다.');
+      return;
+    }
+
+    const analysis = calculateGageRR(lapTimes);
+    
+    // CSV 형식으로 데이터 생성
+    const csvContent = [
+      ['물류 작업시간 측정 분석 보고서'],
+      [''],
+      ['세션 정보'],
+      ['세션명', currentSession.name],
+      ['작업유형', currentSession.workType],
+      ['측정일시', currentSession.startTime],
+      [''],
+      ['측정 데이터'],
+      ['순번', '측정시간', '측정자', '대상자', '기록시간'],
+      ...lapTimes.map((lap, index) => [
+        index + 1,
+        formatTime(lap.time),
+        lap.operator,
+        lap.target,
+        lap.timestamp
+      ]),
+      [''],
+      ['Gage R&R 분석 결과'],
+      ['반복성 (Repeatability)', analysis.repeatability.toFixed(3)],
+      ['재현성 (Reproducibility)', analysis.reproducibility.toFixed(3)],
+      ['Gage R&R', analysis.gageRR.toFixed(3)],
+      ['Gage R&R %', `${analysis.gageRRPercent.toFixed(1)}%`],
+      ['판정', analysis.status === 'excellent' ? '우수' : 
+               analysis.status === 'acceptable' ? '양호' : 
+               analysis.status === 'marginal' ? '보통' : '불량']
+    ].map(row => row.join(',')).join('\n');
+
+    // BOM 추가 (Excel에서 한글 깨짐 방지)
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `물류_타이머_분석_${currentSession.name}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const analysis = currentSession ? calculateGageRR(lapTimes) : null;
+
+  // 랜딩 페이지
+  if (showLanding) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
+        <ConsolidatedSupplyLogo />
+        <div className="p-6 text-center">
+          <h1 className="text-3xl font-bold text-white mb-4">정밀 작업 시간 측정 시스템</h1>
+          <p className="text-blue-100 mb-8">Gage R&R 분석 v4.0</p>
+          <button
+            onClick={() => setShowLanding(false)}
+            className="bg-white text-blue-700 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+          >
+            시스템 시작
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-      isDarkMode 
-        ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 text-white' 
-        : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 text-gray-900'
-    }`}>
+    <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <header className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm border-b border-gray-200/20 px-6 py-4`}>
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold flex items-center">
-              <Activity className="mr-2 text-blue-500" size={28} />
-              정밀 작업 시간 측정 시스템
-            </h1>
-            <span className="text-sm opacity-70">Gage R&R 분석 v3.0</span>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setCurrentView('timer')}
-              className={`p-2 rounded-lg transition-colors ${
-                currentView === 'timer' ? 'bg-blue-500 text-white' : 'hover:bg-gray-200/50'
-              }`}
-              title="타이머"
-            >
-              <Clock size={20} />
-            </button>
-            
-            <button
-              onClick={() => setCurrentView('analysis')}
-              className={`p-2 rounded-lg transition-colors ${
-                currentView === 'analysis' ? 'bg-blue-500 text-white' : 'hover:bg-gray-200/50'
-              }`}
-              title="분석"
-            >
-              <TrendingUp size={20} />
-            </button>
-
-            <button
-              onClick={() => setCurrentView('history')}
-              className={`p-2 rounded-lg transition-colors ${
-                currentView === 'history' ? 'bg-blue-500 text-white' : 'hover:bg-gray-200/50'
-              }`}
-              title="히스토리"
-            >
-              <History size={20} />
-            </button>
-
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 hover:bg-gray-200/50 rounded-lg transition-colors"
-              title="테마 변경"
-            >
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-
-            <button
-              className="p-2 hover:bg-gray-200/50 rounded-lg transition-colors"
-              title="도움말"
-            >
-              <HelpCircle size={20} />
-            </button>
-
-            <button
-              className="p-2 hover:bg-gray-200/50 rounded-lg transition-colors"
-              title="로그아웃"
-            >
-              <LogOut size={20} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* 알림 */}
-      {notification && (
-        <div className={`fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg animate-slide-up ${
-          notification.type === 'success' ? 'bg-green-500 text-white' :
-          notification.type === 'warning' ? 'bg-yellow-500 text-white' :
-          'bg-red-500 text-white'
-        }`}>
-          <div className="flex items-center space-x-2">
-            {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-            <span>{notification.message}</span>
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* 키보드 단축키 안내 */}
-        <div className={`mb-6 p-4 rounded-lg ${isDarkMode ? 'bg-gray-800/50' : 'bg-blue-50/50'} border border-blue-200/20`}>
+      <div className="bg-white shadow-sm border-b sticky top-0 z-40">
+        <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4 text-sm">
-              <span className="flex items-center"><kbd className="px-2 py-1 bg-gray-200 text-gray-800 rounded text-xs">스페이스</kbd> 시작/정지</span>
-              <span className="flex items-center"><kbd className="px-2 py-1 bg-gray-200 text-gray-800 rounded text-xs">Enter</kbd> 랩타임</span>
-              <span className="flex items-center"><kbd className="px-2 py-1 bg-gray-200 text-gray-800 rounded text-xs">Esc</kbd> 중지</span>
-              <span className="flex items-center"><kbd className="px-2 py-1 bg-gray-200 text-gray-800 rounded text-xs">R</kbd> 리셋</span>
+            <div className="flex items-center space-x-2">
+              <Zap className="w-6 h-6 text-blue-500" />
+              <h1 className="text-lg font-bold text-gray-800">정밀 작업 시간 측정 시스템</h1>
             </div>
-            {gageRRAnalysis.qualityScore > 0 && (
-              <div className="flex items-center space-x-2">
-                <Award className="text-yellow-500" size={16} />
-                <span className="text-sm font-medium">품질 점수: {gageRRAnalysis.qualityScore.toFixed(1)}점</span>
-              </div>
-            )}
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowHelp(true)}
+                className="p-2 text-gray-500 hover:text-blue-500"
+              >
+                <HelpCircle className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowLanding(true)}
+                className="p-2 text-gray-500 hover:text-red-500"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">Gage R&R 분석 v4.0</div>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto p-4 space-y-4">
+        {/* 키보드 단축키 안내 */}
+        <div className="bg-blue-50 p-3 rounded-lg">
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="bg-white px-2 py-1 rounded border">스페이스: 시작/정지</span>
+            <span className="bg-white px-2 py-1 rounded border">Enter: 랩타임</span>
+            <span className="bg-white px-2 py-1 rounded border">Esc: 중지</span>
+            <span className="bg-white px-2 py-1 rounded border">R: 리셋</span>
           </div>
         </div>
 
-        {currentView === 'timer' && (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            {/* 세션 관리 */}
-            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold flex items-center">
-                  <Users className="mr-2 text-blue-500" size={20} />
-                  작업 세션
-                </h3>
-                <button
-                  onClick={() => setShowNewSession(true)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
-                >
-                  새 세션
-                </button>
-              </div>
-
-              {timerState.currentSession ? (
-                <div className="space-y-3">
-                  <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700/50' : 'bg-blue-50/50'}`}>
-                    <div className="font-medium">{timerState.currentSession.name}</div>
-                    <div className="text-sm opacity-70">{timerState.currentSession.workType}</div>
-                    <div className="text-xs mt-1">
-                      측정자: {timerState.currentSession.measurers.join(', ')} | 
-                      부품: {timerState.currentSession.parts.join(', ')}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">측정자</label>
-                      <select
-                        value={timerState.currentMeasurer}
-                        onChange={(e) => setTimerState(prev => ({ ...prev, currentMeasurer: e.target.value }))}
-                        className={`w-full p-2 rounded-lg text-sm ${
-                          isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
-                        } border focus:ring-2 focus:ring-blue-500`}
-                      >
-                        {timerState.currentSession.measurers.map(measurer => (
-                          <option key={measurer} value={measurer}>{measurer}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">부품</label>
-                      <select
-                        value={timerState.currentPart}
-                        onChange={(e) => setTimerState(prev => ({ ...prev, currentPart: e.target.value }))}
-                        className={`w-full p-2 rounded-lg text-sm ${
-                          isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
-                        } border focus:ring-2 focus:ring-blue-500`}
-                      >
-                        {timerState.currentSession.parts.map(part => (
-                          <option key={part} value={part}>{part}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 opacity-50">
-                  <Users size={48} className="mx-auto mb-2" />
-                  <p>활성 세션이 없습니다.</p>
-                  <p className="text-sm">새 세션을 생성해주세요.</p>
-                </div>
-              )}
+        {/* 작업 세션 섹션 */}
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Users className="w-5 h-5 text-blue-500" />
+              <h2 className="font-semibold">작업 세션</h2>
             </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowNewSessionModal(true)}
+                className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-600 flex items-center space-x-1"
+              >
+                <Plus className="w-4 h-4" />
+                <span>새 세션</span>
+              </button>
+              <button
+                onClick={resetTimer}
+                className="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-orange-600 flex items-center space-x-1"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>초기화</span>
+              </button>
+            </div>
+          </div>
 
-            {/* 타이머 */}
-            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-              <h3 className="text-lg font-semibold mb-6 flex items-center">
-                <Zap className="mr-2 text-blue-500" size={20} />
-                정밀 타이머
-              </h3>
-
-              <div className="text-center mb-6">
-                <div className={`p-8 rounded-xl mb-4 ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50/50'}`}>
-                  <div className="text-6xl font-mono font-bold mb-2">
-                    {formatTime(timerState.currentTime)}
-                  </div>
-                  <div className="text-sm opacity-70">
-                    {timerState.isRunning 
-                      ? (timerState.isPaused ? '일시정지됨' : '측정 중...') 
-                      : '대기 중'
-                    }
-                  </div>
-                  {timerState.lapTimes.length > 0 && (
-                    <div className="text-sm mt-2">
-                      랩: {timerState.lapTimes.length}회
-                    </div>
-                  )}
-                </div>
+          {currentSession ? (
+            <div className="space-y-3">
+              <div className="text-sm text-gray-600">
+                <div className="font-medium">{currentSession.name}</div>
+                <div>{currentSession.workType}</div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                {!timerState.isRunning ? (
-                  <button
-                    onClick={startTimer}
-                    className="col-span-2 bg-green-500 hover:bg-green-600 text-white font-medium py-4 px-6 rounded-lg transition-colors flex items-center justify-center"
-                  >
-                    <Play className="mr-2" size={20} />
-                    시작 (스페이스)
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={togglePause}
-                      className={`font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center ${
-                        timerState.isPaused 
-                          ? "bg-blue-500 hover:bg-blue-600 text-white"
-                          : "bg-yellow-500 hover:bg-yellow-600 text-white"
-                      }`}
-                    >
-                      {timerState.isPaused ? (
-                        <>
-                          <Play className="mr-2" size={20} />
-                          재시작
-                        </>
-                      ) : (
-                        <>
-                          <Pause className="mr-2" size={20} />
-                          일시정지
-                        </>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={recordLapTime}
-                      className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
-                    >
-                      <CheckCircle className="mr-2" size={20} />
-                      랩타임
-                    </button>
-                  </>
-                )}
-              </div>
-
+              {/* 측정자/대상자 선택 */}
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={stopTimer}
-                  className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center"
-                >
-                  <Square className="mr-2" size={16} />
-                  정지
-                </button>
-                
-                <button
-                  onClick={resetTimer}
-                  className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                >
-                  리셋
-                </button>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">측정자</label>
+                  <select
+                    value={currentOperator}
+                    onChange={(e) => setCurrentOperator(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded text-sm"
+                  >
+                    {currentSession.operators.map(op => (
+                      <option key={op} value={op}>{op}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">대상자</label>
+                  <select
+                    value={currentTarget}
+                    onChange={(e) => setCurrentTarget(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded text-sm"
+                  >
+                    {currentSession.targets.map(tg => (
+                      <option key={tg} value={tg}>{tg}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-gray-500">
+              <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">활성 세션이 없습니다.</p>
+              <p className="text-xs">새 세션을 생성해주세요.</p>
+            </div>
+          )}
+        </div>
+
+        {/* 정밀 타이머 섹션 */}
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center space-x-2 mb-4">
+            <Clock className="w-5 h-5 text-blue-500" />
+            <h2 className="font-semibold">정밀 타이머</h2>
+          </div>
+
+          <div className="text-center">
+            <div className="text-4xl font-mono font-bold mb-6 text-gray-800 tracking-wider">
+              {formatTime(currentTime)}
+            </div>
+            <div className="text-sm text-gray-500 mb-6">대기 중</div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={toggleTimer}
+                disabled={!currentSession}
+                className={`flex items-center justify-center space-x-2 py-3 rounded-lg font-semibold ${
+                  isRunning 
+                    ? 'bg-red-500 hover:bg-red-600 text-white' 
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                } disabled:bg-gray-300 disabled:cursor-not-allowed`}
+              >
+                {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                <span>{isRunning ? '정지' : '시작'} (스페이스)</span>
+              </button>
+
+              <button
+                onClick={recordLap}
+                disabled={!isRunning}
+                className="flex items-center justify-center space-x-2 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                <Target className="w-5 h-5" />
+                <span>랩타임 (Enter)</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <button
+                onClick={stopTimer}
+                className="flex items-center justify-center space-x-2 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600"
+              >
+                <Square className="w-4 h-4" />
+                <span>중지 (Esc)</span>
+              </button>
+
+              <button
+                onClick={resetTimer}
+                className="flex items-center justify-center space-x-2 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>리셋 (R)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 실시간 분석 섹션 */}
+        {lapTimes.length > 0 && (
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="w-5 h-5 text-green-500" />
+                <h2 className="font-semibold">실시간 분석</h2>
+              </div>
+              <button
+                onClick={() => setShowAnalysis(!showAnalysis)}
+                className="text-blue-500 text-sm hover:text-blue-700"
+              >
+                {showAnalysis ? '간단히' : '상세히'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-center text-sm">
+              <div className="bg-blue-50 p-3 rounded">
+                <div className="text-xs text-gray-600 mb-1">측정 횟수</div>
+                <div className="text-lg font-bold text-blue-600">{lapTimes.length}</div>
+              </div>
+              <div className="bg-green-50 p-3 rounded">
+                <div className="text-xs text-gray-600 mb-1">평균 시간</div>
+                <div className="text-lg font-bold text-green-600">
+                  {formatTime(lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)}
+                </div>
+              </div>
+              <div className="bg-orange-50 p-3 rounded">
+                <div className="text-xs text-gray-600 mb-1">변동계수</div>
+                <div className="text-lg font-bold text-orange-600">
+                  {lapTimes.length > 1 ? 
+                    `${((Math.sqrt(lapTimes.reduce((acc, lap) => {
+                      const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
+                      return acc + Math.pow(lap.time - mean, 2);
+                    }, 0) / lapTimes.length) / (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)) * 100).toFixed(1)}%` 
+                    : '0%'
+                  }
+                </div>
               </div>
             </div>
 
-            {/* 실시간 분석 */}
-            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold flex items-center">
-                  <BarChart3 className="mr-2 text-blue-500" size={20} />
-                  실시간 분석
-                </h3>
-                {currentSessionRecords.length >= 3 && (
-                  <button
-                    onClick={exportToExcel}
-                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm transition-colors flex items-center"
-                  >
-                    <FileSpreadsheet className="mr-1" size={16} />
-                    Excel
-                  </button>
-                )}
+            {showAnalysis && analysis && lapTimes.length >= 3 && (
+              <div className="mt-4 space-y-3">
+                <div className="bg-gray-50 p-3 rounded">
+                  <h3 className="font-medium text-sm mb-2">Gage R&R 분석</h3>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>반복성: {analysis.repeatability.toFixed(3)}</div>
+                    <div>재현성: {analysis.reproducibility.toFixed(3)}</div>
+                    <div>Gage R&R: {analysis.gageRR.toFixed(3)}</div>
+                    <div>R&R %: {analysis.gageRRPercent.toFixed(1)}%</div>
+                  </div>
+                  <div className="mt-2">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                      analysis.status === 'excellent' ? 'bg-green-100 text-green-800' :
+                      analysis.status === 'acceptable' ? 'bg-blue-100 text-blue-800' :
+                      analysis.status === 'marginal' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {analysis.status === 'excellent' ? '우수' :
+                       analysis.status === 'acceptable' ? '양호' :
+                       analysis.status === 'marginal' ? '보통' : '불량'}
+                    </span>
+                  </div>
+                </div>
               </div>
-
-              {currentSessionRecords.length >= 3 ? (
-                <div className="space-y-4">
-                  {/* Gage R&R 요약 */}
-                  <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700/50' : 'bg-blue-50/50'}`}>
-                    <div className="text-sm font-medium mb-2">Gage R&R 분석</div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <div className="opacity-70">총 GRR</div>
-                        <div className={`font-bold ${
-                          gageRRAnalysis.totalGRR < 10 ? 'text-green-500' :
-                          gageRRAnalysis.totalGRR < 30 ? 'text-yellow-500' : 'text-red-500'
-                        }`}>
-                          {gageRRAnalysis.totalGRR.toFixed(1)}%
-                        </div>
-                      </div>
-                      <div>
-                        <div className="opacity-70">품질 점수</div>
-                        <div className="font-bold text-blue-500">
-                          {gageRRAnalysis.qualityScore.toFixed(0)}점
-                        </div>
-                      </div>
-                      <div>
-                        <div className="opacity-70">반복성</div>
-                        <div className="font-bold">
-                          {gageRRAnalysis.repeatability.toFixed(1)}%
-                        </div>
-                      </div>
-                      <div>
-                        <div className="opacity-70">재현성</div>
-                        <div className="font-bold">
-                          {gageRRAnalysis.reproducibility.toFixed(1)}%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 품질 지표 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className={`p-3 rounded-lg text-center ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50/50'}`}>
-                      <div className="text-xs opacity-70">변동계수 (CV)</div>
-                      <div className="font-bold">{gageRRAnalysis.cv.toFixed(1)}%</div>
-                    </div>
-                    <div className={`p-3 rounded-lg text-center ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50/50'}`}>
-                      <div className="text-xs opacity-70">이상치</div>
-                      <div className="font-bold">{gageRRAnalysis.outliers}개</div>
-                    </div>
-                  </div>
-
-                  {/* 판정 결과 */}
-                  <div className={`p-3 rounded-lg text-center ${
-                    gageRRAnalysis.totalGRR < 10 ? 'bg-green-500/20 border border-green-500/30' :
-                    gageRRAnalysis.totalGRR < 30 ? 'bg-yellow-500/20 border border-yellow-500/30' :
-                    'bg-red-500/20 border border-red-500/30'
-                  }`}>
-                    <div className="text-sm font-medium">
-                      {gageRRAnalysis.totalGRR < 10 ? '✅ 측정 시스템 우수' :
-                       gageRRAnalysis.totalGRR < 30 ? '⚠️ 조건부 허용' :
-                       '❌ 개선 필요'}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 opacity-50">
-                  <TrendingUp size={48} className="mx-auto mb-2" />
-                  <p>분석을 위해 최소 3개의</p>
-                  <p className="text-sm">측정 데이터가 필요합니다.</p>
-                  <div className="mt-2 text-sm font-medium">
-                    현재: {currentSessionRecords.length}개
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* 측정 기록 테이블 */}
-        {currentView === 'timer' && currentSessionRecords.length > 0 && (
-          <div className={`mt-8 ${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <Clock className="mr-2 text-blue-500" size={20} />
-              측정 기록 ({currentSessionRecords.length}개)
-            </h3>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className={`${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50/50'}`}>
-                    <th className="text-left p-3">순번</th>
-                    <th className="text-left p-3">측정자</th>
-                    <th className="text-left p-3">부품</th>
-                    <th className="text-left p-3">측정값</th>
-                    <th className="text-left p-3">시간</th>
-                    <th className="text-left p-3">상태</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentSessionRecords.map((record, index) => (
-                    <tr key={record.id} className="border-t border-gray-200/20">
-                      <td className="p-3">{currentSessionRecords.length - index}</td>
-                      <td className="p-3">{record.measurer}</td>
-                      <td className="p-3">{record.part}</td>
-                      <td className="p-3 font-mono font-bold text-blue-500">
-                        {formatTime(record.duration)}
-                      </td>
-                      <td className="p-3 text-xs opacity-70">
-                        {formatDate(record.endTime)}
-                      </td>
-                      <td className="p-3">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          record.status === 'outlier' ? 'bg-red-500/20 text-red-500' :
-                          'bg-green-500/20 text-green-500'
-                        }`}>
-                          {record.status === 'outlier' ? '이상치' : '정상'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* 분석 뷰 */}
-        {currentView === 'analysis' && (
-          <div className="space-y-8">
-            {/* 분석 헤더 */}
-            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-              <h2 className="text-2xl font-bold mb-4 flex items-center">
-                <TrendingUp className="mr-3 text-blue-500" size={28} />
-                Gage R&R 상세 분석
-              </h2>
-              
-              {timerState.currentSession ? (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{timerState.currentSession.name}</div>
-                    <div className="text-sm opacity-70">
-                      {timerState.currentSession.workType} | 측정 데이터: {currentSessionRecords.length}개
-                    </div>
-                  </div>
-                  <button
-                    onClick={exportToExcel}
-                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
-                  >
-                    <FileSpreadsheet className="mr-2" size={16} />
-                    상세 분석 내보내기
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center py-8 opacity-50">
-                  <p>분석할 세션을 선택해주세요.</p>
-                </div>
-              )}
-            </div>
-
-            {currentSessionRecords.length >= 3 && (
-              <>
-                {/* GRR 분석 차트 */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-                    <h3 className="text-lg font-semibold mb-4">변동 성분 분석</h3>
-                    
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span>반복성 (Repeatability)</span>
-                        <span className="font-bold">{gageRRAnalysis.repeatability.toFixed(1)}%</span>
-                      </div>
-                      <div className={`w-full bg-gray-200 rounded-full h-3 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                        <div 
-                          className="bg-blue-500 h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, gageRRAnalysis.repeatability)}%` }}
-                        ></div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span>재현성 (Reproducibility)</span>
-                        <span className="font-bold">{gageRRAnalysis.reproducibility.toFixed(1)}%</span>
-                      </div>
-                      <div className={`w-full bg-gray-200 rounded-full h-3 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                        <div 
-                          className="bg-yellow-500 h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, gageRRAnalysis.reproducibility)}%` }}
-                        ></div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span>부품 기여도 (Part Variation)</span>
-                        <span className="font-bold">{gageRRAnalysis.partContribution.toFixed(1)}%</span>
-                      </div>
-                      <div className={`w-full bg-gray-200 rounded-full h-3 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                        <div 
-                          className="bg-green-500 h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, gageRRAnalysis.partContribution)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-                    <h3 className="text-lg font-semibold mb-4">품질 지표</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-500">{gageRRAnalysis.totalGRR.toFixed(1)}%</div>
-                        <div className="text-sm opacity-70">총 GRR</div>
-                        <div className={`mt-1 px-2 py-1 rounded text-xs ${
-                          gageRRAnalysis.totalGRR < 10 ? 'bg-green-500/20 text-green-500' :
-                          gageRRAnalysis.totalGRR < 30 ? 'bg-yellow-500/20 text-yellow-500' :
-                          'bg-red-500/20 text-red-500'
-                        }`}>
-                          {gageRRAnalysis.totalGRR < 10 ? '우수' :
-                           gageRRAnalysis.totalGRR < 30 ? '허용' : '부적절'}
-                        </div>
-                      </div>
-
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-purple-500">{gageRRAnalysis.qualityScore.toFixed(0)}</div>
-                        <div className="text-sm opacity-70">품질 점수</div>
-                        <div className={`mt-1 px-2 py-1 rounded text-xs ${
-                          gageRRAnalysis.qualityScore >= 90 ? 'bg-green-500/20 text-green-500' :
-                          gageRRAnalysis.qualityScore >= 70 ? 'bg-yellow-500/20 text-yellow-500' :
-                          'bg-red-500/20 text-red-500'
-                        }`}>
-                          {gageRRAnalysis.qualityScore >= 90 ? '매우 우수' :
-                           gageRRAnalysis.qualityScore >= 70 ? '우수' : '개선 필요'}
-                        </div>
-                      </div>
-
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-orange-500">{gageRRAnalysis.cv.toFixed(1)}%</div>
-                        <div className="text-sm opacity-70">변동계수 (CV)</div>
-                      </div>
-
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-red-500">{gageRRAnalysis.outliers}</div>
-                        <div className="text-sm opacity-70">이상치 개수</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
             )}
+
+            {/* 액션 버튼들 */}
+            <div className="flex space-x-2 mt-4">
+              <button
+                onClick={downloadExcel}
+                className="flex-1 bg-green-500 text-white py-2 rounded-lg text-sm hover:bg-green-600 flex items-center justify-center space-x-1"
+              >
+                <Download className="w-4 h-4" />
+                <span>Excel 다운로드</span>
+              </button>
+              <button
+                onClick={() => setShowAnalysis(!showAnalysis)}
+                className="flex-1 bg-purple-500 text-white py-2 rounded-lg text-sm hover:bg-purple-600 flex items-center justify-center space-x-1"
+              >
+                <Calculator className="w-4 h-4" />
+                <span>상세 분석</span>
+              </button>
+            </div>
           </div>
         )}
 
-        {/* 히스토리 뷰 */}
-        {currentView === 'history' && (
-          <div className="space-y-8">
-            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-              <h2 className="text-2xl font-bold mb-4 flex items-center">
-                <History className="mr-3 text-blue-500" size={28} />
-                세션 히스토리
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-500">{sessions.length}</div>
-                  <div className="text-sm opacity-70">총 세션 수</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-500">
-                    {sessions.filter(s => s.status === 'completed').length}
-                  </div>
-                  <div className="text-sm opacity-70">완료된 세션</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-500">{records.length}</div>
-                  <div className="text-sm opacity-70">총 측정 기록</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-500">
-                    {sessions.filter(s => s.createdAt > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length}
-                  </div>
-                  <div className="text-sm opacity-70">30일 세션</div>
-                </div>
-              </div>
+        {/* 측정 기록 */}
+        {lapTimes.length > 0 && (
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center space-x-2 mb-3">
+              <FileText className="w-5 h-5 text-purple-500" />
+              <h2 className="font-semibold">측정 기록</h2>
+              <span className="text-sm text-gray-500">최근 3개</span>
             </div>
 
-            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-              <h3 className="text-lg font-semibold mb-4">세션 목록</h3>
-              
-              <div className="space-y-3">
-                {sessions.length === 0 ? (
-                  <div className="text-center py-8 opacity-50">
-                    <History size={48} className="mx-auto mb-2" />
-                    <p>저장된 세션이 없습니다.</p>
-                  </div>
-                ) : (
-                  sessions.map(session => {
-                    const sessionRecords = records.filter(r => r.sessionId === session.id);
-                    const sessionGRR = calculateGageRR(sessionRecords);
-                    
-                    return (
-                      <div key={session.id} className={`p-4 rounded-lg border ${
-                        session.status === 'active' ? 
-                          'border-blue-500/30 bg-blue-500/10' :
-                        session.status === 'completed' ?
-                          'border-green-500/30 bg-green-500/10' :
-                          'border-gray-500/30 bg-gray-500/10'
-                      }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3">
-                              <div className="font-medium">{session.name}</div>
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                session.status === 'active' ? 'bg-blue-500/20 text-blue-500' :
-                                session.status === 'completed' ? 'bg-green-500/20 text-green-500' :
-                                'bg-gray-500/20 text-gray-500'
-                              }`}>
-                                {session.status === 'active' ? '진행중' :
-                                 session.status === 'completed' ? '완료' : '일시정지'}
-                              </span>
-                            </div>
-                            <div className="text-sm opacity-70 mt-1">
-                              {session.workType} | 측정자: {session.measurers.join(', ')} | 
-                              기록: {sessionRecords.length}개 | 
-                              생성: {formatDate(session.createdAt)}
-                            </div>
-                            {sessionRecords.length >= 3 && (
-                              <div className="text-sm mt-2">
-                                GRR: <span className={`font-medium ${
-                                  sessionGRR.totalGRR < 10 ? 'text-green-500' :
-                                  sessionGRR.totalGRR < 30 ? 'text-yellow-500' : 'text-red-500'
-                                }`}>{sessionGRR.totalGRR.toFixed(1)}%</span> | 
-                                품질점수: <span className="font-medium text-blue-500">{sessionGRR.qualityScore.toFixed(0)}점</span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => {
-                                setTimerState(prev => ({ 
-                                  ...prev, 
-                                  currentSession: session,
-                                  currentMeasurer: session.measurers[0] || '',
-                                  currentPart: session.parts[0] || ''
-                                }));
-                                setCurrentView('timer');
-                                showNotification('success', '세션이 활성화되었습니다.');
-                              }}
-                              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
-                            >
-                              활성화
-                            </button>
-                            
-                            {sessionRecords.length >= 3 && (
-                              <button
-                                onClick={() => {
-                                  setTimerState(prev => ({ 
-                                    ...prev, 
-                                    currentSession: session,
-                                    currentMeasurer: session.measurers[0] || '',
-                                    currentPart: session.parts[0] || ''
-                                  }));
-                                  setCurrentView('analysis');
-                                }}
-                                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
-                              >
-                                분석
-                              </button>
-                            )}
-                          </div>
-                        </div>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {lapTimes.slice(-3).reverse().map((lap, index) => (
+                <div key={lap.id} className="bg-gray-50 p-3 rounded border-l-4 border-blue-500">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="font-mono text-lg font-bold text-blue-600">
+                        {formatTime(lap.time)}
                       </div>
-                    );
-                  })
-                )}
-              </div>
+                      <div className="text-xs text-gray-600 mt-1 space-y-1">
+                        <div>측정자: {lap.operator}</div>
+                        <div>대상자: {lap.target}</div>
+                        <div>기록: {lap.timestamp}</div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      #{lapTimes.length - index}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* 새 세션 생성 모달 */}
-        {showNewSession && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto`}>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">새 작업 세션 생성</h3>
-                <button
-                  onClick={() => setShowNewSession(false)}
-                  className="p-2 hover:bg-gray-200/50 rounded-lg transition-colors"
-                >
-                  <Square size={20} />
-                </button>
-              </div>
+        {/* 세션 히스토리 */}
+        {sessions.length > 0 && (
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center space-x-2 mb-3">
+              <Package className="w-5 h-5 text-gray-500" />
+              <h2 className="font-semibold">세션 히스토리</h2>
+            </div>
 
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              {sessions.slice(-3).map(session => (
+                <div 
+                  key={session.id} 
+                  className={`p-3 rounded border ${
+                    currentSession?.id === session.id 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 bg-gray-50'
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="font-medium text-sm">{session.name}</div>
+                      <div className="text-xs text-gray-600">{session.workType}</div>
+                      <div className="text-xs text-gray-500">{session.startTime}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{session.lapTimes.length}회</div>
+                      {currentSession?.id === session.id && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">활성</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 새 세션 생성 모달 */}
+      {showNewSessionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md max-h-96 overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4">새 작업 세션 생성</h3>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">세션명 *</label>
+                    <label className="block text-sm font-medium mb-1">세션명 *</label>
                     <input
                       type="text"
-                      value={newSessionForm.name}
-                      onChange={(e) => setNewSessionForm(prev => ({ ...prev, name: e.target.value }))}
-                      className={`w-full p-3 rounded-lg border ${
-                        isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
-                      } focus:ring-2 focus:ring-blue-500`}
+                      value={sessionName}
+                      onChange={(e) => setSessionName(e.target.value)}
                       placeholder="예: 포장작업_0602"
+                      className="w-full p-2 border border-gray-300 rounded text-sm"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium mb-2">작업 유형 *</label>
+                    <label className="block text-sm font-medium mb-1">작업 유형 *</label>
                     <select
-                      value={newSessionForm.workType}
-                      onChange={(e) => setNewSessionForm(prev => ({ ...prev, workType: e.target.value }))}
-                      className={`w-full p-3 rounded-lg border ${
-                        isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
-                      } focus:ring-2 focus:ring-blue-500`}
+                      value={workType}
+                      onChange={(e) => setWorkType(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded text-sm"
                     >
                       <option value="">작업 유형 선택</option>
-                      <option value="포장 작업">포장 작업</option>
-                      <option value="조립 작업">조립 작업</option>
-                      <option value="검사 작업">검사 작업</option>
-                      <option value="피킹 작업">피킹 작업</option>
-                      <option value="운반 작업">운반 작업</option>
-                      <option value="기타">기타</option>
+                      <option value="물자검수팀">물자검수팀</option>
+                      <option value="저장관리팀">저장관리팀</option>
+                      <option value="포장관리팀">포장관리팀</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-medium">측정자 설정</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium">측정자 설정</label>
                     <button
-                      onClick={() => setNewSessionForm(prev => ({ 
-                        ...prev, 
-                        measurers: [...prev.measurers, ''] 
-                      }))}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                      onClick={() => setOperators([...operators, ''])}
+                      className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
                     >
                       측정자 추가
                     </button>
                   </div>
-                  
-                  <div className="space-y-2">
-                    {newSessionForm.measurers.map((measurer, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <input
-                          type="text"
-                          value={measurer}
-                          onChange={(e) => {
-                            const newMeasurers = [...newSessionForm.measurers];
-                            newMeasurers[index] = e.target.value;
-                            setNewSessionForm(prev => ({ ...prev, measurers: newMeasurers }));
-                          }}
-                          className={`flex-1 p-2 rounded-lg border ${
-                            isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
-                          } focus:ring-2 focus:ring-blue-500`}
-                          placeholder={`측정자 ${index + 1} (예: 조봉근)`}
-                        />
-                        {newSessionForm.measurers.length > 1 && (
-                          <button
-                            onClick={() => {
-                              const newMeasurers = newSessionForm.measurers.filter((_, i) => i !== index);
-                              setNewSessionForm(prev => ({ ...prev, measurers: newMeasurers }));
-                            }}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  {operators.map((operator, index) => (
+                    <input
+                      key={index}
+                      type="text"
+                      value={operator}
+                      onChange={(e) => {
+                        const newOperators = [...operators];
+                        newOperators[index] = e.target.value;
+                        setOperators(newOperators);
+                      }}
+                      placeholder={`측정자 ${index + 1} (예: 조봉근)`}
+                      className="w-full p-2 border border-gray-300 rounded text-sm mb-2"
+                    />
+                  ))}
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-medium">부품/대상 설정</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium">대상자 설정</label>
                     <button
-                      onClick={() => setNewSessionForm(prev => ({ 
-                        ...prev, 
-                        parts: [...prev.parts, ''] 
-                      }))}
-                      className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                      onClick={() => setTargets([...targets, ''])}
+                      className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
                     >
-                      부품 추가
+                      대상자 추가
                     </button>
                   </div>
-                  
-                  <div className="space-y-2">
-                    {newSessionForm.parts.map((part, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <input
-                          type="text"
-                          value={part}
-                          onChange={(e) => {
-                            const newParts = [...newSessionForm.parts];
-                            newParts[index] = e.target.value;
-                            setNewSessionForm(prev => ({ ...prev, parts: newParts }));
-                          }}
-                          className={`flex-1 p-2 rounded-lg border ${
-                            isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
-                          } focus:ring-2 focus:ring-blue-500`}
-                          placeholder={`부품/대상 ${index + 1} (예: 이나연)`}
-                        />
-                        {newSessionForm.parts.length > 1 && (
-                          <button
-                            onClick={() => {
-                              const newParts = newSessionForm.parts.filter((_, i) => i !== index);
-                              setNewSessionForm(prev => ({ ...prev, parts: newParts }));
-                            }}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  {targets.map((target, index) => (
+                    <input
+                      key={index}
+                      type="text"
+                      value={target}
+                      onChange={(e) => {
+                        const newTargets = [...targets];
+                        newTargets[index] = e.target.value;
+                        setTargets(newTargets);
+                      }}
+                      placeholder={`대상자 ${index + 1} (예: 이나영)`}
+                      className="w-full p-2 border border-gray-300 rounded text-sm mb-2"
+                    />
+                  ))}
                 </div>
 
-                <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50'} border border-blue-200/30`}>
-                  <div className="flex items-start space-x-3">
-                    <Award className="text-blue-500 mt-1" size={20} />
-                    <div>
-                      <div className="font-medium text-blue-700 dark:text-blue-300 mb-1">Gage R&R 분석 안내</div>
-                      <div className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
-                        <p>• 측정자 2명 이상: 재현성(Reproducibility) 분석</p>
-                        <p>• 부품 2개 이상: 부품간 변동성 분석</p>
-                        <p>• 최소 3회 측정: 반복성(Repeatability) 분석</p>
-                        <p>• 권장 측정 횟수: 각 조건별 3-5회</p>
-                      </div>
-                    </div>
-                  </div>
+                <div className="bg-blue-50 p-3 rounded text-sm">
+                  <h4 className="font-medium text-blue-800 mb-2">📋 Gage R&R 분석 안내</h4>
+                  <ul className="text-blue-700 space-y-1 text-xs">
+                    <li>• 측정자 2명 이상: 재현성(Reproducibility) 분석</li>
+                    <li>• 대상자 2개 이상: 부품간 변동성 분석</li>
+                    <li>• 최소 3회 측정: 반복성(Repeatability) 분석</li>
+                    <li>• 권장 측정 횟수: 각 조건별 3-5회</li>
+                  </ul>
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 mt-8">
+              <div className="flex space-x-3 mt-6">
                 <button
-                  onClick={() => setShowNewSession(false)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  onClick={() => setShowNewSessionModal(false)}
+                  className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50"
                 >
                   취소
                 </button>
                 <button
-                  onClick={createNewSession}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center"
+                  onClick={createSession}
+                  className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center space-x-1"
                 >
-                  <Users className="mr-2" size={16} />
-                  세션 생성
+                  <Users className="w-4 h-4" />
+                  <span>세션 생성</span>
                 </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* 도움말 모달 */}
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   );
-}
+};
+
+export default EnhancedLogisticsTimer;
