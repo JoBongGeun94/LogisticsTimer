@@ -239,7 +239,7 @@ const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
 
     const reproducibility = Math.sqrt(Math.max(0, operatorVariance - (repeatability * repeatability) / trialsPerCondition));
 
-    // 부품 변동 계산
+    // 대상자 변동 계산
     const targetMeans = Object.values(targetGroups)
       .filter(group => group.length > 0)
       .map(group => group.reduce((a, b) => a + b, 0) / group.length);
@@ -819,7 +819,7 @@ const DetailedAnalysisPage = memo<{
                 </div>
                 <div className={`${theme.surface} p-3 rounded-lg`}>
                   <div className="flex justify-between items-center">
-                    <span className={`font-medium ${theme.text}`}>부품</span>
+                    <span className={`font-medium ${theme.text}`}>대상자</span>
                     <span className={`font-mono text-sm ${theme.textSecondary}`}>
                       {analysis.anova.partPercent.toFixed(1)}%
                     </span>
@@ -1757,7 +1757,7 @@ const EnhancedLogisticsTimer = () => {
                       type="text"
                       value={sessionName}
                       onChange={(e) => setSessionName(e.target.value)}
-                      placeholder="예: 포장작업_0602"
+                      placeholder="예: 검수-000-001"
                       className={`w-full p-3 border rounded-lg text-sm ${theme.input}`}
                     />
                   </div>
@@ -1797,7 +1797,7 @@ const EnhancedLogisticsTimer = () => {
                           newOperators[index] = e.target.value;
                           setOperators(newOperators);
                         }}
-                        placeholder={`측정자 ${index + 1} (예: 조봉근)`}
+                        placeholder={`측정자 ${index + 1} (예: 6급 조봉근)`}
                         className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
                       />
                       {operators.length > 1 && (
@@ -1833,7 +1833,7 @@ const EnhancedLogisticsTimer = () => {
                           newTargets[index] = e.target.value;
                           setTargets(newTargets);
                         }}
-                        placeholder={`대상자 ${index + 1} (예: 이나영)`}
+                        placeholder={`대상자 ${index + 1} (예: 7급 김공군)`}
                         className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
                       />
                       {targets.length > 1 && (
@@ -1855,7 +1855,7 @@ const EnhancedLogisticsTimer = () => {
                   </h4>
                   <ul className={`${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 text-xs`}>
                     <li>• 측정자 2명 이상: 재현성(Reproducibility) 분석</li>
-                    <li>• 대상자 2개 이상: 부품간 변동성 분석</li>
+                    <li>• 대상자 2개 이상: 대상자간 변동성 분석</li>
                     <li>• 최소 6회 측정: 신뢰성 있는 분석 결과</li>
                     <li>• 권장 측정 횟수: 각 조건별 3-5회</li>
                   </ul>
