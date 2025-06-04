@@ -3,7 +3,7 @@ import {
   Play, Pause, Square, RotateCcw, Download, Plus, Users,
   Package, Clock, BarChart3, FileText, Calculator,
   Zap, Target, Home, HelpCircle, RefreshCw, LogOut,
-  Moon, Sun, TrendingUp, PieChart
+  Moon, Sun, TrendingUp, PieChart, Info
 } from 'lucide-react';
 
 // 타입 정의
@@ -51,7 +51,9 @@ const formatTime = (ms: number): string => {
   const minutes = Math.floor(ms / 60000);
   const seconds = Math.floor((ms % 60000) / 1000);
   const centiseconds = Math.floor((ms % 1000) / 10);
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+  return `${minutes.toString().padStart(2, '0')}:${seconds
+    .toString()
+    .padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
 };
 
 const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
@@ -95,13 +97,13 @@ const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
   else if (gageRRPercent < 50) status = 'marginal';
   else status = 'unacceptable';
 
-  return { 
-    repeatability, reproducibility, gageRR, partVariation, 
-    totalVariation, gageRRPercent, ndc, status, cpk, anova 
+  return {
+    repeatability, reproducibility, gageRR, partVariation,
+    totalVariation, gageRRPercent, ndc, status, cpk, anova
   };
 };
 
-// 로고 컴포넌트 (개선된 디자인)
+// 로고 컴포넌트 (개선된 디자인, 텍스트 변경)
 const ConsolidatedSupplyLogo = ({ isDark = false }: { isDark?: boolean }) => (
   <div className={`flex items-center justify-center p-12 ${isDark ? 'bg-gradient-to-br from-slate-800 via-blue-900 to-blue-950' : 'bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800'} text-white relative overflow-hidden`}>
     {/* 배경 패턴 */}
@@ -175,7 +177,7 @@ const ConsolidatedSupplyLogo = ({ isDark = false }: { isDark?: boolean }) => (
       </div>
 
       <div className="space-y-2">
-        <div className="text-2xl font-bold tracking-wide">통합보급창</div>
+        <div className="text-2xl font-bold tracking-wide">종합보급창</div>
         <div className="text-sm opacity-90 font-medium">ROKAF CONSOLIDATED</div>
         <div className="text-sm opacity-90 font-medium">SUPPLY DEPOT</div>
         <div className="mt-4 w-16 h-0.5 bg-white/30 mx-auto"></div>
@@ -184,45 +186,66 @@ const ConsolidatedSupplyLogo = ({ isDark = false }: { isDark?: boolean }) => (
   </div>
 );
 
-// 도움말 컴포넌트
+// 도움말 컴포넌트 (상세화)
 const HelpModal = ({ isOpen, onClose, isDark }: { isOpen: boolean; onClose: () => void; isDark: boolean }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`${isDark ? 'bg-gray-800 text-white' : 'bg-white'} rounded-lg max-w-md w-full max-h-96 overflow-y-auto`}>
-        <div className="p-6">
-          <h3 className="text-lg font-bold mb-4">도움말</h3>
-          <div className="space-y-4 text-sm">
-            <div>
-              <h4 className="font-semibold text-blue-600">키보드 단축키</h4>
-              <ul className={`mt-2 space-y-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                <li>• 스페이스바: 타이머 시작/정지</li>
-                <li>• Enter: 랩타임 기록</li>
-                <li>• Esc: 타이머 중지</li>
-                <li>• R: 타이머 리셋</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-blue-600">작업 유형</h4>
-              <ul className={`mt-2 space-y-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                <li>• 물자검수팀: 물자 검수 작업</li>
-                <li>• 저장관리팀: 저장 관리 작업</li>
-                <li>• 포장관리팀: 포장 관리 작업</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-blue-600">Gage R&R 분석</h4>
-              <ul className={`mt-2 space-y-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                <li>• 측정시스템의 반복성과 재현성 분석</li>
-                <li>• 최소 6회 이상 측정 필요</li>
-                <li>• 30% 미만: 양호, 30% 이상: 개선 필요</li>
-              </ul>
-            </div>
+      <div className={`${isDark ? 'bg-gray-800 text-white' : 'bg-white'} rounded-lg max-w-lg w-full max-h-96 overflow-y-auto`}>
+        <div className="p-6 space-y-4">
+          <h3 className="text-lg font-bold mb-2">도움말</h3>
+          
+          {/* 키보드 단축키 */}
+          <div className="space-y-2">
+            <h4 className="font-semibold text-blue-600">키보드 단축키</h4>
+            <ul className={`mt-1 space-y-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              <li>• <strong>스페이스바</strong>: 타이머 시작/정지</li>
+              <li>• <strong>Enter</strong>: 랩타임 기록</li>
+              <li>• <strong>Esc</strong>: 타이머 중지</li>
+              <li>• <strong>R</strong>: 타이머 리셋</li>
+            </ul>
           </div>
+
+          {/* 작업 유형 설명 */}
+          <div className="space-y-2">
+            <h4 className="font-semibold text-blue-600">작업 유형</h4>
+            <ul className={`mt-1 space-y-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              <li>• <strong>물자검수팀</strong>: 입고된 물자의 품질 및 수량을 검수합니다.</li>
+              <li>• <strong>저장관리팀</strong>: 창고 내 물자의 위치 배치 및 재고를 관리합니다.</li>
+              <li>• <strong>포장관리팀</strong>: 출고 물자를 안전하게 포장하고 검증합니다.</li>
+            </ul>
+          </div>
+
+          {/* Gage R&R 설명 */}
+          <div className="space-y-2">
+            <h4 className="font-semibold text-blue-600">Gage R&R 분석</h4>
+            <p className={`mt-1 text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              측정 시스템의 정확성과 일관성을 평가하기 위해 사용됩니다. 
+              <ul className="list-disc list-inside">
+                <li>• <strong>반복성(Repeatability)</strong>: 동일 측정자가 동일 조건에서 반복 측정했을 때의 변화량</li>
+                <li>• <strong>재현성(Reproducibility)</strong>: 다른 측정자가 동일 조건에서 측정했을 때의 차이</li>
+                <li>• 최소 6회 이상의 측정이 필요하며, <strong>30% 미만</strong>이면 양호로 간주합니다.</li>
+                <li>• <strong>Cpk</strong>는 공정능력지수를 나타내며, 1.33 이상이면 우수 공정입니다.</li>
+                <li>• <strong>NDC</strong>는 구별 가능한 카테고리 수로, 5이상이면 충분한 구별력을 가집니다.</li>
+              </ul>
+            </p>
+          </div>
+
+          {/* UI 사용 팁 */}
+          <div className="space-y-2">
+            <h4 className="font-semibold text-blue-600">UI 사용 팁</h4>
+            <ul className={`mt-1 space-y-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              <li>• 세션 생성 후 측정자와 대상자를 선택해야 타이머 기능이 활성화됩니다.</li>
+              <li>• <strong>타이머 시작</strong> 전에는 랩타임 기록이 불가능합니다.</li>
+              <li>• 상세 분석은 최소 6회 이상의 랩타임 기록이 필요하며, 버튼이 활성화됩니다.</li>
+              <li>• 다크 모드를 사용하여 야간 작업 환경에서도 시각적 피로를 낮출 수 있습니다.</li>
+            </ul>
+          </div>
+
           <button
             onClick={onClose}
-            className="mt-6 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
+            className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
           >
             닫기
           </button>
@@ -233,17 +256,17 @@ const HelpModal = ({ isOpen, onClose, isDark }: { isOpen: boolean; onClose: () =
 };
 
 // 상세 분석 페이지 컴포넌트
-const DetailedAnalysisPage = ({ 
-  analysis, 
-  lapTimes, 
-  currentSession, 
-  onClose, 
-  isDark 
-}: { 
-  analysis: GageRRAnalysis; 
-  lapTimes: LapTime[]; 
-  currentSession: SessionData; 
-  onClose: () => void; 
+const DetailedAnalysisPage = ({
+  analysis,
+  lapTimes,
+  currentSession,
+  onClose,
+  isDark
+}: {
+  analysis: GageRRAnalysis;
+  lapTimes: LapTime[];
+  currentSession: SessionData;
+  onClose: () => void;
   isDark: boolean;
 }) => {
   const downloadDetailedReport = () => {
@@ -277,15 +300,33 @@ const DetailedAnalysisPage = ({
       ['총 측정횟수', lapTimes.length.toString()],
       [''],
       ['기본 통계'],
-      ['평균 시간 (ms)', (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length).toFixed(2)],
-      ['표준편차 (ms)', Math.sqrt(lapTimes.reduce((acc, lap) => {
-        const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
-        return acc + Math.pow(lap.time - mean, 2);
-      }, 0) / lapTimes.length).toFixed(3)],
-      ['변동계수 (%)', ((Math.sqrt(lapTimes.reduce((acc, lap) => {
-        const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
-        return acc + Math.pow(lap.time - mean, 2);
-      }, 0) / lapTimes.length) / (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)) * 100).toFixed(2)],
+      [
+        '평균 시간 (ms)',
+        (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length).toFixed(2)
+      ],
+      [
+        '표준편차 (ms)',
+        Math.sqrt(
+          lapTimes.reduce((acc, lap) => {
+            const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
+            return acc + Math.pow(lap.time - mean, 2);
+          }, 0) / lapTimes.length
+        ).toFixed(3)
+      ],
+      [
+        '변동계수 (%)',
+        (
+          (Math.sqrt(
+            lapTimes.reduce((acc, lap) => {
+              const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
+              return acc + Math.pow(lap.time - mean, 2);
+            }, 0) /
+              lapTimes.length
+          ) /
+            (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)) *
+          100
+        ).toFixed(2)
+      ],
       [''],
       ['Gage R&R 분석 결과'],
       ['반복성 (Repeatability)', analysis.repeatability.toFixed(3)],
@@ -296,9 +337,16 @@ const DetailedAnalysisPage = ({
       ['Gage R&R %', `${analysis.gageRRPercent.toFixed(1)}%`],
       ['NDC (Number of Distinct Categories)', analysis.ndc.toString()],
       ['Cpk (공정능력지수)', analysis.cpk.toFixed(3)],
-      ['측정시스템 판정', analysis.status === 'excellent' ? '우수' :
-        analysis.status === 'acceptable' ? '양호' :
-        analysis.status === 'marginal' ? '보통' : '불량'],
+      [
+        '측정시스템 판정',
+        analysis.status === 'excellent'
+          ? '우수'
+          : analysis.status === 'acceptable'
+          ? '양호'
+          : analysis.status === 'marginal'
+          ? '보통'
+          : '불량'
+      ],
       [''],
       ['ANOVA 분석 (분산 성분)'],
       ['측정자 변동 (Operator)', analysis.anova.operator.toFixed(3)],
@@ -307,9 +355,13 @@ const DetailedAnalysisPage = ({
       ['오차 (Error)', analysis.anova.error.toFixed(3)],
       [''],
       ['권장사항'],
-      [analysis.gageRRPercent < 10 ? '측정 시스템이 우수합니다. 현재 설정을 유지하세요.' :
-       analysis.gageRRPercent < 30 ? '측정 시스템이 양호합니다. 지속적인 모니터링이 필요합니다.' :
-       '측정 시스템 개선이 필요합니다. 교정, 교육, 절차 개선을 검토하세요.']
+      [
+        analysis.gageRRPercent < 10
+          ? '측정 시스템이 우수합니다. 현재 설정을 유지하세요.'
+          : analysis.gageRRPercent < 30
+          ? '측정 시스템이 양호합니다. 지속적인 모니터링이 필요합니다.'
+          : '측정 시스템 개선이 필요합니다. 교정, 교육, 절차 개선을 검토하세요.'
+      ]
     ];
 
     // 두 시트를 구분하여 CSV 생성
@@ -325,55 +377,55 @@ const DetailedAnalysisPage = ({
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `상세분석보고서_${currentSession.name}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `상세분석보고서_${currentSession.name}_${new Date()
+      .toISOString()
+      .split('T')[0]}.csv`;
     link.click();
   };
 
   return (
     <div className={`fixed inset-0 z-50 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className={`${isDark ? 'bg-gray-800 text-white' : 'bg-white'} shadow-sm border-b sticky top-0 z-40`}>
-        <div className="max-w-4xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="w-6 h-6 text-blue-500" />
-              <h1 className="text-lg font-bold">상세 분석 보고서</h1>
-            </div>
-            <button
-              onClick={onClose}
-              className={`p-2 ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="w-6 h-6 text-blue-500" />
+            <h1 className="text-lg font-bold">상세 분석 보고서</h1>
           </div>
+          <button
+            onClick={onClose}
+            className={`p-2 ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto p-4 space-y-6">
         {/* 세션 정보 */}
-        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
+        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
           <h2 className="text-xl font-bold mb-4">세션 정보</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>세션명</div>
+              <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-1`}>세션명</div>
               <div className="font-semibold">{currentSession.name}</div>
             </div>
             <div>
-              <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>작업유형</div>
+              <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-1`}>작업유형</div>
               <div className="font-semibold">{currentSession.workType}</div>
             </div>
             <div>
-              <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>측정횟수</div>
+              <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-1`}>측정횟수</div>
               <div className="font-semibold">{lapTimes.length}회</div>
             </div>
             <div>
-              <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>측정일시</div>
+              <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-1`}>측정일시</div>
               <div className="font-semibold text-sm">{currentSession.startTime}</div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Gage R&R 핵심 지표 */}
-        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
+        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
           <h2 className="text-xl font-bold mb-4">Gage R&R 분석 결과</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
@@ -384,7 +436,7 @@ const DetailedAnalysisPage = ({
               }`}>
                 {analysis.gageRRPercent.toFixed(1)}%
               </div>
-              <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Gage R&R</div>
+              <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-sm`}>Gage R&R</div>
               <div className={`mt-2 px-3 py-1 rounded-full text-xs font-medium ${
                 analysis.status === 'excellent' ? 'bg-green-100 text-green-800' :
                 analysis.status === 'acceptable' ? 'bg-blue-100 text-blue-800' :
@@ -397,10 +449,8 @@ const DetailedAnalysisPage = ({
               </div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-purple-500 mb-2">
-                {analysis.cpk.toFixed(2)}
-              </div>
-              <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Cpk (공정능력지수)</div>
+              <div className="text-3xl font-bold text-purple-500 mb-2">{analysis.cpk.toFixed(2)}</div>
+              <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-sm`}>Cpk (공정능력지수)</div>
               <div className={`mt-2 px-3 py-1 rounded-full text-xs font-medium ${
                 analysis.cpk >= 1.33 ? 'bg-green-100 text-green-800' :
                 analysis.cpk >= 1.0 ? 'bg-yellow-100 text-yellow-800' :
@@ -410,10 +460,8 @@ const DetailedAnalysisPage = ({
               </div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-indigo-500 mb-2">
-                {analysis.ndc}
-              </div>
-              <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>NDC (구별범주수)</div>
+              <div className="text-3xl font-bold text-indigo-500 mb-2">{analysis.ndc}</div>
+              <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-sm`}>NDC (구별범주수)</div>
               <div className={`mt-2 px-3 py-1 rounded-full text-xs font-medium ${
                 analysis.ndc >= 5 ? 'bg-green-100 text-green-800' :
                 analysis.ndc >= 3 ? 'bg-yellow-100 text-yellow-800' :
@@ -423,20 +471,22 @@ const DetailedAnalysisPage = ({
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* 상세 변동 성분 */}
-        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
+        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
           <h2 className="text-xl font-bold mb-4">변동 성분 분석</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h3 className="font-semibold mb-3">Gage R&R 구성요소</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
+                  <Info className="w-4 h-4 text-gray-400" />
                   <span>반복성 (Repeatability)</span>
                   <span className="font-mono">{analysis.repeatability.toFixed(3)}</span>
                 </div>
                 <div className="flex justify-between">
+                  <Info className="w-4 h-4 text-gray-400" />
                   <span>재현성 (Reproducibility)</span>
                   <span className="font-mono">{analysis.reproducibility.toFixed(3)}</span>
                 </div>
@@ -450,28 +500,32 @@ const DetailedAnalysisPage = ({
               <h3 className="font-semibold mb-3">ANOVA 분산 성분</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
+                  <Info className="w-4 h-4 text-gray-400" />
                   <span>측정자 변동</span>
                   <span className="font-mono">{analysis.anova.operator.toFixed(3)}</span>
                 </div>
                 <div className="flex justify-between">
+                  <Info className="w-4 h-4 text-gray-400" />
                   <span>부품 변동</span>
                   <span className="font-mono">{analysis.anova.part.toFixed(3)}</span>
                 </div>
                 <div className="flex justify-between">
+                  <Info className="w-4 h-4 text-gray-400" />
                   <span>상호작용</span>
                   <span className="font-mono">{analysis.anova.interaction.toFixed(3)}</span>
                 </div>
                 <div className="flex justify-between">
+                  <Info className="w-4 h-4 text-gray-400" />
                   <span>오차</span>
                   <span className="font-mono">{analysis.anova.error.toFixed(3)}</span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* 측정 기록 상세 */}
-        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
+        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
           <h2 className="text-xl font-bold mb-4">측정 기록 상세</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -497,10 +551,10 @@ const DetailedAnalysisPage = ({
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
 
         {/* 권장사항 */}
-        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
+        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
           <h2 className="text-xl font-bold mb-4">분석 해석 및 권장사항</h2>
           <div className="space-y-4">
             <div className={`p-4 rounded-lg ${
@@ -542,15 +596,19 @@ const DetailedAnalysisPage = ({
               <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}>
                 <h4 className="font-semibold mb-2">반복성 (Equipment Variation)</h4>
                 <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  동일한 측정자가 동일한 대상을 반복 측정했을 때의 변동성입니다.
-                  {analysis.repeatability < analysis.reproducibility ? ' 반복성이 양호합니다.' : ' 반복성 개선이 필요합니다.'}
+                  동일한 측정자가 동일한 대상을 반복 측정했을 때의 변동성입니다.{' '}
+                  {analysis.repeatability < analysis.reproducibility
+                    ? '반복성이 양호합니다.'
+                    : '반복성 개선이 필요합니다.'}
                 </p>
               </div>
               <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}>
                 <h4 className="font-semibold mb-2">재현성 (Appraiser Variation)</h4>
                 <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  서로 다른 측정자 간의 측정 차이입니다.
-                  {analysis.reproducibility < analysis.repeatability ? ' 측정자 간 일치성이 양호합니다.' : ' 측정자 교육이 필요합니다.'}
+                  서로 다른 측정자 간의 측정 차이입니다.{' '}
+                  {analysis.reproducibility < analysis.repeatability
+                    ? '측정자 간 일치성이 양호합니다.'
+                    : '측정자 교육이 필요합니다.'}
                 </p>
               </div>
             </div>
@@ -574,18 +632,18 @@ const DetailedAnalysisPage = ({
               </ul>
             </div>
           </div>
-        </div>
 
-        {/* 다운로드 버튼 */}
-        <div className="flex justify-center">
-          <button
-            onClick={downloadDetailedReport}
-            className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 flex items-center space-x-2"
-          >
-            <Download className="w-5 h-5" />
-            <span>상세 보고서 다운로드</span>
-          </button>
-        </div>
+          {/* 다운로드 버튼 */}
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={downloadDetailedReport}
+              className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 flex items-center space-x-2"
+            >
+              <Download className="w-5 h-5" />
+              <span>상세 보고서 다운로드</span>
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -604,7 +662,7 @@ const EnhancedLogisticsTimer = () => {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [showLanding, setShowLanding] = useState(false);
+  const [showLanding, setShowLanding] = useState(true);
   const [isDark, setIsDark] = useState(false);
 
   // 폼 상태
@@ -650,7 +708,7 @@ const EnhancedLogisticsTimer = () => {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
+
       switch (e.code) {
         case 'Space':
           e.preventDefault();
@@ -673,16 +731,15 @@ const EnhancedLogisticsTimer = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isRunning]);
+  }, [isRunning, toggleTimer, recordLap, stopTimer, resetTimer]);
 
   // 새 세션 생성 시 자동 리셋
   useEffect(() => {
     if (currentSession && lapTimes.length === 0) {
-      // 새 세션이 시작되면 자동으로 리셋
       setCurrentTime(0);
       setIsRunning(false);
     }
-  }, [currentSession]);
+  }, [currentSession, lapTimes]);
 
   // 타이머 제어 함수들
   const toggleTimer = useCallback(() => {
@@ -766,12 +823,10 @@ const EnhancedLogisticsTimer = () => {
     setCurrentTarget(newSession.targets[0]);
     setShowNewSessionModal(false);
 
-    // 새 세션 시작 시 자동 리셋
     setLapTimes([]);
     setCurrentTime(0);
     setIsRunning(false);
 
-    // 폼 리셋
     setSessionName('');
     setWorkType('');
     setOperators(['']);
@@ -846,51 +901,57 @@ const EnhancedLogisticsTimer = () => {
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* 헤더 */}
-      <div className={`${isDark ? 'bg-gray-800 text-white' : 'bg-white'} shadow-sm border-b sticky top-0 z-40`}>
-        <div className="max-w-md mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Zap className="w-6 h-6 text-blue-500" />
-              <h1 className="text-lg font-bold">물류 작업현장 인시수 측정 타이머</h1>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsDark(!isDark)}
-                className={`p-2 ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-blue-500'}`}
-              >
-                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
-              <button
-                onClick={() => setShowHelp(true)}
-                className={`p-2 ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-blue-500'}`}
-              >
-                <HelpCircle className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setShowLanding(true)}
-                className={`p-2 ${isDark ? 'text-gray-300 hover:text-red-400' : 'text-gray-500 hover:text-red-500'}`}
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
+      <header className={`${isDark ? 'bg-gray-800 text-white' : 'bg-white'} shadow-sm border-b sticky top-0 z-40`}>
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Zap className="w-6 h-6 text-blue-500" />
+            <h1 className="text-lg font-bold">물류 작업현장 인시수 측정 타이머</h1>
           </div>
-          <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>Gage R&R 분석 v4.0</div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setIsDark(!isDark)}
+              className={`p-2 ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-blue-500'}`}
+            >
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={() => setShowHelp(true)}
+              className={`p-2 ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-blue-500'}`}
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setShowLanding(true)}
+              className={`p-2 ${isDark ? 'text-gray-300 hover:text-red-400' : 'text-gray-500 hover:text-red-500'}`}
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-      </div>
+        <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} text-center py-1`}>Gage R&R 분석 v4.0</div>
+      </header>
 
-      <div className="max-w-md mx-auto p-4 space-y-4">
+      <main className="max-w-md mx-auto p-4 space-y-4">
         {/* 키보드 단축키 안내 */}
-        <div className={`${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50'} p-3 rounded-lg border`}>
+        <section className={`${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50'} p-3 rounded-lg border`}>
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <span className={`${isDark ? 'bg-gray-700 text-white' : 'bg-white'} px-2 py-1 rounded border`}>스페이스: 시작/정지</span>
-            <span className={`${isDark ? 'bg-gray-700 text-white' : 'bg-white'} px-2 py-1 rounded border`}>Enter: 랩타임</span>
-            <span className={`${isDark ? 'bg-gray-700 text-white' : 'bg-white'} px-2 py-1 rounded border`}>Esc: 중지</span>
-            <span className={`${isDark ? 'bg-gray-700 text-white' : 'bg-white'} px-2 py-1 rounded border`}>R: 리셋</span>
+            <div className={`${isDark ? 'bg-gray-700 text-white' : 'bg-white'} px-2 py-1 rounded border`}>
+              <strong>스페이스</strong> : 시작/정지
+            </div>
+            <div className={`${isDark ? 'bg-gray-700 text-white' : 'bg-white'} px-2 py-1 rounded border`}>
+              <strong>Enter</strong> : 랩타임
+            </div>
+            <div className={`${isDark ? 'bg-gray-700 text-white' : 'bg-white'} px-2 py-1 rounded border`}>
+              <strong>Esc</strong> : 중지
+            </div>
+            <div className={`${isDark ? 'bg-gray-700 text-white' : 'bg-white'} px-2 py-1 rounded border`}>
+              <strong>R</strong> : 리셋
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* 작업 세션 섹션 */}
-        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-sm`}>
+        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-sm`}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-2">
               <Users className="w-5 h-5 text-blue-500" />
@@ -916,7 +977,7 @@ const EnhancedLogisticsTimer = () => {
 
           {currentSession ? (
             <div className="space-y-3">
-              <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-sm`}>
                 <div className="font-medium">{currentSession.name}</div>
                 <div>{currentSession.workType}</div>
               </div>
@@ -924,34 +985,42 @@ const EnhancedLogisticsTimer = () => {
               {/* 측정자/대상자 선택 */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={`block text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>측정자</label>
+                  <label className={`block text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                    측정자
+                  </label>
                   <select
                     value={currentOperator}
-                    onChange={(e) => setCurrentOperator(e.target.value)}
+                    onChange={e => setCurrentOperator(e.target.value)}
                     className={`w-full p-2 border rounded text-sm ${
-                      isDark 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
+                      isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
                         : 'border-gray-300'
                     }`}
                   >
                     {currentSession.operators.map(op => (
-                      <option key={op} value={op}>{op}</option>
+                      <option key={op} value={op}>
+                        {op}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className={`block text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>대상자</label>
+                  <label className={`block text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                    대상자
+                  </label>
                   <select
                     value={currentTarget}
-                    onChange={(e) => setCurrentTarget(e.target.value)}
+                    onChange={e => setCurrentTarget(e.target.value)}
                     className={`w-full p-2 border rounded text-sm ${
-                      isDark 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
+                      isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
                         : 'border-gray-300'
                     }`}
                   >
                     {currentSession.targets.map(tg => (
-                      <option key={tg} value={tg}>{tg}</option>
+                      <option key={tg} value={tg}>
+                        {tg}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -964,20 +1033,22 @@ const EnhancedLogisticsTimer = () => {
               <p className="text-xs">새 세션을 생성해주세요.</p>
             </div>
           )}
-        </div>
+        </section>
 
         {/* 정밀 타이머 섹션 */}
-        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
+        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-sm`}>
           <div className="flex items-center space-x-2 mb-4">
             <Clock className="w-5 h-5 text-blue-500" />
             <h2 className="font-semibold">정밀 타이머</h2>
           </div>
 
           <div className="text-center">
-            <div className={`text-4xl font-mono font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-800'} tracking-wider`}>
+            <div className={`text-5xl font-mono font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-800'} tracking-tight`}>
               {formatTime(currentTime)}
             </div>
-            <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-6`}>대기 중</div>
+            <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-6`}>
+              {isRunning ? '측정 중' : '대기 중'}
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -990,7 +1061,7 @@ const EnhancedLogisticsTimer = () => {
                 } disabled:bg-gray-300 disabled:cursor-not-allowed`}
               >
                 {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                <span>{isRunning ? '정지' : '시작'} (스페이스)</span>
+                <span>{isRunning ? '정지 (Space)' : '시작 (Space)'}</span>
               </button>
 
               <button
@@ -1025,11 +1096,11 @@ const EnhancedLogisticsTimer = () => {
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* 실시간 분석 섹션 */}
         {lapTimes.length > 0 && (
-          <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-sm`}>
+          <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-sm`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
                 <BarChart3 className="w-5 h-5 text-green-500" />
@@ -1039,40 +1110,49 @@ const EnhancedLogisticsTimer = () => {
                 onClick={() => setShowAnalysis(!showAnalysis)}
                 className="text-blue-500 text-sm hover:text-blue-700"
               >
-                {showAnalysis ? '간단히' : '상세히'}
+                {showAnalysis ? '간략 보기' : '상세 보기'}
               </button>
             </div>
 
             <div className="grid grid-cols-3 gap-3 text-center text-sm">
               <div className={`${isDark ? 'bg-blue-900/20' : 'bg-blue-50'} p-3 rounded`}>
-                <div className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-1`}>측정 횟수</div>
-                <div className="text-lg font-bold text-blue-600">{lapTimes.length}</div>
+                <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-1 text-xs`}>측정 횟수</div>
+                <div className="text-2xl font-bold text-blue-600">{lapTimes.length}</div>
               </div>
 
               <div className={`${isDark ? 'bg-green-900/20' : 'bg-green-50'} p-3 rounded`}>
-                <div className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-1`}>평균 시간</div>
-                <div className="text-lg font-bold text-green-600">
-                  {formatTime(lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)}
+                <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-1 text-xs`}>평균 시간</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {formatTime(
+                    lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length
+                  )}
                 </div>
               </div>
 
               <div className={`${isDark ? 'bg-orange-900/20' : 'bg-orange-50'} p-3 rounded`}>
-                <div className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-1`}>변동계수</div>
-                <div className="text-lg font-bold text-orange-600">
-                  {lapTimes.length > 1 ?
-                    `${((Math.sqrt(lapTimes.reduce((acc, lap) => {
-                      const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
-                      return acc + Math.pow(lap.time - mean, 2);
-                    }, 0) / lapTimes.length) / (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)) * 100).toFixed(1)}%`
-                    : '0%'
-                  }
+                <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-1 text-xs`}>변동계수</div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {lapTimes.length > 1
+                    ? `${(
+                        (Math.sqrt(
+                          lapTimes.reduce((acc, lap) => {
+                            const mean =
+                              lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
+                            return acc + Math.pow(lap.time - mean, 2);
+                          }, 0) /
+                            lapTimes.length
+                        ) /
+                          (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)) *
+                        100
+                      ).toFixed(1)}%`
+                    : '0%'}
                 </div>
               </div>
             </div>
 
             {showAnalysis && analysis && lapTimes.length >= 3 && (
               <div className="mt-4 space-y-3">
-                <div className={`${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded`}>
+                <div className={`${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded`}>
                   <h3 className="font-medium text-sm mb-2">Gage R&R 분석</h3>
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>반복성: {analysis.repeatability.toFixed(3)}</div>
@@ -1103,64 +1183,67 @@ const EnhancedLogisticsTimer = () => {
                 className="flex-1 bg-green-500 text-white py-2 rounded-lg text-sm hover:bg-green-600 flex items-center justify-center space-x-1"
               >
                 <Download className="w-4 h-4" />
-                <span>측정기록</span>
+                <span>측정기록 다운로드</span>
               </button>
-              
+
               {analysis && lapTimes.length >= 6 && (
                 <button
                   onClick={() => setShowDetailedAnalysis(true)}
                   className="flex-1 bg-purple-500 text-white py-2 rounded-lg text-sm hover:bg-purple-600 flex items-center justify-center space-x-1"
                 >
                   <PieChart className="w-4 h-4" />
-                  <span>상세분석</span>
+                  <span>상세분석 보기</span>
                 </button>
               )}
             </div>
-          </div>
+          </section>
         )}
 
         {/* 측정 기록 - 모든 기록 표시 */}
         {allLapTimes.filter(lap => lap.sessionId === currentSession?.id).length > 0 && (
-          <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-sm`}>
+          <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-sm`}>
             <div className="flex items-center space-x-2 mb-3">
               <FileText className="w-5 h-5 text-purple-500" />
               <h2 className="font-semibold">측정 기록</h2>
-              <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>
                 전체 {allLapTimes.filter(lap => lap.sessionId === currentSession?.id).length}개
               </span>
             </div>
-            
+
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {allLapTimes
                 .filter(lap => lap.sessionId === currentSession?.id)
                 .slice(-10) // 최근 10개만 표시
                 .reverse()
                 .map((lap, index) => (
-                <div key={lap.id} className={`${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded border-l-4 border-blue-500`}>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="font-mono text-lg font-bold text-blue-600">
-                        {formatTime(lap.time)}
+                  <div
+                    key={lap.id}
+                    className={`${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded border-l-4 border-blue-500`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="font-mono text-lg font-bold text-blue-600">
+                          {formatTime(lap.time)}
+                        </div>
+                        <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mt-1 text-xs space-y-1`}>
+                          <div>측정자: {lap.operator}</div>
+                          <div>대상자: {lap.target}</div>
+                          <div>기록: {lap.timestamp}</div>
+                        </div>
                       </div>
-                      <div className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'} mt-1 space-y-1`}>
-                        <div>측정자: {lap.operator}</div>
-                        <div>대상자: {lap.target}</div>
-                        <div>기록: {lap.timestamp}</div>
+                      <div className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-xs`}>
+                        #{allLapTimes.filter(l => l.sessionId === currentSession?.id).length - index}
                       </div>
-                    </div>
-                    <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                      #{allLapTimes.filter(l => l.sessionId === currentSession?.id).length - index}
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
-          </div>
+          </section>
         )}
 
         {/* 세션 히스토리 */}
         {sessions.length > 0 && (
-          <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-sm`}>
+          <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-sm`}>
             <div className="flex items-center space-x-2 mb-3">
               <Package className="w-5 h-5 text-gray-500" />
               <h2 className="font-semibold">세션 히스토리</h2>
@@ -1178,8 +1261,8 @@ const EnhancedLogisticsTimer = () => {
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="font-medium text-sm">{session.name}</div>
-                      <div className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{session.workType}</div>
-                      <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{session.startTime}</div>
+                      <div className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-xs`}>{session.workType}</div>
+                      <div className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-xs`}>{session.startTime}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-sm font-medium">
@@ -1193,16 +1276,16 @@ const EnhancedLogisticsTimer = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
-      </div>
+      </main>
 
       {/* 새 세션 생성 모달 */}
       {showNewSessionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className={`${isDark ? 'bg-gray-800 text-white' : 'bg-white'} rounded-lg w-full max-w-md max-h-96 overflow-y-auto`}>
-            <div className="p-6">
-              <h3 className="text-lg font-bold mb-4">새 작업 세션 생성</h3>
+            <div className="p-6 space-y-4">
+              <h3 className="text-lg font-bold mb-2">새 작업 세션 생성</h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1210,11 +1293,11 @@ const EnhancedLogisticsTimer = () => {
                     <input
                       type="text"
                       value={sessionName}
-                      onChange={(e) => setSessionName(e.target.value)}
+                      onChange={e => setSessionName(e.target.value)}
                       placeholder="예: 포장작업_0602"
                       className={`w-full p-2 border rounded text-sm ${
-                        isDark 
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                        isDark
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                           : 'border-gray-300'
                       }`}
                     />
@@ -1223,10 +1306,10 @@ const EnhancedLogisticsTimer = () => {
                     <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : ''}`}>작업 유형 *</label>
                     <select
                       value={workType}
-                      onChange={(e) => setWorkType(e.target.value)}
+                      onChange={e => setWorkType(e.target.value)}
                       className={`w-full p-2 border rounded text-sm ${
-                        isDark 
-                          ? 'bg-gray-700 border-gray-600 text-white' 
+                        isDark
+                          ? 'bg-gray-700 border-gray-600 text-white'
                           : 'border-gray-300'
                       }`}
                     >
@@ -1238,6 +1321,7 @@ const EnhancedLogisticsTimer = () => {
                   </div>
                 </div>
 
+                {/* 측정자 설정 */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className={`text-sm font-medium ${isDark ? 'text-gray-300' : ''}`}>측정자 설정</label>
@@ -1245,7 +1329,7 @@ const EnhancedLogisticsTimer = () => {
                       onClick={() => setOperators([...operators, ''])}
                       className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
                     >
-                      측정자 추가
+                      + 추가
                     </button>
                   </div>
                   {operators.map((operator, index) => (
@@ -1253,21 +1337,22 @@ const EnhancedLogisticsTimer = () => {
                       key={index}
                       type="text"
                       value={operator}
-                      onChange={(e) => {
+                      onChange={e => {
                         const newOperators = [...operators];
                         newOperators[index] = e.target.value;
                         setOperators(newOperators);
                       }}
                       placeholder={`측정자 ${index + 1} (예: 조봉근)`}
                       className={`w-full p-2 border rounded text-sm mb-2 ${
-                        isDark 
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                        isDark
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                           : 'border-gray-300'
                       }`}
                     />
                   ))}
                 </div>
 
+                {/* 대상자 설정 */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className={`text-sm font-medium ${isDark ? 'text-gray-300' : ''}`}>대상자 설정</label>
@@ -1275,7 +1360,7 @@ const EnhancedLogisticsTimer = () => {
                       onClick={() => setTargets([...targets, ''])}
                       className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
                     >
-                      대상자 추가
+                      + 추가
                     </button>
                   </div>
                   {targets.map((target, index) => (
@@ -1283,21 +1368,22 @@ const EnhancedLogisticsTimer = () => {
                       key={index}
                       type="text"
                       value={target}
-                      onChange={(e) => {
+                      onChange={e => {
                         const newTargets = [...targets];
                         newTargets[index] = e.target.value;
                         setTargets(newTargets);
                       }}
                       placeholder={`대상자 ${index + 1} (예: 이나영)`}
                       className={`w-full p-2 border rounded text-sm mb-2 ${
-                        isDark 
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                        isDark
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                           : 'border-gray-300'
                       }`}
                     />
                   ))}
                 </div>
 
+                {/* Gage R&R 안내 */}
                 <div className={`${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50'} p-3 rounded text-sm border`}>
                   <h4 className="font-medium text-blue-800 mb-2">📋 Gage R&R 분석 안내</h4>
                   <ul className={`${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 text-xs`}>
@@ -1313,8 +1399,8 @@ const EnhancedLogisticsTimer = () => {
                 <button
                   onClick={() => setShowNewSessionModal(false)}
                   className={`flex-1 border py-2 rounded-lg ${
-                    isDark 
-                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                    isDark
+                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
