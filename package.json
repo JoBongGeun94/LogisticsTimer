@@ -1,34 +1,141 @@
 {
-  "name": "logistics-timer-improved",
-  "version": "2.0.1",
+  "name": "logistics-timer-enhanced",
+  "version": "3.0.0",
   "type": "module",
-  "description": "물류 작업현장 인시수 측정 웹앱 - 개선된 버전",
+  "description": "고도화된 물류 작업현장 Gage R&R 분석 시스템 - 전문 측정시스템분석(MSA) 도구",
   "keywords": [
     "logistics",
     "timer",
-    "measurement",
-    "productivity",
-    "korean"
+    "gage-rr",
+    "measurement-system-analysis",
+    "quality-analysis",
+    "msa",
+    "repeatability",
+    "reproducibility",
+    "korean",
+    "manufacturing",
+    "six-sigma",
+    "quality-control"
   ],
+  "author": {
+    "name": "JoBongGeun94",
+    "email": "your-email@example.com",
+    "url": "https://github.com/JoBongGeun94"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoBongGeun94/LogisticsTimer.git"
+  },
+  "homepage": "https://logistics-timer-v2.onrender.com",
+  "bugs": {
+    "url": "https://github.com/JoBongGeun94/LogisticsTimer/issues"
+  },
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 3000",
-    "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 3000",
-    "start": "vite preview --host 0.0.0.0 --port 3000"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "clean": "rm -rf dist node_modules/.cache",
+    "analyze": "npm run build && npx vite-bundle-analyzer dist/stats.html",
+    "test": "echo \"Tests coming soon...\" && exit 0"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "lucide-react": "^0.453.0",
-    "clsx": "^2.1.1"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.263.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.2",
-    "tailwindcss": "^3.4.17",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.14",
-    "terser": "^5.34.1"
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "postcss": "^8.4.32",
+    "prettier": "^3.1.0",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8",
+    "vite-bundle-analyzer": "^0.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 80,
+    "tabWidth": 2,
+    "useTabs": false
+  },
+  "eslintConfig": {
+    "extends": [
+      "@typescript-eslint/recommended",
+      "plugin:react-hooks/recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint",
+      "react-refresh"
+    ],
+    "rules": {
+      "react-refresh/only-export-components": [
+        "warn",
+        { "allowConstantExport": true }
+      ],
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": "warn"
+    },
+    "ignorePatterns": ["dist", "node_modules"]
+  },
+  "build": {
+    "target": "ES2020",
+    "outDir": "dist",
+    "sourcemap": false,
+    "minify": "terser",
+    "rollupOptions": {
+      "output": {
+        "manualChunks": {
+          "vendor": ["react", "react-dom"],
+          "icons": ["lucide-react"]
+        }
+      }
+    }
+  },
+  "pwa": {
+    "name": "물류 타이머 - Gage R&R 분석",
+    "short_name": "물류타이머",
+    "description": "전문 측정시스템분석(MSA)을 위한 물류 작업시간 측정 도구",
+    "theme_color": "#3b82f6",
+    "background_color": "#ffffff",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "start_url": "/",
+    "scope": "/"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/JoBongGeun94"
   }
 }
