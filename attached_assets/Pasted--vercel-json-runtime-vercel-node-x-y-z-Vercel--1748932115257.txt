@@ -1,0 +1,107 @@
+지금 보시는 vercel.json의 "runtime": "@vercel/node" 부분에 버전 태그(@x.y.z) 가 빠져 있어서 Vercel이 “유효하지 않은 함수 런타임”이라고 판단합니다. 따라서 아래 둘 중 하나를 선택하여 수정하시면 에러가 사라집니다.
+
+1. 방법 1: runtime 필드에 유효한 버전 태그를 추가하기
+가장 직관적인 방법은 "@vercel/node" 뒤에 지원되는 버전(@x.y.z)을 붙여 주는 것입니다.
+아래 예시는 Node.js 2.0.0 버전을 명시한 형태입니다(실제 사용 가능한 최신 버전이 다를 수 있으므로, 최종적으로는 Vercel 문서나 CLI로 확인하시는 것을 권장드립니다):
+
+diff
+복사
+편집
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/public",
+  "functions": {
+    "api/**/*.ts": {
+-     "runtime": "@vercel/node"
++     "runtime": "@vercel/node@2.0.0"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/auth/user",
+      "dest": "/api/auth/user"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
+위와 같이 "@vercel/node@2.0.0" 처럼 @<버전> 을 붙이면 Vercel의 런타임 유효성 검사(“Function Runtimes must have a valid version”)를 통과합니다.
+
+다른 버전을 사용하고 싶다면, 예컨대 @vercel/node@3.1.1 등의 형식으로 변경하시면 됩니다.
+
+2. 방법 2: functions 블록을 삭제(또는 주석 처리)하고 Vercel 자동 감지 기능 사용하기
+Vercel V2에서는 api/ 디렉터리에 있는 .ts 파일을 자동으로 @vercel/node 런타임으로 처리해 줍니다.
+즉, 별도로 functions 블록을 둬서 런타임을 수동 지정할 필요가 없다면, 아예 해당 섹션을 통째로 제거해도 됩니다.
+
+diff
+복사
+편집
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/public",
+- "functions": {
+-   "api/**/*.ts": {
+-     "runtime": "@vercel/node"
+-   }
+- },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/auth/user",
+      "dest": "/api/auth/user"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
+이렇게 수정하면 api/ 내부의 .ts 파일을 Vercel이 기본 제공하는 Node.js 런타임(현재 지원 버전)으로 자동 배포합니다.
+
+결과적으로 “버전을 명시하지 않아도” 문제없이 서버리스 함수가 배포됩니다.
+
+3. 수정 후 재배포 절차
+vercel.json 파일 수정
+
+위 둘 중 하나의 방법으로 고쳐서 저장합니다.
+
+GitHub에 커밋 및 푸시
+
+bash
+복사
+편집
+git add vercel.json
+git commit -m "fix: add valid runtime version to vercel.json"
+git push origin main
+Vercel 자동 재배포 확인
+
+GitHub에 푸시가 완료되면 Vercel이 자동으로 새로운 배포를 시작합니다.
+
+또는 Vercel 대시보드에서 “Redeploy”를 눌러 수동 재배포할 수도 있습니다.
+
+배포 로그 확인
+
+“Function Runtimes must have a valid version” 에러가 사라지고, 함수가 정상적으로 배포되었는지 확인합니다.
+
+API 호출 테스트
+
+브라우저나 Postman 등에서 /api/auth/user, /api/measurements/session/[sessionId] 를 호출하여 HTTP 200 응답이 오는지 최종 점검합니다.
+
+위 과정을 거치면 “Function Runtimes must have a valid version” 오류가 해결되고, 정상적으로 서버리스 함수가 배포될 것입니다.

@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: logistics-timer
+    runtime: static
+    buildCommand: rm -rf dist && npm ci && npm run build
+    staticPublishPath: ./dist
+    pullRequestPreviewsEnabled: true
+    headers:
+      # MIME 타입 명시적 설정 (핵심!)
+      - path: "/assets/*.css"
+        name: Content-Type
+        value: text/css
+      - path: "/assets/*.js"
+        name: Content-Type
+        value: application/javascript
+      - path: "*.css"
+        name: Content-Type
+        value: text/css
+      - path: "*.js"
+        name: Content-Type
+        value: application/javascript
+      # HTML 캐시 무효화
+      - path: "/"
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: "*.html"
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      # Asset 파일 캐시
+      - path: "/assets/*"
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      # 보안 헤더
+      - path: "/*"
+        name: X-Content-Type-Options
+        value: nosniff
