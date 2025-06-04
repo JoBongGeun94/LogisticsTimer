@@ -1,23 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Play, 
   Pause, 
   Square, 
-  User, 
-  Target, 
   Clock, 
   BarChart3, 
-  Download, 
-  Upload, 
   Trash2, 
-  Edit3, 
-  Search,
-  Calendar,
   CheckCircle,
   AlertCircle,
   Users,
   FileSpreadsheet,
-  Settings,
   History,
   TrendingUp,
   Award,
@@ -199,7 +191,7 @@ export default function EnhancedLogisticsTimer() {
     parts: ['']
   });
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
   // 키보드 이벤트 처리
   useEffect(() => {
@@ -480,7 +472,7 @@ export default function EnhancedLogisticsTimer() {
               <Activity className="mr-2 text-blue-500" size={28} />
               정밀 작업 시간 측정 시스템
             </h1>
-            <span className="text-sm opacity-70">Gage R&R 분석 v2.0</span>
+            <span className="text-sm opacity-70">Gage R&R 분석 v3.0</span>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -987,142 +979,6 @@ export default function EnhancedLogisticsTimer() {
                     </div>
                   </div>
                 </div>
-
-                {/* 측정값 분포 차트 */}
-                <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-                  <h3 className="text-lg font-semibold mb-4">측정값 분포 및 추이</h3>
-                  
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* 시간순 측정값 */}
-                    <div>
-                      <h4 className="font-medium mb-3">시간순 측정값</h4>
-                      <div className="h-48 relative">
-                        <svg className="w-full h-full">
-                          {currentSessionRecords.slice(0, 10).map((record, index) => {
-                            const x = (index / Math.max(1, currentSessionRecords.slice(0, 10).length - 1)) * 100;
-                            const maxDuration = Math.max(...currentSessionRecords.map(r => r.duration));
-                            const y = 100 - (record.duration / maxDuration * 80);
-                            
-                            return (
-                              <g key={record.id}>
-                                <circle
-                                  cx={`${x}%`}
-                                  cy={`${y}%`}
-                                  r="4"
-                                  fill={record.status === 'outlier' ? '#ef4444' : '#3b82f6'}
-                                  className="hover:r-6 transition-all"
-                                />
-                                {index > 0 && (
-                                  <line
-                                    x1={`${((index - 1) / Math.max(1, currentSessionRecords.slice(0, 10).length - 1)) * 100}%`}
-                                    y1={`${100 - (currentSessionRecords[index - 1].duration / maxDuration * 80)}%`}
-                                    x2={`${x}%`}
-                                    y2={`${y}%`}
-                                    stroke="#3b82f6"
-                                    strokeWidth="2"
-                                    opacity="0.6"
-                                  />
-                                )}
-                              </g>
-                            );
-                          })}
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* 측정자별 분포 */}
-                    <div>
-                      <h4 className="font-medium mb-3">측정자별 평균</h4>
-                      <div className="space-y-3">
-                        {Object.entries(
-                          currentSessionRecords.reduce((acc, record) => {
-                            if (!acc[record.measurer]) acc[record.measurer] = [];
-                            acc[record.measurer].push(record.duration);
-                            return acc;
-                          }, {} as Record<string, number[]>)
-                        ).map(([measurer, durations]) => {
-                          const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
-                          const maxAvg = Math.max(...Object.values(
-                            currentSessionRecords.reduce((acc, record) => {
-                              if (!acc[record.measurer]) acc[record.measurer] = [];
-                              acc[record.measurer].push(record.duration);
-                              return acc;
-                            }, {} as Record<string, number[]>)
-                          ).map(vals => vals.reduce((a, b) => a + b, 0) / vals.length));
-                          
-                          return (
-                            <div key={measurer} className="flex items-center justify-between">
-                              <span className="text-sm">{measurer}</span>
-                              <div className="flex items-center space-x-2">
-                                <div className={`w-24 bg-gray-200 rounded-full h-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                                  <div 
-                                    className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                                    style={{ width: `${(avg / maxAvg) * 100}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-sm font-mono">{formatTime(avg)}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 개선 권장사항 */}
-                <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
-                    <Award className="mr-2 text-yellow-500" size={20} />
-                    개선 권장사항
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {gageRRAnalysis.totalGRR > 30 && (
-                      <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                        <div className="font-medium text-red-500 mb-2">🚨 측정 시스템 개선 필요</div>
-                        <ul className="text-sm space-y-1 opacity-80">
-                          <li>• 측정 장비 점검 및 교정</li>
-                          <li>• 작업 표준서 재검토</li>
-                          <li>• 측정자 재교육 실시</li>
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {gageRRAnalysis.cv > 15 && (
-                      <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                        <div className="font-medium text-yellow-500 mb-2">⚠️ 변동성 개선</div>
-                        <ul className="text-sm space-y-1 opacity-80">
-                          <li>• 작업 환경 표준화</li>
-                          <li>• 측정 순서 체계화</li>
-                          <li>• 추가 샘플 수집</li>
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {gageRRAnalysis.outliers > 0 && (
-                      <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-                        <div className="font-medium text-orange-500 mb-2">🔍 이상치 분석</div>
-                        <ul className="text-sm space-y-1 opacity-80">
-                          <li>• 이상치 원인 조사</li>
-                          <li>• 측정 조건 재확인</li>
-                          <li>• 데이터 재수집 검토</li>
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {gageRRAnalysis.totalGRR < 10 && gageRRAnalysis.qualityScore > 90 && (
-                      <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-                        <div className="font-medium text-green-500 mb-2">✅ 우수한 측정 시스템</div>
-                        <ul className="text-sm space-y-1 opacity-80">
-                          <li>• 현재 수준 유지</li>
-                          <li>• 정기적 모니터링</li>
-                          <li>• 모범 사례 공유</li>
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </>
             )}
           </div>
@@ -1131,14 +987,12 @@ export default function EnhancedLogisticsTimer() {
         {/* 히스토리 뷰 */}
         {currentView === 'history' && (
           <div className="space-y-8">
-            {/* 히스토리 헤더 */}
             <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
               <h2 className="text-2xl font-bold mb-4 flex items-center">
                 <History className="mr-3 text-blue-500" size={28} />
                 세션 히스토리
               </h2>
               
-              {/* 히스토리 대시보드 */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-500">{sessions.length}</div>
@@ -1163,7 +1017,6 @@ export default function EnhancedLogisticsTimer() {
               </div>
             </div>
 
-            {/* 세션 목록 */}
             <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border border-gray-200/20`}>
               <h3 className="text-lg font-semibold mb-4">세션 목록</h3>
               
@@ -1274,7 +1127,6 @@ export default function EnhancedLogisticsTimer() {
               </div>
 
               <div className="space-y-6">
-                {/* 기본 정보 */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">세션명 *</label>
@@ -1309,7 +1161,6 @@ export default function EnhancedLogisticsTimer() {
                   </div>
                 </div>
 
-                {/* 측정자 설정 */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <label className="block text-sm font-medium">측정자 설정</label>
@@ -1354,12 +1205,8 @@ export default function EnhancedLogisticsTimer() {
                       </div>
                     ))}
                   </div>
-                  <div className="text-xs opacity-70 mt-1">
-                    Gage R&R 분석을 위해 최소 2명 이상의 측정자를 권장합니다.
-                  </div>
                 </div>
 
-                {/* 부품 설정 */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <label className="block text-sm font-medium">부품/대상 설정</label>
@@ -1404,12 +1251,8 @@ export default function EnhancedLogisticsTimer() {
                       </div>
                     ))}
                   </div>
-                  <div className="text-xs opacity-70 mt-1">
-                    변동성 분석을 위해 여러 부품/대상을 설정할 수 있습니다.
-                  </div>
                 </div>
 
-                {/* Gage R&R 안내 */}
                 <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50'} border border-blue-200/30`}>
                   <div className="flex items-start space-x-3">
                     <Award className="text-blue-500 mt-1" size={20} />
@@ -1426,7 +1269,6 @@ export default function EnhancedLogisticsTimer() {
                 </div>
               </div>
 
-              {/* 버튼 */}
               <div className="flex justify-end space-x-3 mt-8">
                 <button
                   onClick={() => setShowNewSession(false)}
