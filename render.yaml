@@ -2,55 +2,44 @@ services:
   - type: web
     name: logistics-timer
     runtime: static
-    buildCommand: rm -rf dist .cache && npm ci && npm run build
+    buildCommand: rm -rf dist node_modules/.cache .vite && npm ci && npm run build
     staticPublishPath: ./dist
     pullRequestPreviewsEnabled: true
     headers:
-      # MIME 타입 명시적 설정
+      # MIME 타입 명시적 설정 (핵심!)
+      - path: "/assets/*.css"
+        name: Content-Type
+        value: text/css
+      - path: "/assets/*.js"
+        name: Content-Type
+        value: application/javascript
+      - path: "/assets/*.json"
+        name: Content-Type
+        value: application/json
       - path: "*.css"
         name: Content-Type
         value: text/css
       - path: "*.js"
         name: Content-Type
         value: application/javascript
-      - path: "*.json"
-        name: Content-Type
-        value: application/json
-      - path: "*.png"
-        name: Content-Type
-        value: image/png
-      - path: "*.svg"
-        name: Content-Type
-        value: image/svg+xml
-      - path: "*.ico"
-        name: Content-Type
-        value: image/x-icon
-      - path: "*.woff2"
-        name: Content-Type
-        value: font/woff2
-      - path: "*.woff"
-        name: Content-Type
-        value: font/woff
-      - path: "*.ttf"
-        name: Content-Type
-        value: font/ttf
-      # 캐시 제어
-      - path: "*.css"
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
-      - path: "*.js"
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
+      # 캐시 제어 (HTML 강제 새로고침)
       - path: "/"
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
+      - path: "/index.html"
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: "*.html"
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      # Asset 파일 캐시 (해시 기반이므로 긴 캐시)
+      - path: "/assets/*"
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
       # 보안 헤더
-      - path: "/*"
-        name: X-Frame-Options
-        value: DENY
       - path: "/*"
         name: X-Content-Type-Options
         value: nosniff
       - path: "/*"
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
+        name: X-Frame-Options
+        value: DENY
