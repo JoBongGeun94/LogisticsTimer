@@ -323,7 +323,7 @@ const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
 
     const reproducibility = Math.sqrt(Math.max(0, operatorVariance - (repeatability * repeatability) / trialsPerCondition));
 
-    // 부품 변동 계산
+    // 대상자 변동 계산
     const targetMeans = Object.values(targetGroups)
       .filter(group => group.length > 0)
       .map(group => group.reduce((a, b) => a + b, 0) / group.length);
@@ -596,7 +596,7 @@ const ModernLandingPage = memo<{
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
         {/* 로고 섹션 (더 아래로 이동) */}
-        <div className="transform hover:scale-105 transition-transform duration-300 mb-12">
+        <div className="transform hover:scale-105 transition-transform duration-300 mb-20">
           <ConsolidatedSupplyLogo isDark={isDark} size="lg" />
         </div>
 
@@ -1066,7 +1066,7 @@ const DetailedAnalysisPage = memo<{
             <DetailedMeasurementCard
               title="구별 범주 수 (NDC)"
               value={analysis.ndc}
-              description="측정시스템이 서로 다른 제품이나 부품을 얼마나 많은 그룹으로 구별할 수 있는지를 나타냅니다. 5개 이상이면 우수한 구별 능력을 의미합니다."
+              description="측정시스템이 서로 다른 제품이나 대상자를 얼마나 많은 그룹으로 구별할 수 있는지를 나타냅니다. 5개 이상이면 우수한 구별 능력을 의미합니다."
               interpretation={
                 analysis.ndc >= 5
                   ? "우수한 구별 능력을 가지고 있습니다. 제품간 미세한 차이도 정확히 구별할 수 있습니다."
@@ -1125,7 +1125,7 @@ const DetailedAnalysisPage = memo<{
                 <div className={`${theme.surface} p-4 rounded-lg border-l-4 border-green-500`}>
                   <div className="flex justify-between items-center mb-2">
                     <div>
-                      <span className={`font-medium ${theme.text} text-sm block`}>부품 변동</span>
+                      <span className={`font-medium ${theme.text} text-sm block`}>대상자 변동</span>
                       <span className={`text-xs ${theme.textMuted}`}>측정 대상간 실제 차이</span>
                     </div>
                     <span className={`font-mono text-lg font-bold ${theme.textSecondary}`}>
@@ -1134,10 +1134,10 @@ const DetailedAnalysisPage = memo<{
                   </div>
                   <p className={`text-xs ${theme.textMuted} mt-2 p-2 rounded ${isDark ? 'bg-green-900/20' : 'bg-green-50'}`}>
                     💡 {analysis.anova.partPercent > 50 
-                      ? "부품간 차이가 측정 오차보다 훨씬 큽니다. 이상적인 상황입니다."
+                      ? "대상자간 차이가 측정 오차보다 훨씬 큽니다. 이상적인 상황입니다."
                       : analysis.anova.partPercent > 30
-                      ? "부품간 차이를 적절히 구별할 수 있습니다."
-                      : "부품간 실제 차이가 작거나 측정 오차가 큽니다."}
+                      ? "대상자간 차이를 적절히 구별할 수 있습니다."
+                      : "대상자간 실제 차이가 작거나 측정 오차가 큽니다."}
                   </p>
                 </div>
               </div>
@@ -1528,7 +1528,7 @@ const EnhancedLogisticsTimer = () => {
       [''],
       ['=== ANOVA 분석 ==='],
       ['측정자 기여율 (%)', analysis.anova.operatorPercent.toFixed(1)],
-      ['부품 기여율 (%)', analysis.anova.partPercent.toFixed(1)],
+      ['대상자 기여율 (%)', analysis.anova.partPercent.toFixed(1)],
       ['상호작용 기여율 (%)', analysis.anova.interactionPercent.toFixed(1)],
       ['오차 기여율 (%)', analysis.anova.errorPercent.toFixed(1)],
       [''],
@@ -2123,7 +2123,7 @@ const EnhancedLogisticsTimer = () => {
                       type="text"
                       value={sessionName}
                       onChange={(e) => setSessionName(e.target.value)}
-                      placeholder="예: 포장작업_0602"
+                      placeholder="예: 검수-000-001"
                       className={`w-full p-3 border rounded-lg text-sm ${theme.input}`}
                     />
                   </div>
@@ -2163,7 +2163,7 @@ const EnhancedLogisticsTimer = () => {
                           newOperators[index] = e.target.value;
                           setOperators(newOperators);
                         }}
-                        placeholder={`측정자 ${index + 1} (예: 조봉근)`}
+                        placeholder={`측정자 ${index + 1} (예: 6급 조봉근)`}
                         className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
                       />
                       {operators.length > 1 && (
@@ -2199,7 +2199,7 @@ const EnhancedLogisticsTimer = () => {
                           newTargets[index] = e.target.value;
                           setTargets(newTargets);
                         }}
-                        placeholder={`대상자 ${index + 1} (예: 이나영)`}
+                        placeholder={`대상자 ${index + 1} (예: 7급 김공군)`}
                         className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
                       />
                       {targets.length > 1 && (
@@ -2221,7 +2221,7 @@ const EnhancedLogisticsTimer = () => {
                   </h4>
                   <ul className={`${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 text-xs`}>
                     <li>• 측정자 2명 이상: 재현성(Reproducibility) 분석</li>
-                    <li>• 대상자 2개 이상: 부품간 변동성 분석</li>
+                    <li>• 대상자 2개 이상: 대상자간 변동성 분석</li>
                     <li>• 최소 6회 측정: 신뢰성 있는 분석 결과</li>
                     <li>• 권장 측정 횟수: 각 조건별 3-5회</li>
                   </ul>
