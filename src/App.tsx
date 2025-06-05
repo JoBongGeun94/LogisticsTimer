@@ -594,9 +594,9 @@ const ModernLandingPage = memo<{
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]"></div>
       </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
+      <div className="relative z-10 flex flex-col items-center justify-start min-h-screen px-6 text-center pt-20">
         {/* 로고 섹션 (더 아래로 이동) */}
-        <div className="transform hover:scale-105 transition-transform duration-300 mb-20">
+        <div className="transform hover:scale-105 transition-transform duration-300 mb-16 mt-16">
           <ConsolidatedSupplyLogo isDark={isDark} size="lg" />
         </div>
 
