@@ -159,7 +159,71 @@ const generateFileName = (prefix: string, sessionName: string): string => {
   return `${prefix}-${safeName}-(${timestamp})`;
 };
 
-// 모바일 다운로드 최적화 함수
+// 대체 다운로드 방법
+const fallbackDownload = (blob: Blob, filename: string): boolean => {
+  try {
+    // 방법 1: 직접 다운로드 링크 생성
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // 메모리 정리
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    
+    return true;
+  } catch (error) {
+    // 방법 2: 새 창으로 데이터 표시
+    try {
+      const dataUrl = URL.createObjectURL(blob);
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(`
+          <html>
+            <head>
+              <title>측정 결과 다운로드</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body { font-family: Arial, sans-serif; padding: 20px; text-align: center; background: #f5f5f5; }
+                .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .download-btn { background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: bold; }
+                .download-btn:hover { background: #0056b3; }
+                .info { font-size: 14px; color: #666; margin-top: 20px; line-height: 1.5; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h2>📊 측정 결과 준비 완료</h2>
+                <p>아래 버튼을 눌러 파일을 다운로드하세요.</p>
+                <a href="${dataUrl}" download="${filename}" class="download-btn">
+                  📥 ${filename} 다운로드
+                </a>
+                <div class="info">
+                  <p><strong>모바일 사용자:</strong></p>
+                  <p>• 버튼을 길게 눌러 "링크 저장" 선택</p>
+                  <p>• 또는 "다운로드" 옵션 선택</p>
+                  <p>• 파일은 다운로드 폴더에 저장됩니다</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+      }
+      return true;
+    } catch (finalError) {
+      console.error('All download methods failed:', finalError);
+      return false;
+    }
+  }
+};
+
+// 모바일 다운로드 최적화 함수 (완전 수정)
 const downloadForMobile = (content: string, filename: string): boolean => {
   try {
     const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
@@ -168,48 +232,30 @@ const downloadForMobile = (content: string, filename: string): boolean => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (isMobile) {
-      // 모바일에서는 Web Share API 또는 새 창으로 다운로드
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: blob.type })] })) {
-        const file = new File([blob], filename, { type: blob.type });
-        navigator.share({
-          files: [file],
-          title: '측정 분석 결과',
-          text: '물류 작업현장 인시수 측정 결과입니다.'
-        }).catch(console.error);
-        return true;
-      } else {
-        // 대체 방법: 데이터 URL로 새 창 열기
-        const dataUrl = URL.createObjectURL(blob);
-        const newWindow = window.open();
-        if (newWindow) {
-          newWindow.document.write(`
-            <html>
-              <head><title>측정 결과 다운로드</title></head>
-              <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
-                <h2>측정 결과가 준비되었습니다</h2>
-                <p>아래 링크를 길게 눌러 다운로드하세요:</p>
-                <a href="${dataUrl}" download="${filename}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px;">
-                  ${filename} 다운로드
-                </a>
-                <p style="margin-top: 20px; font-size: 12px; color: #666;">
-                  파일이 자동으로 다운로드되지 않으면 링크를 길게 눌러 "링크 저장" 또는 "다운로드"를 선택하세요.
-                </p>
-              </body>
-            </html>
-          `);
+      // 방법 1: Web Share API (파일 공유)
+      if (navigator.share) {
+        try {
+          const file = new File([blob], filename, { type: 'text/csv' });
+          navigator.share({
+            files: [file],
+            title: '측정 분석 결과',
+            text: '물류 작업현장 인시수 측정 결과입니다.'
+          }).catch(() => {
+            // Web Share 실패 시 대체 방법 사용
+            fallbackDownload(blob, filename);
+          });
+          return true;
+        } catch (error) {
+          // Web Share API 오류 시 대체 방법
+          return fallbackDownload(blob, filename);
         }
-        return true;
+      } else {
+        // Web Share API 미지원 시 대체 방법
+        return fallbackDownload(blob, filename);
       }
     } else {
       // 데스크톱 환경에서는 기존 방식
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-      return true;
+      return fallbackDownload(blob, filename);
     }
   } catch (error) {
     console.error('Download failed:', error);
@@ -548,67 +594,39 @@ const StatusBadge = memo<{
   );
 });
 
-// 새로운 현대적인 로고 컴포넌트 (실제 로고 기반)
+// 실제 로고 이미지를 사용하는 컴포넌트
 const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg' }>(({ isDark = false, size = 'lg' }) => {
   const sizeConfig = {
-    sm: { container: 'w-16 h-16', text: 'text-sm' },
-    md: { container: 'w-24 h-24', text: 'text-base' },
-    lg: { container: 'w-32 h-32', text: 'text-lg' }
+    sm: { container: 'w-16 h-16' },
+    md: { container: 'w-24 h-24' },
+    lg: { container: 'w-32 h-32' }
   };
 
-  const { container, text } = sizeConfig[size];
+  const { container } = sizeConfig[size];
 
   return (
     <div className={`relative flex items-center justify-center ${container}`}>
-      {/* 육각형 패턴 배경 */}
-      <div className="absolute inset-0 opacity-10">
-        <svg viewBox="0 0 100 100" className="w-full h-full">
-          <defs>
-            <pattern id="hexagon" x="0" y="0" width="20" height="17.32" patternUnits="userSpaceOnUse">
-              <polygon points="10,1.73 20,8.66 20,15.59 10,22.52 0,15.59 0,8.66" 
-                       fill="none" stroke="white" strokeWidth="0.5"/>
-            </pattern>
-          </defs>
-          <rect width="100" height="100" fill="url(#hexagon)"/>
-        </svg>
-      </div>
-      
-      {/* 메인 로고 구성 */}
-      <div className="relative z-10 flex items-center justify-center">
-        {/* 빨간색 육각형 (상단) */}
-        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-          <div className="w-8 h-8 bg-red-500 transform rotate-45 rounded-lg shadow-lg border-2 border-red-400">
-            <div className="absolute inset-2 bg-red-400 rounded flex items-center justify-center">
-              <span className="text-white font-bold text-xs">H</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 노란색 육각형 (좌측) */}
-        <div className="absolute top-2 -left-4">
-          <div className="w-8 h-8 bg-yellow-400 transform rotate-45 rounded-lg shadow-lg border-2 border-yellow-300">
-            <div className="absolute inset-2 bg-yellow-300 rounded flex items-center justify-center">
-              <span className="text-gray-800 font-bold text-xs">H</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 파란색 육각형 (우측) */}
-        <div className="absolute top-2 right-4">
-          <div className="w-8 h-8 bg-blue-500 transform rotate-45 rounded-lg shadow-lg border-2 border-blue-400">
-            <div className="absolute inset-2 bg-blue-400 rounded flex items-center justify-center">
-              <span className="text-white font-bold text-xs">I</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 중앙 원형 요소 */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-2">
-          <div className="w-6 h-6 bg-yellow-500 rounded-full shadow-lg flex items-center justify-center border-2 border-yellow-400">
-            <div className="w-3 h-3 bg-white rounded-full"></div>
-          </div>
-        </div>
-      </div>
+      {/* 실제 로고 이미지 사용 */}
+      <img 
+        src="/logo-rokaf-supply.png"
+        alt="공군 종합보급창 로고" 
+        className="w-full h-full object-contain"
+        style={{
+          filter: isDark ? 'brightness(1.1)' : 'none'
+        }}
+        onError={(e) => {
+          // 이미지 로드 실패 시 대체 텍스트 표시
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          const parent = target.parentElement;
+          if (parent && !parent.querySelector('.logo-fallback')) {
+            const fallback = document.createElement('div');
+            fallback.className = 'logo-fallback flex items-center justify-center w-full h-full bg-blue-600 text-white rounded-full text-sm font-bold';
+            fallback.textContent = '종합보급창';
+            parent.appendChild(fallback);
+          }
+        }}
+      />
     </div>
   );
 });
