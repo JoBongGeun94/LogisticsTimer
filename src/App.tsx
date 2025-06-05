@@ -159,16 +159,18 @@ const generateFileName = (prefix: string, sessionName: string): string => {
   return `${prefix}-${safeName}-(${timestamp})`;
 };
 
-// 대체 다운로드 방법
+// 대체 다운로드 방법 (엑셀 파일로 직접 다운로드)
 const fallbackDownload = (blob: Blob, filename: string): boolean => {
   try {
-    // 방법 1: 직접 다운로드 링크 생성
+    // 직접 다운로드 링크 생성 (엑셀 파일로)
+    const excelFilename = filename.replace('.csv', '.xlsx');
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = filename;
+    link.download = excelFilename;
     link.style.display = 'none';
     
+    // 강제 클릭으로 즉시 다운로드
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -178,88 +180,45 @@ const fallbackDownload = (blob: Blob, filename: string): boolean => {
     
     return true;
   } catch (error) {
-    // 방법 2: 새 창으로 데이터 표시
-    try {
-      const dataUrl = URL.createObjectURL(blob);
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(`
-          <html>
-            <head>
-              <title>측정 결과 다운로드</title>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body { font-family: Arial, sans-serif; padding: 20px; text-align: center; background: #f5f5f5; }
-                .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                .download-btn { background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: bold; }
-                .download-btn:hover { background: #0056b3; }
-                .info { font-size: 14px; color: #666; margin-top: 20px; line-height: 1.5; }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <h2>📊 측정 결과 준비 완료</h2>
-                <p>아래 버튼을 눌러 파일을 다운로드하세요.</p>
-                <a href="${dataUrl}" download="${filename}" class="download-btn">
-                  📥 ${filename} 다운로드
-                </a>
-                <div class="info">
-                  <p><strong>모바일 사용자:</strong></p>
-                  <p>• 버튼을 길게 눌러 "링크 저장" 선택</p>
-                  <p>• 또는 "다운로드" 옵션 선택</p>
-                  <p>• 파일은 다운로드 폴더에 저장됩니다</p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `);
-        newWindow.document.close();
-      }
-      return true;
-    } catch (finalError) {
-      console.error('All download methods failed:', finalError);
-      return false;
-    }
+    console.error('Direct download failed:', error);
+    return false;
   }
 };
 
-// 모바일 다운로드 최적화 함수 (완전 수정)
+// 모바일 다운로드 최적화 함수 (엑셀 파일 직접 다운로드)
 const downloadForMobile = (content: string, filename: string): boolean => {
   try {
-    const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
+    // CSV 대신 Excel 호환 형식으로 생성
+    const excelContent = '\ufeff' + content; // BOM 추가로 한글 깨짐 방지
+    const blob = new Blob([excelContent], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
     
-    // 모바일 환경 감지
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // 파일명을 .xlsx로 변경
+    const excelFilename = filename.replace('.csv', '.xlsx');
     
-    if (isMobile) {
-      // 방법 1: Web Share API (파일 공유)
-      if (navigator.share) {
-        try {
-          const file = new File([blob], filename, { type: 'text/csv' });
-          navigator.share({
-            files: [file],
-            title: '측정 분석 결과',
-            text: '물류 작업현장 인시수 측정 결과입니다.'
-          }).catch(() => {
-            // Web Share 실패 시 대체 방법 사용
-            fallbackDownload(blob, filename);
-          });
-          return true;
-        } catch (error) {
-          // Web Share API 오류 시 대체 방법
-          return fallbackDownload(blob, filename);
-        }
-      } else {
-        // Web Share API 미지원 시 대체 방법
-        return fallbackDownload(blob, filename);
-      }
-    } else {
-      // 데스크톱 환경에서는 기존 방식
-      return fallbackDownload(blob, filename);
-    }
+    // 모바일/데스크톱 구분 없이 직접 다운로드
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = excelFilename;
+    link.style.display = 'none';
+    
+    // DOM에 추가 후 클릭
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // 메모리 정리
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    
+    return true;
   } catch (error) {
-    console.error('Download failed:', error);
-    return false;
+    console.error('Excel download failed:', error);
+    return fallbackDownload(
+      new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' }), 
+      filename
+    );
   }
 };
 
@@ -594,19 +553,19 @@ const StatusBadge = memo<{
   );
 });
 
-// 실제 로고 이미지를 사용하는 컴포넌트
+// 실제 로고 이미지를 사용하는 컴포넌트 (중앙 정렬 수정)
 const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg' }>(({ isDark = false, size = 'lg' }) => {
   const sizeConfig = {
     sm: { container: 'w-16 h-16' },
     md: { container: 'w-24 h-24' },
-    lg: { container: 'w-32 h-32' }
+    lg: { container: 'w-40 h-40' } // 랜딩페이지용 로고 크기 증가
   };
 
   const { container } = sizeConfig[size];
 
   return (
-    <div className={`relative flex items-center justify-center ${container}`}>
-      {/* 실제 로고 이미지 사용 */}
+    <div className={`flex items-center justify-center ${container} mx-auto`}>
+      {/* 실제 로고 이미지 사용 - 중앙 정렬 */}
       <img 
         src="/logo-rokaf-supply.png"
         alt="공군 종합보급창 로고" 
@@ -631,17 +590,13 @@ const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg
   );
 });
 
-// 현대적인 랜딩 페이지 컴포넌트
+// 현대적인 랜딩 페이지 컴포넌트 (남색 테마 + 로고 중심)
 const ModernLandingPage = memo<{ 
   isDark: boolean; 
   onStart: () => void;
 }>(({ isDark, onStart }) => {
   return (
-    <div className={`min-h-screen relative overflow-hidden ${
-      isDark 
-        ? 'bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900' 
-        : 'bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800'
-    }`}>
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-indigo-800 to-blue-900">
       {/* 배경 애니메이션 */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
@@ -651,17 +606,9 @@ const ModernLandingPage = memo<{
 
       {/* 메인 콘텐츠 */}
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        {/* 로고 섹션 */}
-        <div className="mb-8 transform hover:scale-105 transition-transform duration-300">
+        {/* 로고 섹션 (크기 증가, 텍스트 제거) */}
+        <div className="mb-12 transform hover:scale-105 transition-transform duration-300">
           <ConsolidatedSupplyLogo isDark={isDark} size="lg" />
-          <div className="mt-6 space-y-2">
-            <h1 className="text-2xl font-bold text-white tracking-wide">
-              종합보급창
-            </h1>
-            <p className="text-blue-100 text-sm font-medium tracking-widest">
-              ROKAF CONSOLIDATED SUPPLY DEPOT
-            </p>
-          </div>
         </div>
 
         {/* 타이틀 섹션 */}
@@ -671,7 +618,7 @@ const ModernLandingPage = memo<{
             인시수 측정 타이머
           </h2>
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
-            <span className="text-blue-100 text-sm font-medium">
+            <span className="text-indigo-100 text-sm font-medium">
               Gage R&R 분석 v6.0 Mobile Optimized
             </span>
           </div>
@@ -685,7 +632,7 @@ const ModernLandingPage = memo<{
             </div>
             <div className="text-left">
               <div className="text-white font-medium text-sm">정밀 측정</div>
-              <div className="text-blue-200 text-xs">센티초 단위 정확도</div>
+              <div className="text-indigo-200 text-xs">센티초 단위 정확도</div>
             </div>
           </div>
           
@@ -695,7 +642,7 @@ const ModernLandingPage = memo<{
             </div>
             <div className="text-left">
               <div className="text-white font-medium text-sm">실시간 분석</div>
-              <div className="text-blue-200 text-xs">Gage R&R 자동 계산</div>
+              <div className="text-indigo-200 text-xs">Gage R&R 자동 계산</div>
             </div>
           </div>
           
@@ -704,8 +651,8 @@ const ModernLandingPage = memo<{
               <Download className="w-5 h-5 text-purple-400" />
             </div>
             <div className="text-left">
-              <div className="text-white font-medium text-sm">모바일 친화적</div>
-              <div className="text-blue-200 text-xs">언제 어디서나 접근</div>
+              <div className="text-white font-medium text-sm">엑셀 다운로드</div>
+              <div className="text-indigo-200 text-xs">즉시 로컬 저장</div>
             </div>
           </div>
         </div>
@@ -713,9 +660,9 @@ const ModernLandingPage = memo<{
         {/* 시작 버튼 */}
         <button
           onClick={onStart}
-          className="group relative px-8 py-4 bg-white text-blue-700 rounded-xl font-bold text-lg shadow-2xl hover:shadow-white/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
+          className="group relative px-8 py-4 bg-white text-indigo-700 rounded-xl font-bold text-lg shadow-2xl hover:shadow-white/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           <span className="relative z-10 group-hover:text-white transition-colors duration-300 flex items-center space-x-2">
             <Play className="w-5 h-5" />
             <span>시스템 시작</span>
@@ -724,7 +671,7 @@ const ModernLandingPage = memo<{
 
         {/* 하단 정보 */}
         <div className="mt-8 text-center">
-          <div className="inline-flex items-center space-x-2 text-blue-200 text-xs">
+          <div className="inline-flex items-center space-x-2 text-indigo-200 text-xs">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
             <span>시스템 준비 완료</span>
           </div>
