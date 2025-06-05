@@ -624,7 +624,7 @@ const ModernLandingPage = memo<{
               </div>
               <div className="text-left flex-1">
                 <div className="text-white font-semibold text-base">정밀 측정</div>
-                <div className="text-blue-200 text-sm">소숫점 단위 정확한 측정 </div>
+                <div className="text-blue-200 text-sm">소수수점 단위 정확한 측정 </div>
               </div>
             </div>
           </div>
