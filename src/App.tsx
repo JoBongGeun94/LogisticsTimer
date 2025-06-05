@@ -2331,3 +2331,676 @@ const EnhancedLogisticsTimer = () => {
             <div className="flex items-center space-x-2 flex-shrink-0">
               <button
                 onClick={() => set
+<div className="flex items-center space-x-2 flex-shrink-0">
+              <button
+                onClick={() => setIsDark(!isDark)}
+                className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:${theme.textSecondary} ${theme.surfaceHover}`}
+              >
+                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={() => setShowHelp(true)}
+                className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:${theme.textSecondary} ${theme.surfaceHover}`}
+              >
+                <HelpCircle className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowLanding(true)}
+                className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:text-red-500 ${theme.surfaceHover}`}
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto p-4 space-y-4">
+        {/* 작업 세션 섹션 */}
+        <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Users className="w-5 h-5 text-blue-500" />
+              <h2 className={`font-semibold ${theme.text}`}>작업 세션</h2>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowNewSessionModal(true)}
+                className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-600 flex items-center space-x-1 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>새 세션</span>
+              </button>
+              <button
+                onClick={resetTimer}
+                className="bg-orange-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-orange-600 flex items-center space-x-1 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>초기화</span>
+              </button>
+            </div>
+          </div>
+
+          {currentSession ? (
+            <div className="space-y-3">
+              <div className={`text-sm ${theme.textMuted}`}>
+                <div className={`font-medium ${theme.text} mb-1 truncate`}>{currentSession.name}</div>
+                <div className="truncate">{currentSession.workType}</div>
+              </div>
+
+              {/* 측정자/대상자 선택 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>측정자</label>
+                  <select
+                    value={currentOperator}
+                    onChange={(e) => setCurrentOperator(e.target.value)}
+                    className={`w-full p-2 border rounded text-sm ${theme.input}`}
+                  >
+                    {currentSession.operators.map(op => (
+                      <option key={op} value={op}>{op}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>대상자</label>
+                  <select
+                    value={currentTarget}
+                    onChange={(e) => setCurrentTarget(e.target.value)}
+                    className={`w-full p-2 border rounded text-sm ${theme.input}`}
+                  >
+                    {currentSession.targets.map(tg => (
+                      <option key={tg} value={tg}>{tg}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <p className={`text-sm ${theme.textMuted}`}>활성 세션이 없습니다.</p>
+              <p className={`text-xs ${theme.textMuted}`}>새 세션을 생성해주세요.</p>
+            </div>
+          )}
+        </div>
+
+        {/* 정밀 타이머 섹션 */}
+        <div className={`${theme.card} rounded-lg p-6 shadow-sm border ${theme.border}`}>
+          <div className="flex items-center space-x-2 mb-4">
+            <Clock className="w-6 h-6 text-blue-500" />
+            <h2 className={`font-semibold ${theme.text}`}>정밀 타이머</h2>
+          </div>
+
+          <div className="text-center">
+            <div className={`text-4xl sm:text-5xl font-mono font-bold mb-6 ${theme.text} tracking-wider`}>
+              {formatTime(currentTime)}
+            </div>
+            <div className={`text-sm ${theme.textMuted} mb-6`}>
+              {isRunning ? '측정 중...' : '대기 중'}
+            </div>
+
+            {/* 버튼 레이아웃 */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <button
+                onClick={toggleTimer}
+                disabled={!currentSession}
+                className={`flex items-center justify-center space-x-2 py-3 rounded-lg font-semibold transition-colors ${
+                  isRunning
+                    ? 'bg-red-500 hover:bg-red-600 text-white'
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                } disabled:bg-gray-300 disabled:cursor-not-allowed`}
+              >
+                {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                <span className="text-sm">{isRunning ? '정지' : '시작'}</span>
+              </button>
+
+              <button
+                onClick={recordLap}
+                disabled={!currentSession}
+                className="flex items-center justify-center space-x-2 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                <Target className="w-5 h-5" />
+                <span className="text-sm">랩타임</span>
+              </button>
+
+              <button
+                onClick={stopTimer}
+                className={`flex items-center justify-center space-x-2 py-3 rounded-lg font-semibold transition-colors ${
+                  isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white'
+                }`}
+              >
+                <Square className="w-5 h-5" />
+                <span className="text-sm">중지</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 실시간 분석 섹션 */}
+        {lapTimes.length > 0 && (
+          <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="w-5 h-5 text-green-500" />
+                <h2 className={`font-semibold ${theme.text}`}>실시간 분석</h2>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
+              <MeasurementCard
+                title="측정 횟수"
+                value={lapTimes.length}
+                icon={Timer}
+                status="info"
+                theme={theme}
+                size="sm"
+                isDark={isDark}
+              />
+              
+              <MeasurementCard
+                title="평균 시간"
+                value={formatTime(lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)}
+                icon={Clock}
+                status="success"
+                theme={theme}
+                size="sm"
+                isDark={isDark}
+              />
+
+              <MeasurementCard
+                title="변동계수"
+                value={lapTimes.length > 1 ? 
+                  `${((Math.sqrt(lapTimes.reduce((acc, lap) => {
+                    const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
+                    return acc + Math.pow(lap.time - mean, 2);
+                  }, 0) / lapTimes.length) / (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)) * 100).toFixed(1)}%` 
+                  : '0%'
+                }
+                icon={Activity}
+                status="warning"
+                theme={theme}
+                size="sm"
+                isDark={isDark}
+              />
+            </div>
+
+            {/* Gage R&R 분석 결과 */}
+            {analysis && lapTimes.length >= 6 && (
+              <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
+                <MeasurementCard
+                  title="Gage R&R"
+                  value={`${analysis.gageRRPercent.toFixed(1)}%`}
+                  icon={BarChart3}
+                  status={analysis.status === 'excellent' || analysis.status === 'acceptable' ? 'success' : 'error'}
+                  theme={theme}
+                  size="sm"
+                  isDark={isDark}
+                />
+                
+                <MeasurementCard
+                  title="Cpk"
+                  value={analysis.cpk.toFixed(2)}
+                  icon={Target}
+                  status={analysis.cpk >= 1.33 ? 'success' : analysis.cpk >= 1.0 ? 'warning' : 'error'}
+                  theme={theme}
+                  size="sm"
+                  isDark={isDark}
+                />
+
+                <MeasurementCard
+                  title="NDC"
+                  value={analysis.ndc}
+                  icon={Calculator}
+                  status={analysis.ndc >= 5 ? 'success' : analysis.ndc >= 3 ? 'warning' : 'error'}
+                  theme={theme}
+                  size="sm"
+                  isDark={isDark}
+                />
+              </div>
+            )}
+
+            {/* 간략한 상태 표시 */}
+            {analysis && lapTimes.length >= 6 && (
+              <div className={`${theme.surface} p-3 rounded-lg border ${theme.border} text-center`}>
+                <StatusBadge status={analysis.status} size="md" isDark={isDark} />
+                <p className={`text-sm ${theme.textMuted} mt-2`}>
+                  상세한 분석과 해석은 별도 페이지에서 확인하세요
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 액션 버튼들 */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={downloadMeasurementData}
+            disabled={lapTimes.length === 0}
+            className="bg-green-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            <span>측정기록</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              if (lapTimes.length < 6) {
+                showToast('상세 분석을 위해서는 최소 6개의 측정 기록이 필요합니다.', 'warning');
+              } else {
+                setShowDetailedAnalysis(true);
+              }
+            }}
+            disabled={lapTimes.length < 6}
+            className="bg-purple-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
+          >
+            <PieChart className="w-4 h-4" />
+            <span>상세분석</span>
+          </button>
+        </div>
+
+        {/* 측정 기록 섹션 */}
+        {currentSession && (
+          <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <FileText className="w-5 h-5 text-purple-500" />
+                <h2 className={`font-semibold ${theme.text}`}>측정 기록</h2>
+                <span className={`text-sm ${theme.textMuted}`}>
+                  {filteredLapTimes.length}개
+                </span>
+              </div>
+              <button
+                onClick={() => setFilterOperator(filterOperator ? '' : currentSession.operators[0])}
+                className={`text-blue-500 text-sm hover:text-blue-700 transition-colors p-1 rounded ${theme.surfaceHover}`}
+              >
+                <Filter className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 필터 섹션 */}
+            {filterOperator && (
+              <div className={`mb-4 p-3 rounded-lg border ${theme.border} ${theme.surface}`}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>측정자 필터</label>
+                    <select
+                      value={filterOperator}
+                      onChange={(e) => setFilterOperator(e.target.value)}
+                      className={`w-full p-2 border rounded text-sm ${theme.input}`}
+                    >
+                      <option value="">전체</option>
+                      {currentSession.operators.map(op => (
+                        <option key={op} value={op}>{op}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>대상자 필터</label>
+                    <select
+                      value={filterTarget}
+                      onChange={(e) => setFilterTarget(e.target.value)}
+                      className={`w-full p-2 border rounded text-sm ${theme.input}`}
+                    >
+                      <option value="">전체</option>
+                      {currentSession.targets.map(tg => (
+                        <option key={tg} value={tg}>{tg}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {(filterOperator || filterTarget) && (
+                  <button
+                    onClick={() => {
+                      setFilterOperator('');
+                      setFilterTarget('');
+                    }}
+                    className="mt-2 text-xs text-blue-500 hover:text-blue-700 transition-colors"
+                  >
+                    필터 초기화
+                  </button>
+                )}
+              </div>
+            )}
+            
+            {filteredLapTimes.length > 0 ? (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {filteredLapTimes
+                  .slice()
+                  .reverse()
+                  .map((lap, index) => (
+                  <div key={lap.id} className={`${theme.surface} p-3 rounded-lg border-l-4 border-blue-500 transition-all hover:shadow-md ${theme.surfaceHover}`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-mono text-lg font-bold text-blue-600 mb-2">
+                          {formatTime(lap.time)}
+                        </div>
+                        <div className={`text-xs ${theme.textMuted} space-y-1`}>
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">측정자: <span className={`font-medium ${theme.textSecondary}`}>{lap.operator}</span></span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Target className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">대상자: <span className={`font-medium ${theme.textSecondary}`}>{lap.target}</span></span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{lap.timestamp}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className={`text-xs ${theme.textMuted} text-right`}>
+                          #{filteredLapTimes.length - index}
+                        </div>
+                        <button
+                          onClick={() => deleteLapTime(lap.id)}
+                          className="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                          title="측정 기록 삭제"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p className={`text-sm ${theme.textMuted}`}>
+                  {lapTimes.length === 0 ? '측정 기록이 없습니다.' : '필터 조건에 맞는 기록이 없습니다.'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 세션 히스토리 */}
+        {sessions.length > 0 && (
+          <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Package className="w-5 h-5 text-gray-500" />
+                <h2 className={`font-semibold ${theme.text}`}>세션 히스토리</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setSessions([]);
+                  setCurrentSession(null);
+                  setLapTimes([]);
+                  setAllLapTimes([]);
+                  setCurrentTime(0);
+                  setIsRunning(false);
+                  showToast('모든 세션 히스토리가 삭제되었습니다.', 'success');
+                }}
+                className="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                title="모든 세션 히스토리 삭제"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="space-y-2">
+              {sessions.slice(-5).reverse().map(session => {
+                const sessionLapCount = allLapTimes.filter(lap => lap.sessionId === session.id).length;
+                return (
+                  <div
+                    key={session.id}
+                    onClick={() => setSelectedSessionHistory(session)}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                      currentSession?.id === session.id
+                        ? isDark ? 'border-blue-400 bg-blue-900/20' : 'border-blue-500 bg-blue-50'
+                        : `${theme.border} ${theme.surface} ${theme.surfaceHover}`
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-medium text-sm ${theme.text} truncate`}>{session.name}</div>
+                        <div className={`text-xs ${theme.textMuted} truncate`}>{session.workType}</div>
+                        <div className={`text-xs ${theme.textMuted} truncate`}>{session.startTime}</div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className={`text-sm font-medium ${theme.text}`}>
+                          {sessionLapCount}회
+                        </div>
+                        {currentSession?.id === session.id && (
+                          <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-1 rounded">
+                            활성
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 하단 여백 */}
+        <div className="h-8"></div>
+      </div>
+
+      {/* 새 세션 생성 모달 */}
+      {showNewSessionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`${theme.card} rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl border ${theme.border}`}>
+            <div className="p-6">
+              <h3 className={`text-xl font-bold mb-4 ${theme.text}`}>새 작업 세션 생성</h3>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme.textSecondary}`}>세션명 *</label>
+                    <input
+                      type="text"
+                      value={sessionName}
+                      onChange={(e) => setSessionName(e.target.value)}
+                      placeholder="예: 포장작업_0602"
+                      className={`w-full p-3 border rounded-lg text-sm ${theme.input}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${theme.textSecondary}`}>작업 유형 *</label>
+                    <select
+                      value={workType}
+                      onChange={(e) => setWorkType(e.target.value)}
+                      className={`w-full p-3 border rounded-lg text-sm ${theme.input}`}
+                    >
+                      <option value="">작업 유형 선택</option>
+                      <option value="물자검수팀">물자검수팀</option>
+                      <option value="저장관리팀">저장관리팀</option>
+                      <option value="포장관리팀">포장관리팀</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={`text-sm font-medium ${theme.textSecondary}`}>측정자 설정</label>
+                    <button
+                      onClick={addOperator}
+                      className="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-600 transition-colors"
+                    >
+                      <Plus className="w-3 h-3 inline mr-1" />
+                      추가
+                    </button>
+                  </div>
+                  {operators.map((operator, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={operator}
+                        onChange={(e) => {
+                          const newOperators = [...operators];
+                          newOperators[index] = e.target.value;
+                          setOperators(newOperators);
+                        }}
+                        placeholder={`측정자 ${index + 1} (예: 조봉근)`}
+                        className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
+                      />
+                      {operators.length > 1 && (
+                        <button
+                          onClick={() => removeOperator(index)}
+                          className="text-red-500 hover:text-red-700 transition-colors p-2"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={`text-sm font-medium ${theme.textSecondary}`}>대상자 설정</label>
+                    <button
+                      onClick={addTarget}
+                      className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-600 transition-colors"
+                    >
+                      <Plus className="w-3 h-3 inline mr-1" />
+                      추가
+                    </button>
+                  </div>
+                  {targets.map((target, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={target}
+                        onChange={(e) => {
+                          const newTargets = [...targets];
+                          newTargets[index] = e.target.value;
+                          setTargets(newTargets);
+                        }}
+                        placeholder={`대상자 ${index + 1} (예: 이나영)`}
+                        className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
+                      />
+                      {targets.length > 1 && (
+                        <button
+                          onClick={() => removeTarget(index)}
+                          className="text-red-500 hover:text-red-700 transition-colors p-2"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className={`${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'} p-4 rounded-lg border`}>
+                  <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    Gage R&R 분석 안내
+                  </h4>
+                  <ul className={`${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 text-xs`}>
+                    <li>• 측정자 2명 이상: 재현성(Reproducibility) 분석</li>
+                    <li>• 대상자 2개 이상: 부품간 변동성 분석</li>
+                    <li>• 최소 6회 측정: 신뢰성 있는 분석 결과</li>
+                    <li>• 권장 측정 횟수: 각 조건별 3-5회</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => setShowNewSessionModal(false)}
+                  className={`flex-1 border py-3 rounded-lg font-medium transition-colors ${theme.border} ${theme.textSecondary} ${theme.surfaceHover}`}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={createSession}
+                  className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 flex items-center justify-center space-x-2 transition-colors"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>세션 생성</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 세션 히스토리 상세 모달 */}
+      {selectedSessionHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`${theme.card} rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border ${theme.border}`}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`text-xl font-bold ${theme.text}`}>세션 상세 정보</h3>
+                <button
+                  onClick={() => setSelectedSessionHistory(null)}
+                  className={`${theme.textMuted} hover:${theme.textSecondary} transition-colors p-1`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <div className={`text-sm ${theme.textMuted}`}>세션명</div>
+                    <div className={`font-medium ${theme.text} truncate`}>{selectedSessionHistory.name}</div>
+                  </div>
+                  <div>
+                    <div className={`text-sm ${theme.textMuted}`}>작업유형</div>
+                    <div className={`font-medium ${theme.text} truncate`}>{selectedSessionHistory.workType}</div>
+                  </div>
+                  <div>
+                    <div className={`text-sm ${theme.textMuted}`}>측정자</div>
+                    <div className={`font-medium ${theme.text} break-words`}>{selectedSessionHistory.operators.join(', ')}</div>
+                  </div>
+                  <div>
+                    <div className={`text-sm ${theme.textMuted}`}>대상자</div>
+                    <div className={`font-medium ${theme.text} break-words`}>{selectedSessionHistory.targets.join(', ')}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className={`text-sm ${theme.textMuted} mb-2`}>측정 기록</div>
+                  <div className={`${theme.surface} p-3 rounded-lg`}>
+                    <div className="text-center">
+                      <div className={`text-2xl font-bold ${theme.text}`}>
+                        {allLapTimes.filter(lap => lap.sessionId === selectedSessionHistory.id).length}
+                      </div>
+                      <div className={`text-sm ${theme.textMuted}`}>총 측정 횟수</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setCurrentSession(selectedSessionHistory);
+                      setLapTimes(allLapTimes.filter(lap => lap.sessionId === selectedSessionHistory.id));
+                      setCurrentOperator(selectedSessionHistory.operators[0]);
+                      setCurrentTarget(selectedSessionHistory.targets[0]);
+                      setSelectedSessionHistory(null);
+                      showToast('세션이 활성화되었습니다.', 'success');
+                    }}
+                    className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
+                  >
+                    이 세션으로 전환
+                  </button>
+                  <button
+                    onClick={() => setSelectedSessionHistory(null)}
+                    className={`flex-1 border py-2 rounded-lg font-medium transition-colors ${theme.border} ${theme.textSecondary} ${theme.surfaceHover}`}
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 도움말 모달 */}
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} theme={theme} />
+    </div>
+  );
+};
+
+export default EnhancedLogisticsTimer;
