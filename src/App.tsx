@@ -1,4 +1,34 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+<div className="grid grid-cols-1 gap-4">
+            <DetailedMeasurementCard
+              title="Gage R&R 비율"
+              value={`${analysis.gageRRPercent.toFixed(1)}%`}
+              description="측정시스템의 전체 변동 중 측정 오차가 차지하는 비율입니다. 낮을수록 좋으며, 제품간 실제 차이를 정확히 구별할 수 있는 능력을 나타냅니다."
+              interpretation={
+                analysis.gageRRPercent < 10 
+                  ? "우수한 수준입니다. 측정시스템이 매우 정확하여 제품 변동을 신뢰성 있게 측정할 수 있습니다."
+                  : analysis.gageRRPercent < 30
+                  ? "양호한 수준입니다. 대부분의 용도에 사용 가능하나 지속적인 모니터링이 필요합니다."
+                  : "개선이 필요합니다. 측정 오차가 커서 제품간 실제 차이를 구별하기 어려울 수 있습니다."
+              }
+              icon={BarChart3}
+              status={analysis.status === 'excellent' || analysis.status === 'acceptable' ? 'success' : 'error'}
+              theme={theme}
+              isDark={isDark}
+            />
+            
+            <DetailedMeasurementCard
+              title="공정 능력 지수 (Cpk)"
+              value={analysis.cpk.toFixed(2)}
+              description="공정이 규격 내에서 얼마나 안정적으로 제품을 생산할 수 있는지를 나타내는 지수입니다. 1.33 이상이면 우수, 1.0 이상이면 양호한 수준입니다."
+              interpretation={
+                analysis.cpk >= 1.33
+                  ? "우수한 공정 능력을 보입니다. 안정적으로 규격 내 제품을 생산할 수 있습니다."
+                  : analysis.cpk >= 1.0
+                  ? "양호한 수준이나 개선 여지가 있습니다. 공정 안정성 향상을 고려해보세요."
+                  : "공정 능력이 부족합니다. 규격 이탈 가능성이 높아 즉시 개선이 필요합니다."
+              }
+              icon={Target}
+              import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import {
   Play, Pause, Square, RotateCcw, Download, Plus, Users,
   Package, Clock, BarChart3, FileText, Calculator,
@@ -574,88 +604,120 @@ const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg
   );
 });
 
-// 랜딩 페이지 (로고 위치 조정)
+// 랜딩 페이지 (고급스러운 디자인 + 위치 조정)
 const ModernLandingPage = memo<{ 
   isDark: boolean; 
   onStart: () => void;
 }>(({ isDark, onStart }) => {
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-indigo-800 to-blue-900">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+      {/* 고급스러운 배경 효과 */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/3 rounded-full blur-3xl"></div>
+        {/* 메인 원형 그라데이션 */}
+        <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-br from-blue-400/20 via-purple-500/15 to-transparent rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-32 left-16 w-80 h-80 bg-gradient-to-tr from-indigo-400/15 via-blue-500/10 to-transparent rounded-full blur-3xl"></div>
+        
+        {/* 추가 장식적 요소 */}
+        <div className="absolute top-1/3 left-1/4 w-32 h-32 bg-gradient-to-r from-cyan-400/10 to-blue-500/10 rounded-full blur-2xl animate-bounce"></div>
+        <div className="absolute bottom-1/4 right-1/3 w-40 h-40 bg-gradient-to-l from-purple-400/10 to-indigo-500/10 rounded-full blur-2xl"></div>
+        
+        {/* 미세한 패턴 오버레이 */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]"></div>
       </div>
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        {/* 로고 섹션 (위치 조정: 타이틀 바로 위로) */}
-        <div className="transform hover:scale-105 transition-transform duration-300">
+        {/* 로고 섹션 (더 아래로 이동) */}
+        <div className="transform hover:scale-105 transition-transform duration-300 mb-8">
           <ConsolidatedSupplyLogo isDark={isDark} size="lg" />
         </div>
 
-        {/* 타이틀 섹션 */}
-        <div className="mb-12 space-y-4">
-          <h2 className="text-3xl font-bold text-white leading-tight">
+        {/* 타이틀 섹션 (더 아래로 이동) */}
+        <div className="mb-16 space-y-6">
+          <h2 className="text-4xl font-bold text-white leading-tight tracking-tight">
             물류 작업현장<br />
             인시수 측정 타이머
           </h2>
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
-            <span className="text-indigo-100 text-sm font-medium">
+          <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-md border border-white/20 shadow-2xl">
+            <div className="w-2 h-2 bg-green-400 rounded-full mr-3 animate-pulse"></div>
+            <span className="text-blue-100 text-sm font-medium tracking-wide">
               Gage R&R 분석 v7.0 최적화
             </span>
           </div>
         </div>
 
-        {/* 기능 하이라이트 */}
-        <div className="mb-12 grid grid-cols-1 gap-4 w-full max-w-sm">
-          <div className="flex items-center space-x-3 p-4 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
-            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-              <Timer className="w-5 h-5 text-green-400" />
-            </div>
-            <div className="text-left">
-              <div className="text-white font-medium text-sm">정밀 측정</div>
-              <div className="text-indigo-200 text-xs">센티초 단위 정확도</div>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3 p-4 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
-            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-blue-400" />
-            </div>
-            <div className="text-left">
-              <div className="text-white font-medium text-sm">실시간 분석</div>
-              <div className="text-indigo-200 text-xs">Gage R&R 자동 계산</div>
+        {/* 고급스러운 기능 하이라이트 */}
+        <div className="mb-16 grid grid-cols-1 gap-6 w-full max-w-sm">
+          <div className="group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl blur-lg group-hover:blur-xl transition-all duration-300"></div>
+            <div className="relative flex items-center space-x-4 p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg">
+                <Timer className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left flex-1">
+                <div className="text-white font-semibold text-base">정밀 측정</div>
+                <div className="text-blue-200 text-sm">센티초 단위 정확도</div>
+              </div>
             </div>
           </div>
           
-          <div className="flex items-center space-x-3 p-4 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
-            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-              <Download className="w-5 h-5 text-purple-400" />
+          <div className="group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-2xl blur-lg group-hover:blur-xl transition-all duration-300"></div>
+            <div className="relative flex items-center space-x-4 p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-lg">
+                <BarChart3 className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left flex-1">
+                <div className="text-white font-semibold text-base">실시간 분석</div>
+                <div className="text-blue-200 text-sm">Gage R&R 자동 계산</div>
+              </div>
             </div>
-            <div className="text-left">
-              <div className="text-white font-medium text-sm">CSV 다운로드</div>
-              <div className="text-indigo-200 text-xs">완벽한 호환성</div>
+          </div>
+          
+          <div className="group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-violet-500/20 rounded-2xl blur-lg group-hover:blur-xl transition-all duration-300"></div>
+            <div className="relative flex items-center space-x-4 p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center shadow-lg">
+                <Download className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left flex-1">
+                <div className="text-white font-semibold text-base">CSV 다운로드</div>
+                <div className="text-blue-200 text-sm">완벽한 호환성</div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 시작 버튼 */}
+        {/* 고급스러운 시작 버튼 */}
         <button
           onClick={onStart}
-          className="group relative px-8 py-4 bg-white text-indigo-700 rounded-xl font-bold text-lg shadow-2xl hover:shadow-white/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
+          className="group relative overflow-hidden px-12 py-5 rounded-2xl font-bold text-xl shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          <span className="relative z-10 group-hover:text-white transition-colors duration-300 flex items-center space-x-2">
-            <Play className="w-5 h-5" />
+          {/* 버튼 배경 그라데이션 */}
+          <div className="absolute inset-0 bg-gradient-to-r from-white via-blue-50 to-white rounded-2xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
+          {/* 버튼 내용 */}
+          <span className="relative z-10 group-hover:text-white transition-colors duration-300 flex items-center space-x-3 text-slate-800">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center group-hover:bg-white/20 transition-all duration-300">
+              <Play className="w-4 h-4 text-white" />
+            </div>
             <span>시스템 시작</span>
           </span>
+          
+          {/* 버튼 테두리 효과 */}
+          <div className="absolute inset-0 rounded-2xl border-2 border-white/20 group-hover:border-white/40 transition-colors duration-300"></div>
         </button>
 
-        {/* 하단 정보 */}
-        <div className="mt-8 text-center">
-          <div className="inline-flex items-center space-x-2 text-indigo-200 text-xs">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span>시스템 준비 완료</span>
+        {/* 하단 상태 정보 */}
+        <div className="mt-12 text-center">
+          <div className="inline-flex items-center space-x-3 px-6 py-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+              <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+            </div>
+            <span className="text-blue-200 text-sm font-medium">시스템 준비 완료</span>
           </div>
         </div>
       </div>
@@ -790,7 +852,7 @@ const HelpModal = memo<{
   );
 });
 
-// 측정 카드 컴포넌트 (모바일 최적화)
+// 기존 간단한 측정 카드 컴포넌트 (단일 책임 유지)
 const MeasurementCard = memo<{
   title: string;
   value: string | number;
@@ -835,6 +897,75 @@ const MeasurementCard = memo<{
       <div className={`${sizes[size].value} font-bold ${colors.text} font-mono break-all`}>
         {value}{unit && <span className="text-sm font-normal ml-1">{unit}</span>}
       </div>
+    </div>
+  );
+});
+const DetailedMeasurementCard = memo<{
+  title: string;
+  value: string | number;
+  description: string;
+  interpretation: string;
+  unit?: string;
+  icon: React.FC<any>;
+  status?: 'success' | 'warning' | 'error' | 'info';
+  theme: Theme;
+  isDark: boolean;
+}>(({ title, value, description, interpretation, unit, icon: Icon, status = 'info', theme, isDark }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const statusColors = useMemo(() => ({
+    success: isDark 
+      ? { bg: 'bg-green-900/30', border: 'border-green-700', icon: 'text-green-400', text: 'text-green-300' }
+      : { bg: 'bg-green-50', border: 'border-green-200', icon: 'text-green-600', text: 'text-green-800' },
+    warning: isDark
+      ? { bg: 'bg-yellow-900/30', border: 'border-yellow-700', icon: 'text-yellow-400', text: 'text-yellow-300' }
+      : { bg: 'bg-yellow-50', border: 'border-yellow-200', icon: 'text-yellow-600', text: 'text-yellow-800' },
+    error: isDark
+      ? { bg: 'bg-red-900/30', border: 'border-red-700', icon: 'text-red-400', text: 'text-red-300' }
+      : { bg: 'bg-red-50', border: 'border-red-200', icon: 'text-red-600', text: 'text-red-800' },
+    info: isDark
+      ? { bg: 'bg-blue-900/30', border: 'border-blue-700', icon: 'text-blue-400', text: 'text-blue-300' }
+      : { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-600', text: 'text-blue-800' }
+  }), [isDark]);
+
+  const colors = statusColors[status];
+
+  return (
+    <div className={`p-4 rounded-xl border transition-all duration-200 ${colors.bg} ${colors.border} hover:shadow-lg`}>
+      <div 
+        className="cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <Icon className={`w-5 h-5 ${colors.icon}`} />
+          <button className={`text-xs ${theme.textMuted} hover:${theme.textSecondary}`}>
+            {isExpanded ? '접기' : '자세히'}
+          </button>
+        </div>
+        <div className={`text-sm font-medium ${theme.textMuted} mb-1`}>
+          {title}
+        </div>
+        <div className={`text-xl font-bold ${colors.text} font-mono`}>
+          {value}{unit && <span className="text-sm font-normal ml-1">{unit}</span>}
+        </div>
+      </div>
+      
+      {isExpanded && (
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 space-y-3 animate-in slide-in-from-top duration-200">
+          <div>
+            <h5 className={`text-xs font-semibold ${theme.textSecondary} mb-1`}>설명</h5>
+            <p className={`text-xs ${theme.textMuted} leading-relaxed`}>
+              {description}
+            </p>
+          </div>
+          <div>
+            <h5 className={`text-xs font-semibold ${theme.textSecondary} mb-1`}>해석</h5>
+            <p className={`text-xs ${colors.text} leading-relaxed`}>
+              {interpretation}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
@@ -922,82 +1053,116 @@ const DetailedAnalysisPage = memo<{
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <MeasurementCard
-              title="Gage R&R 비율"
-              value={`${analysis.gageRRPercent.toFixed(1)}%`}
-              icon={BarChart3}
-              status={analysis.status === 'excellent' || analysis.status === 'acceptable' ? 'success' : 'error'}
-              theme={theme}
-              isDark={isDark}
-              size="md"
-            />
-            <MeasurementCard
-              title="공정 능력 지수"
-              value={analysis.cpk.toFixed(2)}
-              icon={Target}
               status={analysis.cpk >= 1.33 ? 'success' : analysis.cpk >= 1.0 ? 'warning' : 'error'}
               theme={theme}
               isDark={isDark}
-              size="md"
             />
-            <MeasurementCard
-              title="구별 범주 수"
+
+            <DetailedMeasurementCard
+              title="구별 범주 수 (NDC)"
               value={analysis.ndc}
+              description="측정시스템이 서로 다른 제품이나 부품을 얼마나 많은 그룹으로 구별할 수 있는지를 나타냅니다. 5개 이상이면 우수한 구별 능력을 의미합니다."
+              interpretation={
+                analysis.ndc >= 5
+                  ? "우수한 구별 능력을 가지고 있습니다. 제품간 미세한 차이도 정확히 구별할 수 있습니다."
+                  : analysis.ndc >= 3
+                  ? "기본적인 구별은 가능하나 정밀한 분석에는 한계가 있을 수 있습니다."
+                  : "구별 능력이 부족합니다. 측정시스템의 정밀도 개선이 시급합니다."
+              }
               icon={Calculator}
               status={analysis.ndc >= 5 ? 'success' : analysis.ndc >= 3 ? 'warning' : 'error'}
               theme={theme}
               isDark={isDark}
-              size="md"
             />
           </div>
         </div>
 
-        {/* ANOVA 분석 */}
+        {/* ANOVA 분석 (상세 설명 추가) */}
         <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
           <h3 className={`text-lg font-bold ${theme.text} mb-4`}>ANOVA 분산 성분 분석</h3>
           
           <div className="space-y-6">
+            <div className={`${theme.surface} p-4 rounded-lg mb-4`}>
+              <p className={`text-sm ${theme.textMuted} leading-relaxed`}>
+                <strong>ANOVA 분석</strong>은 전체 측정 변동을 각 요인별로 분해하여 어느 부분에서 가장 큰 변동이 발생하는지 파악합니다. 
+                이를 통해 측정시스템 개선의 우선순위를 결정할 수 있습니다.
+              </p>
+            </div>
+
             <div>
-              <h4 className={`font-semibold ${theme.textSecondary} mb-3`}>기여율 (%)</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div className={`${theme.surface} p-3 rounded-lg`}>
-                  <div className="flex justify-between items-center">
-                    <span className={`font-medium ${theme.text} text-sm`}>측정자</span>
-                    <span className={`font-mono text-sm ${theme.textSecondary}`}>
+              <h4 className={`font-semibold ${theme.textSecondary} mb-3`}>변동 요인별 기여율</h4>
+              <div className="space-y-3">
+                <div className={`${theme.surface} p-4 rounded-lg border-l-4 border-blue-500`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      <span className={`font-medium ${theme.text} text-sm block`}>측정자 변동</span>
+                      <span className={`text-xs ${theme.textMuted}`}>서로 다른 측정자간 결과 차이</span>
+                    </div>
+                    <span className={`font-mono text-lg font-bold ${theme.textSecondary}`}>
                       {analysis.anova.operatorPercent.toFixed(1)}%
                     </span>
                   </div>
+                  <p className={`text-xs ${theme.textMuted} mt-2`}>
+                    {analysis.anova.operatorPercent > 30 
+                      ? "측정자간 차이가 큽니다. 측정 교육이나 표준화가 필요합니다."
+                      : analysis.anova.operatorPercent > 15
+                      ? "측정자간 약간의 차이가 있습니다. 주기적 점검이 권장됩니다."
+                      : "측정자간 일관성이 우수합니다."}
+                  </p>
                 </div>
-                <div className={`${theme.surface} p-3 rounded-lg`}>
-                  <div className="flex justify-between items-center">
-                    <span className={`font-medium ${theme.text} text-sm`}>부품</span>
-                    <span className={`font-mono text-sm ${theme.textSecondary}`}>
+
+                <div className={`${theme.surface} p-4 rounded-lg border-l-4 border-green-500`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      <span className={`font-medium ${theme.text} text-sm block`}>부품 변동</span>
+                      <span className={`text-xs ${theme.textMuted}`}>측정 대상간 실제 차이</span>
+                    </div>
+                    <span className={`font-mono text-lg font-bold ${theme.textSecondary}`}>
                       {analysis.anova.partPercent.toFixed(1)}%
                     </span>
                   </div>
+                  <p className={`text-xs ${theme.textMuted} mt-2`}>
+                    {analysis.anova.partPercent > 50 
+                      ? "부품간 차이가 측정 오차보다 훨씬 큽니다. 이상적인 상황입니다."
+                      : analysis.anova.partPercent > 30
+                      ? "부품간 차이를 적절히 구별할 수 있습니다."
+                      : "부품간 실제 차이가 작거나 측정 오차가 큽니다."}
+                  </p>
                 </div>
               </div>
             </div>
 
             <div>
-              <h4 className={`font-semibold ${theme.textSecondary} mb-3`}>기본 통계</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div className={`${theme.surface} p-3 rounded-lg`}>
-                  <div className="space-y-1">
-                    <span className={`font-medium ${theme.text} text-sm block`}>평균시간</span>
-                    <span className={`font-mono ${theme.textSecondary} text-sm`}>
+              <h4 className={`font-semibold ${theme.textSecondary} mb-3`}>기본 통계 정보</h4>
+              <div className="grid grid-cols-1 gap-3">
+                <div className={`${theme.surface} p-4 rounded-lg`}>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className={`font-medium ${theme.text} text-sm block`}>평균 측정시간</span>
+                      <span className={`text-xs ${theme.textMuted}`}>전체 측정의 중심값</span>
+                    </div>
+                    <span className={`font-mono ${theme.textSecondary} text-lg font-bold`}>
                       {formatTime(basicStats.mean)}
                     </span>
                   </div>
                 </div>
-                <div className={`${theme.surface} p-3 rounded-lg`}>
-                  <div className="space-y-1">
-                    <span className={`font-medium ${theme.text} text-sm block`}>변동계수</span>
-                    <span className={`font-mono ${theme.textSecondary} text-sm`}>
+                <div className={`${theme.surface} p-4 rounded-lg`}>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className={`font-medium ${theme.text} text-sm block`}>변동계수 (CV)</span>
+                      <span className={`text-xs ${theme.textMuted}`}>상대적 변동의 크기 (표준편차/평균×100)</span>
+                    </div>
+                    <span className={`font-mono ${theme.textSecondary} text-lg font-bold`}>
                       {basicStats.cv.toFixed(1)}%
                     </span>
                   </div>
+                  <p className={`text-xs ${theme.textMuted} mt-2`}>
+                    {basicStats.cv < 5 
+                      ? "매우 일관된 측정 결과입니다."
+                      : basicStats.cv < 10
+                      ? "적절한 수준의 일관성을 보입니다."
+                      : "측정 결과의 변동이 큽니다. 측정 방법 점검이 필요합니다."}
+                  </p>
                 </div>
               </div>
             </div>
