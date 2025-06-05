@@ -6,7 +6,7 @@ import {
   Moon, Sun, TrendingUp, PieChart, Info, CheckCircle,
   AlertCircle, XCircle, Timer, Activity, Settings,
   Trash2, Filter, Search, X, Minus, ArrowLeft,
-  TrendingUp as TrendingUpIcon, AlertTriangle
+  TrendingUp as TrendingUpIcon, AlertTriangle, Share2
 } from 'lucide-react';
 
 // ==================== 타입 정의 (Single Responsibility) ====================
@@ -158,6 +158,101 @@ const generateFileName = (prefix: string, sessionName: string): string => {
   const safeName = sessionName.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
   return `${prefix}-${safeName}-(${timestamp})`;
 };
+
+// 모바일 다운로드 최적화 함수
+const downloadForMobile = (content: string, filename: string): boolean => {
+  try {
+    const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
+    
+    // 모바일 환경 감지
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // 모바일에서는 Web Share API 또는 새 창으로 다운로드
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: blob.type })] })) {
+        const file = new File([blob], filename, { type: blob.type });
+        navigator.share({
+          files: [file],
+          title: '측정 분석 결과',
+          text: '물류 작업현장 인시수 측정 결과입니다.'
+        }).catch(console.error);
+        return true;
+      } else {
+        // 대체 방법: 데이터 URL로 새 창 열기
+        const dataUrl = URL.createObjectURL(blob);
+        const newWindow = window.open();
+        if (newWindow) {
+          newWindow.document.write(`
+            <html>
+              <head><title>측정 결과 다운로드</title></head>
+              <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+                <h2>측정 결과가 준비되었습니다</h2>
+                <p>아래 링크를 길게 눌러 다운로드하세요:</p>
+                <a href="${dataUrl}" download="${filename}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px;">
+                  ${filename} 다운로드
+                </a>
+                <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                  파일이 자동으로 다운로드되지 않으면 링크를 길게 눌러 "링크 저장" 또는 "다운로드"를 선택하세요.
+                </p>
+              </body>
+            </html>
+          `);
+        }
+        return true;
+      }
+    } else {
+      // 데스크톱 환경에서는 기존 방식
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      return true;
+    }
+  } catch (error) {
+    console.error('Download failed:', error);
+    return false;
+  }
+};
+
+// 뒤로가기 방지 훅
+const useBackButtonPrevention = () => {
+  const [backPressCount, setBackPressCount] = useState(0);
+  const [showBackWarning, setShowBackWarning] = useState(false);
+  
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      event.preventDefault();
+      
+      if (backPressCount === 0) {
+        setBackPressCount(1);
+        setShowBackWarning(true);
+        window.history.pushState(null, '', window.location.href);
+        
+        // 2초 후 카운트 리셋
+        setTimeout(() => {
+          setBackPressCount(0);
+          setShowBackWarning(false);
+        }, 2000);
+      } else {
+        // 두 번째 뒤로가기 - 실제 종료
+        window.history.back();
+      }
+    };
+
+    // 히스토리에 상태 추가
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [backPressCount]);
+
+  return { showBackWarning };
+};
 const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
   const defaultResult: GageRRAnalysis = {
     repeatability: 0, reproducibility: 0, gageRR: 0,
@@ -239,7 +334,7 @@ const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
 
     const reproducibility = Math.sqrt(Math.max(0, operatorVariance - (repeatability * repeatability) / trialsPerCondition));
 
-    // 대상자 변동 계산
+    // 부품 변동 계산
     const targetMeans = Object.values(targetGroups)
       .filter(group => group.length > 0)
       .map(group => group.reduce((a, b) => a + b, 0) / group.length);
@@ -334,14 +429,14 @@ const generateInterpretation = (
   
   if (repeatability > reproducibility) {
     recommendations.push('측정 장비의 안정성 및 정밀도 개선');
-    recommendations.push('측정 환경 조건 표준화 (온도, 습도 등)');
+    recommendations.push('측정 환경 조건 표준화');
   } else {
     recommendations.push('측정자 교육 프로그램 강화');
-    recommendations.push('표준 작업 절차서(SOP) 개선');
+    recommendations.push('표준 작업 절차서 개선');
   }
 
   if (cpk < 1.33) {
-    recommendations.push('공정 능력 개선 필요 (Cpk ≥ 1.33 목표)');
+    recommendations.push('공정 능력 개선 필요');
   }
 
   if (ndc < 5) {
@@ -399,6 +494,20 @@ const Toast = memo<ToastProps>(({ message, type, isVisible, onClose }) => {
   );
 });
 
+// 뒤로가기 경고 컴포넌트
+const BackWarning = memo<{ isVisible: boolean }>(({ isVisible }) => {
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed bottom-4 left-4 right-4 z-[70] animate-in slide-in-from-bottom duration-300">
+      <div className="bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2">
+        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+        <span className="text-sm font-medium">한 번 더 뒤로가기 하면 종료됩니다</span>
+      </div>
+    </div>
+  );
+});
+
 // 상태 배지 컴포넌트
 const StatusBadge = memo<{ 
   status: 'excellent' | 'acceptable' | 'marginal' | 'unacceptable'; 
@@ -439,75 +548,173 @@ const StatusBadge = memo<{
   );
 });
 
-// 로고 컴포넌트
-const ConsolidatedSupplyLogo = memo<{ isDark?: boolean }>(({ isDark = false }) => (
-  <div className={`relative flex items-center justify-center p-12 overflow-hidden ${
-    isDark 
-      ? 'bg-gradient-to-br from-slate-800 via-blue-900 to-blue-950' 
-      : 'bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800'
-  }`}>
-    <div className="absolute inset-0 opacity-5">
-      <div 
-        className="absolute inset-0"
-        style={{
-          backgroundImage: 'radial-gradient(circle at 2px 2px, white 2px, transparent 0)',
-          backgroundSize: '24px 24px'
-        }}
-      />
-    </div>
-    
-    <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/10 to-transparent" />
-    
-    <div className="text-center relative z-10">
-      <div className="flex items-center justify-center mb-8">
-        <div className="relative w-32 h-32">
-          <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-            <div className="w-16 h-16 bg-red-500 transform rotate-45 rounded-xl shadow-2xl border-3 border-red-400 hover:scale-105 transition-transform duration-300">
-              <div className="absolute inset-4 bg-red-400 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-2xl">H</span>
-              </div>
+// 새로운 현대적인 로고 컴포넌트 (실제 로고 기반)
+const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg' }>(({ isDark = false, size = 'lg' }) => {
+  const sizeConfig = {
+    sm: { container: 'w-16 h-16', text: 'text-sm' },
+    md: { container: 'w-24 h-24', text: 'text-base' },
+    lg: { container: 'w-32 h-32', text: 'text-lg' }
+  };
+
+  const { container, text } = sizeConfig[size];
+
+  return (
+    <div className={`relative flex items-center justify-center ${container}`}>
+      {/* 육각형 패턴 배경 */}
+      <div className="absolute inset-0 opacity-10">
+        <svg viewBox="0 0 100 100" className="w-full h-full">
+          <defs>
+            <pattern id="hexagon" x="0" y="0" width="20" height="17.32" patternUnits="userSpaceOnUse">
+              <polygon points="10,1.73 20,8.66 20,15.59 10,22.52 0,15.59 0,8.66" 
+                       fill="none" stroke="white" strokeWidth="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="100" height="100" fill="url(#hexagon)"/>
+        </svg>
+      </div>
+      
+      {/* 메인 로고 구성 */}
+      <div className="relative z-10 flex items-center justify-center">
+        {/* 빨간색 육각형 (상단) */}
+        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+          <div className="w-8 h-8 bg-red-500 transform rotate-45 rounded-lg shadow-lg border-2 border-red-400">
+            <div className="absolute inset-2 bg-red-400 rounded flex items-center justify-center">
+              <span className="text-white font-bold text-xs">H</span>
             </div>
           </div>
+        </div>
 
-          <div className="absolute top-8 -left-8">
-            <div className="w-16 h-16 bg-yellow-400 transform rotate-45 rounded-xl shadow-2xl border-3 border-yellow-300 hover:scale-105 transition-transform duration-300">
-              <div className="absolute inset-4 bg-yellow-300 rounded-lg flex items-center justify-center">
-                <span className="text-gray-800 font-bold text-2xl">H</span>
-              </div>
+        {/* 노란색 육각형 (좌측) */}
+        <div className="absolute top-2 -left-4">
+          <div className="w-8 h-8 bg-yellow-400 transform rotate-45 rounded-lg shadow-lg border-2 border-yellow-300">
+            <div className="absolute inset-2 bg-yellow-300 rounded flex items-center justify-center">
+              <span className="text-gray-800 font-bold text-xs">H</span>
             </div>
           </div>
+        </div>
 
-          <div className="absolute top-8 right-8">
-            <div className="w-16 h-16 bg-blue-500 transform rotate-45 rounded-xl shadow-2xl border-3 border-blue-400 hover:scale-105 transition-transform duration-300">
-              <div className="absolute inset-4 bg-blue-400 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-2xl">I</span>
-              </div>
+        {/* 파란색 육각형 (우측) */}
+        <div className="absolute top-2 right-4">
+          <div className="w-8 h-8 bg-blue-500 transform rotate-45 rounded-lg shadow-lg border-2 border-blue-400">
+            <div className="absolute inset-2 bg-blue-400 rounded flex items-center justify-center">
+              <span className="text-white font-bold text-xs">I</span>
             </div>
           </div>
+        </div>
 
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-4">
-            <div className="w-12 h-12 bg-yellow-500 rounded-full shadow-xl flex items-center justify-center border-3 border-yellow-400 hover:rotate-180 transition-transform duration-500">
-              <div className="w-6 h-6 bg-white rounded-full shadow-inner"></div>
-            </div>
+        {/* 중앙 원형 요소 */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-2">
+          <div className="w-6 h-6 bg-yellow-500 rounded-full shadow-lg flex items-center justify-center border-2 border-yellow-400">
+            <div className="w-3 h-3 bg-white rounded-full"></div>
           </div>
         </div>
       </div>
+    </div>
+  );
+});
 
-      <div className="space-y-3">
-        <div className="text-3xl font-bold tracking-wide text-white drop-shadow-lg">
-          종합보급창
+// 현대적인 랜딩 페이지 컴포넌트
+const ModernLandingPage = memo<{ 
+  isDark: boolean; 
+  onStart: () => void;
+}>(({ isDark, onStart }) => {
+  return (
+    <div className={`min-h-screen relative overflow-hidden ${
+      isDark 
+        ? 'bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900' 
+        : 'bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800'
+    }`}>
+      {/* 배경 애니메이션 */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/3 rounded-full blur-3xl"></div>
+      </div>
+
+      {/* 메인 콘텐츠 */}
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        {/* 로고 섹션 */}
+        <div className="mb-8 transform hover:scale-105 transition-transform duration-300">
+          <ConsolidatedSupplyLogo isDark={isDark} size="lg" />
+          <div className="mt-6 space-y-2">
+            <h1 className="text-2xl font-bold text-white tracking-wide">
+              종합보급창
+            </h1>
+            <p className="text-blue-100 text-sm font-medium tracking-widest">
+              ROKAF CONSOLIDATED SUPPLY DEPOT
+            </p>
+          </div>
         </div>
-        <div className="text-base opacity-90 font-medium tracking-wider text-blue-100">
-          ROKAF CONSOLIDATED
+
+        {/* 타이틀 섹션 */}
+        <div className="mb-12 space-y-4">
+          <h2 className="text-3xl font-bold text-white leading-tight">
+            물류 작업현장<br />
+            인시수 측정 타이머
+          </h2>
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
+            <span className="text-blue-100 text-sm font-medium">
+              Gage R&R 분석 v6.0 Mobile Optimized
+            </span>
+          </div>
         </div>
-        <div className="text-base opacity-90 font-medium tracking-wider text-blue-100">
-          SUPPLY DEPOT
+
+        {/* 기능 하이라이트 */}
+        <div className="mb-12 grid grid-cols-1 gap-4 w-full max-w-sm">
+          <div className="flex items-center space-x-3 p-4 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
+            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+              <Timer className="w-5 h-5 text-green-400" />
+            </div>
+            <div className="text-left">
+              <div className="text-white font-medium text-sm">정밀 측정</div>
+              <div className="text-blue-200 text-xs">센티초 단위 정확도</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-3 p-4 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
+            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-blue-400" />
+            </div>
+            <div className="text-left">
+              <div className="text-white font-medium text-sm">실시간 분석</div>
+              <div className="text-blue-200 text-xs">Gage R&R 자동 계산</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-3 p-4 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
+            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+              <Download className="w-5 h-5 text-purple-400" />
+            </div>
+            <div className="text-left">
+              <div className="text-white font-medium text-sm">모바일 친화적</div>
+              <div className="text-blue-200 text-xs">언제 어디서나 접근</div>
+            </div>
+          </div>
         </div>
-        <div className="mt-6 w-20 h-1 bg-white/30 mx-auto rounded-full"></div>
+
+        {/* 시작 버튼 */}
+        <button
+          onClick={onStart}
+          className="group relative px-8 py-4 bg-white text-blue-700 rounded-xl font-bold text-lg shadow-2xl hover:shadow-white/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <span className="relative z-10 group-hover:text-white transition-colors duration-300 flex items-center space-x-2">
+            <Play className="w-5 h-5" />
+            <span>시스템 시작</span>
+          </span>
+        </button>
+
+        {/* 하단 정보 */}
+        <div className="mt-8 text-center">
+          <div className="inline-flex items-center space-x-2 text-blue-200 text-xs">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <span>시스템 준비 완료</span>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-));
+  );
+});
 
 // 도움말 컴포넌트
 const HelpModal = memo<{ 
@@ -636,7 +843,7 @@ const HelpModal = memo<{
   );
 });
 
-// 측정 카드 컴포넌트
+// 측정 카드 컴포넌트 (모바일 최적화)
 const MeasurementCard = memo<{
   title: string;
   value: string | number;
@@ -664,8 +871,8 @@ const MeasurementCard = memo<{
 
   const sizes = {
     sm: { card: 'p-3', icon: 'w-4 h-4', title: 'text-xs', value: 'text-sm' },
-    md: { card: 'p-4', icon: 'w-5 h-5', title: 'text-sm', value: 'text-lg' },
-    lg: { card: 'p-6', icon: 'w-6 h-6', title: 'text-base', value: 'text-2xl' }
+    md: { card: 'p-4', icon: 'w-5 h-5', title: 'text-sm', value: 'text-base' },
+    lg: { card: 'p-6', icon: 'w-6 h-6', title: 'text-base', value: 'text-xl' }
   };
 
   const colors = statusColors[status];
@@ -675,16 +882,16 @@ const MeasurementCard = memo<{
       <div className="flex items-center justify-between mb-2">
         <Icon className={`${sizes[size].icon} ${colors.icon}`} />
       </div>
-      <div className={`${sizes[size].title} font-medium ${theme.textMuted} mb-1`}>
+      <div className={`${sizes[size].title} font-medium ${theme.textMuted} mb-1 line-clamp-1`}>
         {title}
       </div>
-      <div className={`${sizes[size].value} font-bold ${colors.text} font-mono`}>
+      <div className={`${sizes[size].value} font-bold ${colors.text} font-mono break-all`}>
         {value}{unit && <span className="text-sm font-normal ml-1">{unit}</span>}
       </div>
     </div>
   );
 });
-// 상세 분석 페이지 컴포넌트
+// 상세 분석 페이지 컴포넌트 (모바일 최적화)
 const DetailedAnalysisPage = memo<{
   analysis: GageRRAnalysis;
   lapTimes: LapTime[];
@@ -713,67 +920,61 @@ const DetailedAnalysisPage = memo<{
 
   return (
     <div className={`min-h-screen ${theme.bg}`}>
-      {/* 헤더 */}
+      {/* 헤더 (모바일 최적화) */}
       <div className={`${theme.card} shadow-sm border-b ${theme.border} sticky top-0 z-40`}>
-        <div className="max-w-4xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center space-x-3 flex-1 min-w-0">
               <button
                 onClick={onBack}
-                className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:${theme.textSecondary} ${theme.surfaceHover}`}
+                className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:${theme.textSecondary} ${theme.surfaceHover} flex-shrink-0`}
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <div>
-                <h1 className={`text-xl font-bold ${theme.text}`}>상세 분석 보고서</h1>
-                <p className={`text-sm ${theme.textMuted}`}>{session.name} - {session.workType}</p>
+              <div className="min-w-0 flex-1">
+                <h1 className={`text-lg font-bold ${theme.text} truncate`}>상세 분석 보고서</h1>
+                <p className={`text-sm ${theme.textMuted} truncate`}>
+                  {session.name} - {session.workType}
+                </p>
               </div>
             </div>
             <button
               onClick={onDownload}
-              className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center space-x-2 transition-colors"
+              className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 flex-shrink-0 transition-colors"
+              title="상세 보고서 다운로드"
             >
-              <Download className="w-4 h-4" />
-              <span>상세 보고서 다운로드</span>
+              <Download className="w-5 h-5" />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-4 space-y-6">
+      <div className="px-4 py-4 space-y-6 max-w-4xl mx-auto">
         {/* 종합 평가 */}
-        <div className={`${theme.card} rounded-lg p-6 shadow-sm border ${theme.border}`}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className={`text-2xl font-bold ${theme.text}`}>종합 평가</h2>
-            <div className="flex items-center gap-3">
-              <StatusBadge status={analysis.status} size="lg" isDark={isDark} />
-              <div className={`p-3 rounded-lg ${analysis.interpretation.riskLevel === 'high' 
-                ? isDark ? 'bg-red-900/30' : 'bg-red-50'
+        <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h2 className={`text-xl font-bold ${theme.text}`}>종합 평가</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <StatusBadge status={analysis.status} size="md" isDark={isDark} />
+              <div className={`px-3 py-1 rounded-lg text-xs font-medium ${analysis.interpretation.riskLevel === 'high' 
+                ? isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-800'
                 : analysis.interpretation.riskLevel === 'medium'
-                ? isDark ? 'bg-yellow-900/30' : 'bg-yellow-50'
-                : isDark ? 'bg-green-900/30' : 'bg-green-50'
+                ? isDark ? 'bg-yellow-900/30 text-yellow-300' : 'bg-yellow-50 text-yellow-800'
+                : isDark ? 'bg-green-900/30 text-green-300' : 'bg-green-50 text-green-800'
               }`}>
-                <div className={`text-sm font-medium ${
-                  analysis.interpretation.riskLevel === 'high' 
-                    ? isDark ? 'text-red-300' : 'text-red-800'
-                    : analysis.interpretation.riskLevel === 'medium'
-                    ? isDark ? 'text-yellow-300' : 'text-yellow-800'
-                    : isDark ? 'text-green-300' : 'text-green-800'
-                }`}>
-                  위험도: {analysis.interpretation.riskLevel === 'high' ? '높음' : 
-                          analysis.interpretation.riskLevel === 'medium' ? '보통' : '낮음'}
-                </div>
+                위험도: {analysis.interpretation.riskLevel === 'high' ? '높음' : 
+                        analysis.interpretation.riskLevel === 'medium' ? '보통' : '낮음'}
               </div>
             </div>
           </div>
           
           <div className={`${theme.surface} p-4 rounded-lg mb-4`}>
-            <p className={`text-lg leading-relaxed ${theme.text}`}>
+            <p className={`text-base leading-relaxed ${theme.text}`}>
               {analysis.interpretation.overall}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <MeasurementCard
               title="Gage R&R 비율"
               value={`${analysis.gageRRPercent.toFixed(1)}%`}
@@ -781,6 +982,7 @@ const DetailedAnalysisPage = memo<{
               status={analysis.status === 'excellent' || analysis.status === 'acceptable' ? 'success' : 'error'}
               theme={theme}
               isDark={isDark}
+              size="md"
             />
             <MeasurementCard
               title="공정 능력 지수"
@@ -789,6 +991,7 @@ const DetailedAnalysisPage = memo<{
               status={analysis.cpk >= 1.33 ? 'success' : analysis.cpk >= 1.0 ? 'warning' : 'error'}
               theme={theme}
               isDark={isDark}
+              size="md"
             />
             <MeasurementCard
               title="구별 범주 수"
@@ -797,21 +1000,22 @@ const DetailedAnalysisPage = memo<{
               status={analysis.ndc >= 5 ? 'success' : analysis.ndc >= 3 ? 'warning' : 'error'}
               theme={theme}
               isDark={isDark}
+              size="md"
             />
           </div>
         </div>
 
-        {/* ANOVA 분석 (간략화) */}
-        <div className={`${theme.card} rounded-lg p-6 shadow-sm border ${theme.border}`}>
-          <h3 className={`text-xl font-bold ${theme.text} mb-4`}>ANOVA 분산 성분 분석</h3>
+        {/* ANOVA 분석 (모바일 최적화) */}
+        <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
+          <h3 className={`text-lg font-bold ${theme.text} mb-4`}>ANOVA 분산 성분 분석</h3>
           
-          <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-6">
             <div>
               <h4 className={`font-semibold ${theme.textSecondary} mb-3`}>기여율 (%)</h4>
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className={`${theme.surface} p-3 rounded-lg`}>
                   <div className="flex justify-between items-center">
-                    <span className={`font-medium ${theme.text}`}>측정자</span>
+                    <span className={`font-medium ${theme.text} text-sm`}>측정자</span>
                     <span className={`font-mono text-sm ${theme.textSecondary}`}>
                       {analysis.anova.operatorPercent.toFixed(1)}%
                     </span>
@@ -819,7 +1023,7 @@ const DetailedAnalysisPage = memo<{
                 </div>
                 <div className={`${theme.surface} p-3 rounded-lg`}>
                   <div className="flex justify-between items-center">
-                    <span className={`font-medium ${theme.text}`}>대상자</span>
+                    <span className={`font-medium ${theme.text} text-sm`}>부품</span>
                     <span className={`font-mono text-sm ${theme.textSecondary}`}>
                       {analysis.anova.partPercent.toFixed(1)}%
                     </span>
@@ -830,17 +1034,21 @@ const DetailedAnalysisPage = memo<{
 
             <div>
               <h4 className={`font-semibold ${theme.textSecondary} mb-3`}>기본 통계</h4>
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className={`${theme.surface} p-3 rounded-lg`}>
-                  <div className="flex justify-between items-center">
-                    <span className={`font-medium ${theme.text}`}>평균 시간</span>
-                    <span className={`font-mono ${theme.textSecondary}`}>{formatTime(basicStats.mean)}</span>
+                  <div className="space-y-1">
+                    <span className={`font-medium ${theme.text} text-sm block`}>평균시간</span>
+                    <span className={`font-mono ${theme.textSecondary} text-sm`}>
+                      {formatTime(basicStats.mean)}
+                    </span>
                   </div>
                 </div>
                 <div className={`${theme.surface} p-3 rounded-lg`}>
-                  <div className="flex justify-between items-center">
-                    <span className={`font-medium ${theme.text}`}>변동계수</span>
-                    <span className={`font-mono ${theme.textSecondary}`}>{basicStats.cv.toFixed(1)}%</span>
+                  <div className="space-y-1">
+                    <span className={`font-medium ${theme.text} text-sm block`}>변동계수</span>
+                    <span className={`font-mono ${theme.textSecondary} text-sm`}>
+                      {basicStats.cv.toFixed(1)}%
+                    </span>
                   </div>
                 </div>
               </div>
@@ -848,10 +1056,10 @@ const DetailedAnalysisPage = memo<{
           </div>
         </div>
 
-        {/* 개선 권장사항 */}
-        <div className={`${theme.card} rounded-lg p-6 shadow-sm border ${theme.border}`}>
-          <h3 className={`text-xl font-bold ${theme.text} mb-4 flex items-center gap-2`}>
-            <TrendingUpIcon className="w-6 h-6 text-green-500" />
+        {/* 개선 권장사항 (모바일 최적화) */}
+        <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
+          <h3 className={`text-lg font-bold ${theme.text} mb-4 flex items-center gap-2`}>
+            <TrendingUpIcon className="w-5 h-5 text-green-500" />
             개선 권장사항
           </h3>
           
@@ -864,17 +1072,123 @@ const DetailedAnalysisPage = memo<{
                       {index + 1}
                     </span>
                   </div>
-                  <p className={`${theme.text} leading-relaxed`}>{recommendation}</p>
+                  <p className={`${theme.text} leading-relaxed text-sm`}>
+                    {recommendation}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
+
+          <div className={`mt-6 p-4 rounded-lg ${analysis.interpretation.riskLevel === 'high'
+            ? isDark ? 'bg-red-900/20' : 'bg-red-50'
+            : analysis.interpretation.riskLevel === 'medium'
+            ? isDark ? 'bg-yellow-900/20' : 'bg-yellow-50'
+            : isDark ? 'bg-green-900/20' : 'bg-green-50'
+          } border-l-4 ${analysis.interpretation.riskLevel === 'high'
+            ? 'border-red-500'
+            : analysis.interpretation.riskLevel === 'medium'
+            ? 'border-yellow-500'
+            : 'border-green-500'
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              {analysis.interpretation.riskLevel === 'high' ? (
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+              ) : analysis.interpretation.riskLevel === 'medium' ? (
+                <AlertCircle className="w-5 h-5 text-yellow-500" />
+              ) : (
+                <CheckCircle className="w-5 h-5 text-green-500" />
+              )}
+              <h4 className={`font-semibold text-sm ${analysis.interpretation.riskLevel === 'high'
+                ? isDark ? 'text-red-300' : 'text-red-800'
+                : analysis.interpretation.riskLevel === 'medium'
+                ? isDark ? 'text-yellow-300' : 'text-yellow-800'
+                : isDark ? 'text-green-300' : 'text-green-800'
+              }`}>
+                우선순위 조치사항
+              </h4>
+            </div>
+            <p className={`text-sm ${analysis.interpretation.riskLevel === 'high'
+              ? isDark ? 'text-red-200' : 'text-red-700'
+              : analysis.interpretation.riskLevel === 'medium'
+              ? isDark ? 'text-yellow-200' : 'text-yellow-700'
+              : isDark ? 'text-green-200' : 'text-green-700'
+            }`}>
+              {analysis.interpretation.riskLevel === 'high'
+                ? '즉시 조치가 필요합니다. 측정 시스템을 사용하기 전에 반드시 개선하세요.'
+                : analysis.interpretation.riskLevel === 'medium'
+                ? '주의 깊은 모니터링과 점진적 개선이 필요합니다.'
+                : '현재 시스템을 유지하되 정기적인 재평가를 실시하세요.'
+              }
+            </p>
+          </div>
         </div>
+
+        {/* 측정 데이터 요약 */}
+        <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
+          <h3 className={`text-lg font-bold ${theme.text} mb-4`}>측정 데이터 요약</h3>
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className={`${theme.surface} p-4 rounded-lg text-center`}>
+              <div className={`text-2xl font-bold ${theme.text}`}>{lapTimes.length}</div>
+              <div className={`text-xs ${theme.textMuted}`}>총 측정 횟수</div>
+            </div>
+            <div className={`${theme.surface} p-4 rounded-lg text-center`}>
+              <div className={`text-2xl font-bold ${theme.text}`}>{session.operators.length}</div>
+              <div className={`text-xs ${theme.textMuted}`}>측정자 수</div>
+            </div>
+            <div className={`${theme.surface} p-4 rounded-lg text-center`}>
+              <div className={`text-2xl font-bold ${theme.text}`}>{session.targets.length}</div>
+              <div className={`text-xs ${theme.textMuted}`}>대상자 수</div>
+            </div>
+            <div className={`${theme.surface} p-4 rounded-lg text-center`}>
+              <div className={`text-2xl font-bold ${theme.text}`}>
+                {Math.floor(lapTimes.length / (session.operators.length * session.targets.length))}
+              </div>
+              <div className={`text-xs ${theme.textMuted}`}>조건당 평균 측정</div>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <h4 className={`font-semibold ${theme.textSecondary} mb-2 text-sm`}>측정자별 통계</h4>
+            <div className="space-y-2">
+              {session.operators.map(operator => {
+                const operatorLaps = lapTimes.filter(lap => lap.operator === operator);
+                const times = operatorLaps.map(lap => lap.time);
+                const mean = times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
+                const stdDev = times.length > 1 
+                  ? Math.sqrt(times.reduce((acc, time) => acc + Math.pow(time - mean, 2), 0) / (times.length - 1))
+                  : 0;
+                
+                return (
+                  <div key={operator} className={`${theme.surface} p-3 rounded-lg`}>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <div className={`font-medium ${theme.text}`}>{operator}</div>
+                        <div className={`text-xs ${theme.textMuted}`}>측정 {operatorLaps.length}회</div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`font-mono ${theme.textSecondary} text-xs`}>
+                          평균: {formatTime(mean)}
+                        </div>
+                        <div className={`font-mono ${theme.textSecondary} text-xs`}>
+                          표준편차: {stdDev.toFixed(2)}ms
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 하단 여백 (모바일 네비게이션 바 고려) */}
+        <div className="h-8"></div>
       </div>
     </div>
   );
 });
-
 // ==================== 메인 컴포넌트 ====================
 const EnhancedLogisticsTimer = () => {
   // 상태 관리
@@ -916,6 +1230,9 @@ const EnhancedLogisticsTimer = () => {
 
   const intervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+
+  // 뒤로가기 방지 훅 사용
+  const { showBackWarning } = useBackButtonPrevention();
 
   const theme = useMemo(() => THEME_COLORS[isDark ? 'dark' : 'light'], [isDark]);
 
@@ -1122,7 +1439,7 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [targets]);
 
-  // 상세 분석 다운로드
+  // 상세 분석 다운로드 (모바일 최적화)
   const downloadDetailedAnalysis = useCallback(() => {
     if (lapTimes.length < 6) {
       showToast('상세 분석을 위해서는 최소 6개의 측정 기록이 필요합니다.', 'warning');
@@ -1166,16 +1483,16 @@ const EnhancedLogisticsTimer = () => {
     ];
 
     const csvContent = analysisData.map(row => row.join(',')).join('\n');
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${generateFileName('상세분석보고서', currentSession.name)}.csv`;
-    link.click();
-
-    showToast('상세 분석 보고서가 다운로드되었습니다.', 'success');
+    const filename = `${generateFileName('상세분석보고서', currentSession.name)}.csv`;
+    
+    if (downloadForMobile(csvContent, filename)) {
+      showToast('상세 분석 보고서가 다운로드되었습니다.', 'success');
+    } else {
+      showToast('다운로드에 실패했습니다. 다시 시도해주세요.', 'error');
+    }
   }, [lapTimes, currentSession, showToast]);
 
-  // 측정 기록만 다운로드
+  // 측정 기록만 다운로드 (모바일 최적화)
   const downloadMeasurementData = useCallback(() => {
     if (lapTimes.length === 0) {
       showToast('다운로드할 측정 기록이 없습니다.', 'warning');
@@ -1204,13 +1521,13 @@ const EnhancedLogisticsTimer = () => {
       ])
     ].map(row => row.join(',')).join('\n');
 
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${generateFileName('측정기록', currentSession.name)}.csv`;
-    link.click();
-
-    showToast('측정 기록이 다운로드되었습니다.', 'success');
+    const filename = `${generateFileName('측정기록', currentSession.name)}.csv`;
+    
+    if (downloadForMobile(csvContent, filename)) {
+      showToast('측정 기록이 다운로드되었습니다.', 'success');
+    } else {
+      showToast('다운로드에 실패했습니다. 다시 시도해주세요.', 'error');
+    }
   }, [lapTimes, currentSession, showToast]);
 
   // 필터링된 측정 기록
@@ -1242,21 +1559,7 @@ const EnhancedLogisticsTimer = () => {
 
   // 랜딩 페이지
   if (showLanding) {
-    return (
-      <div className={`min-h-screen ${isDark ? 'bg-gradient-to-br from-slate-800 via-blue-900 to-blue-950' : 'bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800'}`}>
-        <ConsolidatedSupplyLogo isDark={isDark} />
-        <div className="p-8 text-center">
-          <h1 className="text-4xl font-bold text-white mb-4">물류 작업현장 인시수 측정 타이머</h1>
-          <p className="text-blue-100 mb-8 text-lg">Gage R&R 분석 v5.0 Enhanced SOLID</p>
-          <button
-            onClick={() => setShowLanding(false)}
-            className="bg-white text-blue-700 px-8 py-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg text-lg"
-          >
-            시스템 시작
-          </button>
-        </div>
-      </div>
-    );
+    return <ModernLandingPage isDark={isDark} onStart={() => setShowLanding(false)} />;
   }
 
   return (
@@ -1269,15 +1572,25 @@ const EnhancedLogisticsTimer = () => {
         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
 
-      {/* 헤더 */}
+      {/* 뒤로가기 경고 */}
+      <BackWarning isVisible={showBackWarning} />
+
+      {/* 헤더 (모바일 최적화) */}
       <div className={`${theme.card} shadow-sm border-b ${theme.border} sticky top-0 z-40`}>
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Zap className="w-6 h-6 text-blue-500" />
-              <h1 className={`text-lg font-bold ${theme.text}`}>물류 작업현장 인시수 측정 타이머</h1>
+            <div className="flex items-center space-x-2 flex-1 min-w-0">
+              <Zap className="w-6 h-6 text-blue-500 flex-shrink-0" />
+              <div className="min-w-0">
+                <h1 className={`text-base font-bold ${theme.text} truncate`}>
+                  물류 인시수 측정 타이머
+                </h1>
+                <div className={`text-xs ${theme.textMuted} truncate`}>
+                  Gage R&R 분석 v6.0 Mobile
+                </div>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-shrink-0">
               <button
                 onClick={() => setIsDark(!isDark)}
                 className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:${theme.textSecondary} ${theme.surfaceHover}`}
@@ -1298,21 +1611,10 @@ const EnhancedLogisticsTimer = () => {
               </button>
             </div>
           </div>
-          <div className={`text-xs ${theme.textMuted} mt-1`}>Gage R&R 분석 v5.0 Enhanced SOLID</div>
         </div>
       </div>
 
       <div className="max-w-md mx-auto p-4 space-y-4">
-        {/* 키보드 단축키 안내 */}
-        <div className={`${theme.card} p-3 rounded-lg border ${theme.border}`}>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <span className={`${theme.surface} ${theme.textSecondary} px-3 py-2 rounded border ${theme.border} text-center font-medium`}>스페이스: 시작/정지</span>
-            <span className={`${theme.surface} ${theme.textSecondary} px-3 py-2 rounded border ${theme.border} text-center font-medium`}>Enter: 랩타임</span>
-            <span className={`${theme.surface} ${theme.textSecondary} px-3 py-2 rounded border ${theme.border} text-center font-medium`}>Esc: 중지</span>
-            <span className={`${theme.surface} ${theme.textSecondary} px-3 py-2 rounded border ${theme.border} text-center font-medium`}>R: 초기화</span>
-          </div>
-        </div>
-
         {/* 작업 세션 섹션 */}
         <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
           <div className="flex items-center justify-between mb-3">
@@ -1341,8 +1643,8 @@ const EnhancedLogisticsTimer = () => {
           {currentSession ? (
             <div className="space-y-3">
               <div className={`text-sm ${theme.textMuted}`}>
-                <div className={`font-medium ${theme.text} mb-1`}>{currentSession.name}</div>
-                <div>{currentSession.workType}</div>
+                <div className={`font-medium ${theme.text} mb-1 truncate`}>{currentSession.name}</div>
+                <div className="truncate">{currentSession.workType}</div>
               </div>
 
               {/* 측정자/대상자 선택 */}
@@ -1390,7 +1692,7 @@ const EnhancedLogisticsTimer = () => {
           </div>
 
           <div className="text-center">
-            <div className={`text-5xl font-mono font-bold mb-6 ${theme.text} tracking-wider`}>
+            <div className={`text-4xl sm:text-5xl font-mono font-bold mb-6 ${theme.text} tracking-wider`}>
               {formatTime(currentTime)}
             </div>
             <div className={`text-sm ${theme.textMuted} mb-6`}>
@@ -1430,13 +1732,6 @@ const EnhancedLogisticsTimer = () => {
                 <Square className="w-5 h-5" />
                 <span className="text-sm">중지</span>
               </button>
-            </div>
-
-            {/* 키보드 힌트 */}
-            <div className={`text-xs ${theme.textMuted} grid grid-cols-3 gap-2`}>
-              <span>스페이스</span>
-              <span>Enter</span>
-              <span>Esc</span>
             </div>
           </div>
         </div>
@@ -1540,7 +1835,8 @@ const EnhancedLogisticsTimer = () => {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={downloadMeasurementData}
-            className="bg-green-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-600 flex items-center justify-center space-x-2 transition-colors"
+            disabled={lapTimes.length === 0}
+            className="bg-green-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
           >
             <Download className="w-4 h-4" />
             <span>측정기록</span>
@@ -1554,7 +1850,8 @@ const EnhancedLogisticsTimer = () => {
                 setShowDetailedAnalysis(true);
               }
             }}
-            className="bg-purple-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-600 flex items-center justify-center space-x-2 transition-colors"
+            disabled={lapTimes.length < 6}
+            className="bg-purple-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
           >
             <PieChart className="w-4 h-4" />
             <span>상세분석</span>
@@ -1633,26 +1930,26 @@ const EnhancedLogisticsTimer = () => {
                   .map((lap, index) => (
                   <div key={lap.id} className={`${theme.surface} p-3 rounded-lg border-l-4 border-blue-500 transition-all hover:shadow-md ${theme.surfaceHover}`}>
                     <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="font-mono text-xl font-bold text-blue-600 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-mono text-lg font-bold text-blue-600 mb-2">
                           {formatTime(lap.time)}
                         </div>
                         <div className={`text-xs ${theme.textMuted} space-y-1`}>
                           <div className="flex items-center gap-2">
-                            <Users className="w-3 h-3" />
-                            <span>측정자: <span className={`font-medium ${theme.textSecondary}`}>{lap.operator}</span></span>
+                            <Users className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">측정자: <span className={`font-medium ${theme.textSecondary}`}>{lap.operator}</span></span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Target className="w-3 h-3" />
-                            <span>대상자: <span className={`font-medium ${theme.textSecondary}`}>{lap.target}</span></span>
+                            <Target className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">대상자: <span className={`font-medium ${theme.textSecondary}`}>{lap.target}</span></span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Clock className="w-3 h-3" />
-                            <span>{lap.timestamp}</span>
+                            <Clock className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{lap.timestamp}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         <div className={`text-xs ${theme.textMuted} text-right`}>
                           #{filteredLapTimes.length - index}
                         </div>
@@ -1718,12 +2015,12 @@ const EnhancedLogisticsTimer = () => {
                     }`}
                   >
                     <div className="flex justify-between items-center">
-                      <div className="flex-1">
-                        <div className={`font-medium text-sm ${theme.text}`}>{session.name}</div>
-                        <div className={`text-xs ${theme.textMuted}`}>{session.workType}</div>
-                        <div className={`text-xs ${theme.textMuted}`}>{session.startTime}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-medium text-sm ${theme.text} truncate`}>{session.name}</div>
+                        <div className={`text-xs ${theme.textMuted} truncate`}>{session.workType}</div>
+                        <div className={`text-xs ${theme.textMuted} truncate`}>{session.startTime}</div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0">
                         <div className={`text-sm font-medium ${theme.text}`}>
                           {sessionLapCount}회
                         </div>
@@ -1740,6 +2037,9 @@ const EnhancedLogisticsTimer = () => {
             </div>
           </div>
         )}
+
+        {/* 하단 여백 (모바일 네비게이션 바 고려) */}
+        <div className="h-8"></div>
       </div>
 
       {/* 새 세션 생성 모달 */}
@@ -1750,14 +2050,14 @@ const EnhancedLogisticsTimer = () => {
               <h3 className={`text-xl font-bold mb-4 ${theme.text}`}>새 작업 세션 생성</h3>
               
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className={`block text-sm font-medium mb-1 ${theme.textSecondary}`}>세션명 *</label>
                     <input
                       type="text"
                       value={sessionName}
                       onChange={(e) => setSessionName(e.target.value)}
-                      placeholder="예: 검수-000-001"
+                      placeholder="예: 포장작업_0602"
                       className={`w-full p-3 border rounded-lg text-sm ${theme.input}`}
                     />
                   </div>
@@ -1797,7 +2097,7 @@ const EnhancedLogisticsTimer = () => {
                           newOperators[index] = e.target.value;
                           setOperators(newOperators);
                         }}
-                        placeholder={`측정자 ${index + 1} (예: 6급 조봉근)`}
+                        placeholder={`측정자 ${index + 1} (예: 조봉근)`}
                         className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
                       />
                       {operators.length > 1 && (
@@ -1833,7 +2133,7 @@ const EnhancedLogisticsTimer = () => {
                           newTargets[index] = e.target.value;
                           setTargets(newTargets);
                         }}
-                        placeholder={`대상자 ${index + 1} (예: 7급 김공군)`}
+                        placeholder={`대상자 ${index + 1} (예: 이나영)`}
                         className={`flex-1 p-2 border rounded text-sm ${theme.input}`}
                       />
                       {targets.length > 1 && (
@@ -1855,7 +2155,7 @@ const EnhancedLogisticsTimer = () => {
                   </h4>
                   <ul className={`${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 text-xs`}>
                     <li>• 측정자 2명 이상: 재현성(Reproducibility) 분석</li>
-                    <li>• 대상자 2개 이상: 대상자간 변동성 분석</li>
+                    <li>• 대상자 2개 이상: 부품간 변동성 분석</li>
                     <li>• 최소 6회 측정: 신뢰성 있는 분석 결과</li>
                     <li>• 권장 측정 횟수: 각 조건별 3-5회</li>
                   </ul>
@@ -1898,22 +2198,22 @@ const EnhancedLogisticsTimer = () => {
               </div>
               
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <div className={`text-sm ${theme.textMuted}`}>세션명</div>
-                    <div className={`font-medium ${theme.text}`}>{selectedSessionHistory.name}</div>
+                    <div className={`font-medium ${theme.text} truncate`}>{selectedSessionHistory.name}</div>
                   </div>
                   <div>
                     <div className={`text-sm ${theme.textMuted}`}>작업유형</div>
-                    <div className={`font-medium ${theme.text}`}>{selectedSessionHistory.workType}</div>
+                    <div className={`font-medium ${theme.text} truncate`}>{selectedSessionHistory.workType}</div>
                   </div>
                   <div>
                     <div className={`text-sm ${theme.textMuted}`}>측정자</div>
-                    <div className={`font-medium ${theme.text}`}>{selectedSessionHistory.operators.join(', ')}</div>
+                    <div className={`font-medium ${theme.text} break-words`}>{selectedSessionHistory.operators.join(', ')}</div>
                   </div>
                   <div>
                     <div className={`text-sm ${theme.textMuted}`}>대상자</div>
-                    <div className={`font-medium ${theme.text}`}>{selectedSessionHistory.targets.join(', ')}</div>
+                    <div className={`font-medium ${theme.text} break-words`}>{selectedSessionHistory.targets.join(', ')}</div>
                   </div>
                 </div>
 
