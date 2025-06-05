@@ -2328,9 +2328,6 @@ const EnhancedLogisticsTimer = () => {
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-2 flex-shrink-0">
-              <button
-                onClick={() => set
 <div className="flex items-center space-x-2 flex-shrink-0">
               <button
                 onClick={() => setIsDark(!isDark)}
