@@ -1245,7 +1245,6 @@ const DetailedAnalysisPage = memo<{
     </div>
   );
 });
-<button
 const EnhancedLogisticsTimer = () => {
   // 기본 다크모드로 설정
   const [isDark, setIsDark] = useState(true);
