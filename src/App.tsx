@@ -1652,7 +1652,7 @@ const EnhancedLogisticsTimer = () => {
                   물류 인시수 측정 타이머
                 </h1>
                 <div className={`text-xs ${theme.textMuted} truncate`}>
-                  측정부터 분석까지 한번 
+                  측정부터 분석까지 한번에  
                 </div>
               </div>
             </div>
