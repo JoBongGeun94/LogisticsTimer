@@ -156,69 +156,55 @@ const generateFileName = (prefix: string, sessionName: string): string => {
   const timestamp = `${year}${month}${day}${hour}${minute}`;
   
   const safeName = sessionName.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
-  return `${prefix}-${safeName}-(${timestamp})`;
+  return `${prefix}-${safeName}-(${timestamp}).csv`;
 };
 
-// 대체 다운로드 방법 (엑셀 파일로 직접 다운로드)
-const fallbackDownload = (blob: Blob, filename: string): boolean => {
-  try {
-    // 직접 다운로드 링크 생성 (엑셀 파일로)
-    const excelFilename = filename.replace('.csv', '.xlsx');
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = excelFilename;
-    link.style.display = 'none';
-    
-    // 강제 클릭으로 즉시 다운로드
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // 메모리 정리
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    
-    return true;
-  } catch (error) {
-    console.error('Direct download failed:', error);
-    return false;
-  }
+// CSV 생성 함수 (UTF-8 BOM 추가로 한글 깨짐 방지)
+const createCSVContent = (data: (string | number)[][]): string => {
+  const csvRows = data.map(row => 
+    row.map(cell => {
+      const cellStr = String(cell);
+      // 쉼표, 줄바꿈, 따옴표가 포함된 경우 따옴표로 감싸기
+      if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
+        return `"${cellStr.replace(/"/g, '""')}"`;
+      }
+      return cellStr;
+    }).join(',')
+  );
+  
+  // UTF-8 BOM 추가
+  return '\ufeff' + csvRows.join('\n');
 };
 
-// 모바일 다운로드 최적화 함수 (엑셀 파일 직접 다운로드)
-const downloadForMobile = (content: string, filename: string): boolean => {
+// 모바일/PC 통합 다운로드 함수 (완전 수정)
+const downloadCSVFile = (content: string, filename: string): boolean => {
   try {
-    // CSV 대신 Excel 호환 형식으로 생성
-    const excelContent = '\ufeff' + content; // BOM 추가로 한글 깨짐 방지
-    const blob = new Blob([excelContent], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    // CSV Blob 생성 (정확한 MIME 타입 사용)
+    const blob = new Blob([content], { 
+      type: 'text/csv;charset=utf-8;' 
     });
     
-    // 파일명을 .xlsx로 변경
-    const excelFilename = filename.replace('.csv', '.xlsx');
-    
-    // 모바일/데스크톱 구분 없이 직접 다운로드
+    // URL 생성
     const url = URL.createObjectURL(blob);
+    
+    // 다운로드 링크 생성
     const link = document.createElement('a');
     link.href = url;
-    link.download = excelFilename;
+    link.download = filename;
     link.style.display = 'none';
     
-    // DOM에 추가 후 클릭
+    // DOM에 추가하고 클릭
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
     
-    // 메모리 정리
+    // 정리
+    document.body.removeChild(link);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     
     return true;
   } catch (error) {
-    console.error('Excel download failed:', error);
-    return fallbackDownload(
-      new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' }), 
-      filename
-    );
+    console.error('CSV download failed:', error);
+    return false;
   }
 };
 
@@ -236,18 +222,15 @@ const useBackButtonPrevention = () => {
         setShowBackWarning(true);
         window.history.pushState(null, '', window.location.href);
         
-        // 2초 후 카운트 리셋
         setTimeout(() => {
           setBackPressCount(0);
           setShowBackWarning(false);
         }, 2000);
       } else {
-        // 두 번째 뒤로가기 - 실제 종료
         window.history.back();
       }
     };
 
-    // 히스토리에 상태 추가
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
 
@@ -258,6 +241,8 @@ const useBackButtonPrevention = () => {
 
   return { showBackWarning };
 };
+
+// ==================== Gage R&R 분석 로직 ====================
 const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
   const defaultResult: GageRRAnalysis = {
     repeatability: 0, reproducibility: 0, gageRR: 0,
@@ -312,7 +297,7 @@ const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
 
     const trialsPerCondition = Math.max(1, Math.floor(times.length / (operatorCount * targetCount)));
 
-    // 반복성 계산 (Within-group variation)
+    // 반복성 계산
     let repeatabilityVariance = 0;
     let totalWithinGroups = 0;
 
@@ -328,7 +313,7 @@ const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
       ? Math.sqrt(repeatabilityVariance / totalWithinGroups)
       : stdDev * 0.8;
 
-    // 재현성 계산 (Between-group variation)
+    // 재현성 계산
     const operatorMeans = Object.values(operatorGroups)
       .filter(group => group.length > 0)
       .map(group => group.reduce((a, b) => a + b, 0) / group.length);
@@ -358,7 +343,7 @@ const calculateGageRR = (lapTimes: LapTime[]): GageRRAnalysis => {
     // Cpk 계산
     const cpk = partVariation > 0 && stdDev > 0 ? Math.max(0, partVariation / (6 * stdDev)) : 0;
 
-    // ANOVA 분석 강화
+    // ANOVA 분석
     const totalANOVAVariance = operatorVariance + targetVariance + (variance * 0.1) + (repeatability ** 2);
     const anova = {
       operator: Math.max(0, operatorVariance),
@@ -464,7 +449,8 @@ const generateInterpretation = (
     riskLevel
   };
 };
-// ==================== 컴포넌트들 (Single Responsibility) ====================
+
+// ==================== UI 컴포넌트들 (Single Responsibility) ====================
 
 // 토스트 컴포넌트
 const Toast = memo<ToastProps>(({ message, type, isVisible, onClose }) => {
@@ -553,19 +539,18 @@ const StatusBadge = memo<{
   );
 });
 
-// 실제 로고 이미지를 사용하는 컴포넌트 (중앙 정렬 수정)
+// 로고 컴포넌트 (위치 조정)
 const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg' }>(({ isDark = false, size = 'lg' }) => {
   const sizeConfig = {
     sm: { container: 'w-16 h-16' },
     md: { container: 'w-24 h-24' },
-    lg: { container: 'w-40 h-40' } // 랜딩페이지용 로고 크기 증가
+    lg: { container: 'w-32 h-32' }
   };
 
   const { container } = sizeConfig[size];
 
   return (
-    <div className={`flex items-center justify-center ${container} mx-auto`}>
-      {/* 실제 로고 이미지 사용 - 중앙 정렬 */}
+    <div className={`flex items-center justify-center ${container} mx-auto mb-6`}>
       <img 
         src="/logo-rokaf-supply.png"
         alt="공군 종합보급창 로고" 
@@ -574,7 +559,6 @@ const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg
           filter: isDark ? 'brightness(1.1)' : 'none'
         }}
         onError={(e) => {
-          // 이미지 로드 실패 시 대체 텍스트 표시
           const target = e.target as HTMLImageElement;
           target.style.display = 'none';
           const parent = target.parentElement;
@@ -590,24 +574,22 @@ const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg
   );
 });
 
-// 현대적인 랜딩 페이지 컴포넌트 (남색 테마 + 로고 중심)
+// 랜딩 페이지 (로고 위치 조정)
 const ModernLandingPage = memo<{ 
   isDark: boolean; 
   onStart: () => void;
 }>(({ isDark, onStart }) => {
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-indigo-800 to-blue-900">
-      {/* 배경 애니메이션 */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/3 rounded-full blur-3xl"></div>
       </div>
 
-      {/* 메인 콘텐츠 */}
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        {/* 로고 섹션 (크기 증가, 텍스트 제거) */}
-        <div className="mb-12 transform hover:scale-105 transition-transform duration-300">
+        {/* 로고 섹션 (위치 조정: 타이틀 바로 위로) */}
+        <div className="transform hover:scale-105 transition-transform duration-300">
           <ConsolidatedSupplyLogo isDark={isDark} size="lg" />
         </div>
 
@@ -619,7 +601,7 @@ const ModernLandingPage = memo<{
           </h2>
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
             <span className="text-indigo-100 text-sm font-medium">
-              Gage R&R 분석 v6.0 Mobile Optimized
+              Gage R&R 분석 v7.0 최적화
             </span>
           </div>
         </div>
@@ -651,8 +633,8 @@ const ModernLandingPage = memo<{
               <Download className="w-5 h-5 text-purple-400" />
             </div>
             <div className="text-left">
-              <div className="text-white font-medium text-sm">엑셀 다운로드</div>
-              <div className="text-indigo-200 text-xs">즉시 로컬 저장</div>
+              <div className="text-white font-medium text-sm">CSV 다운로드</div>
+              <div className="text-indigo-200 text-xs">완벽한 호환성</div>
             </div>
           </div>
         </div>
@@ -856,7 +838,8 @@ const MeasurementCard = memo<{
     </div>
   );
 });
-// 상세 분석 페이지 컴포넌트 (모바일 최적화)
+
+// 상세 분석 페이지 (모바일 최적화)
 const DetailedAnalysisPage = memo<{
   analysis: GageRRAnalysis;
   lapTimes: LapTime[];
@@ -885,7 +868,7 @@ const DetailedAnalysisPage = memo<{
 
   return (
     <div className={`min-h-screen ${theme.bg}`}>
-      {/* 헤더 (모바일 최적화) */}
+      {/* 헤더 */}
       <div className={`${theme.card} shadow-sm border-b ${theme.border} sticky top-0 z-40`}>
         <div className="px-4 py-3">
           <div className="flex items-center justify-between gap-3">
@@ -970,7 +953,7 @@ const DetailedAnalysisPage = memo<{
           </div>
         </div>
 
-        {/* ANOVA 분석 (모바일 최적화) */}
+        {/* ANOVA 분석 */}
         <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
           <h3 className={`text-lg font-bold ${theme.text} mb-4`}>ANOVA 분산 성분 분석</h3>
           
@@ -1021,7 +1004,7 @@ const DetailedAnalysisPage = memo<{
           </div>
         </div>
 
-        {/* 개선 권장사항 (모바일 최적화) */}
+        {/* 개선 권장사항 */}
         <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
           <h3 className={`text-lg font-bold ${theme.text} mb-4 flex items-center gap-2`}>
             <TrendingUpIcon className="w-5 h-5 text-green-500" />
@@ -1043,49 +1026,6 @@ const DetailedAnalysisPage = memo<{
                 </div>
               </div>
             ))}
-          </div>
-
-          <div className={`mt-6 p-4 rounded-lg ${analysis.interpretation.riskLevel === 'high'
-            ? isDark ? 'bg-red-900/20' : 'bg-red-50'
-            : analysis.interpretation.riskLevel === 'medium'
-            ? isDark ? 'bg-yellow-900/20' : 'bg-yellow-50'
-            : isDark ? 'bg-green-900/20' : 'bg-green-50'
-          } border-l-4 ${analysis.interpretation.riskLevel === 'high'
-            ? 'border-red-500'
-            : analysis.interpretation.riskLevel === 'medium'
-            ? 'border-yellow-500'
-            : 'border-green-500'
-          }`}>
-            <div className="flex items-center gap-2 mb-2">
-              {analysis.interpretation.riskLevel === 'high' ? (
-                <AlertTriangle className="w-5 h-5 text-red-500" />
-              ) : analysis.interpretation.riskLevel === 'medium' ? (
-                <AlertCircle className="w-5 h-5 text-yellow-500" />
-              ) : (
-                <CheckCircle className="w-5 h-5 text-green-500" />
-              )}
-              <h4 className={`font-semibold text-sm ${analysis.interpretation.riskLevel === 'high'
-                ? isDark ? 'text-red-300' : 'text-red-800'
-                : analysis.interpretation.riskLevel === 'medium'
-                ? isDark ? 'text-yellow-300' : 'text-yellow-800'
-                : isDark ? 'text-green-300' : 'text-green-800'
-              }`}>
-                우선순위 조치사항
-              </h4>
-            </div>
-            <p className={`text-sm ${analysis.interpretation.riskLevel === 'high'
-              ? isDark ? 'text-red-200' : 'text-red-700'
-              : analysis.interpretation.riskLevel === 'medium'
-              ? isDark ? 'text-yellow-200' : 'text-yellow-700'
-              : isDark ? 'text-green-200' : 'text-green-700'
-            }`}>
-              {analysis.interpretation.riskLevel === 'high'
-                ? '즉시 조치가 필요합니다. 측정 시스템을 사용하기 전에 반드시 개선하세요.'
-                : analysis.interpretation.riskLevel === 'medium'
-                ? '주의 깊은 모니터링과 점진적 개선이 필요합니다.'
-                : '현재 시스템을 유지하되 정기적인 재평가를 실시하세요.'
-              }
-            </p>
           </div>
         </div>
 
@@ -1113,50 +1053,18 @@ const DetailedAnalysisPage = memo<{
               <div className={`text-xs ${theme.textMuted}`}>조건당 평균 측정</div>
             </div>
           </div>
-
-          <div className="mt-4">
-            <h4 className={`font-semibold ${theme.textSecondary} mb-2 text-sm`}>측정자별 통계</h4>
-            <div className="space-y-2">
-              {session.operators.map(operator => {
-                const operatorLaps = lapTimes.filter(lap => lap.operator === operator);
-                const times = operatorLaps.map(lap => lap.time);
-                const mean = times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
-                const stdDev = times.length > 1 
-                  ? Math.sqrt(times.reduce((acc, time) => acc + Math.pow(time - mean, 2), 0) / (times.length - 1))
-                  : 0;
-                
-                return (
-                  <div key={operator} className={`${theme.surface} p-3 rounded-lg`}>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <div className={`font-medium ${theme.text}`}>{operator}</div>
-                        <div className={`text-xs ${theme.textMuted}`}>측정 {operatorLaps.length}회</div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`font-mono ${theme.textSecondary} text-xs`}>
-                          평균: {formatTime(mean)}
-                        </div>
-                        <div className={`font-mono ${theme.textSecondary} text-xs`}>
-                          표준편차: {stdDev.toFixed(2)}ms
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
-        {/* 하단 여백 (모바일 네비게이션 바 고려) */}
         <div className="h-8"></div>
       </div>
     </div>
   );
 });
+
 // ==================== 메인 컴포넌트 ====================
 const EnhancedLogisticsTimer = () => {
-  // 상태 관리
+  // 기본 다크모드로 설정
+  const [isDark, setIsDark] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [lapTimes, setLapTimes] = useState<LapTime[]>([]);
@@ -1167,7 +1075,6 @@ const EnhancedLogisticsTimer = () => {
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showLanding, setShowLanding] = useState(true);
-  const [isDark, setIsDark] = useState(false);
   const [selectedSessionHistory, setSelectedSessionHistory] = useState<SessionData | null>(null);
 
   // 토스트 상태
@@ -1196,7 +1103,7 @@ const EnhancedLogisticsTimer = () => {
   const intervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  // 뒤로가기 방지 훅 사용
+  // 뒤로가기 방지 훅
   const { showBackWarning } = useBackButtonPrevention();
 
   const theme = useMemo(() => THEME_COLORS[isDark ? 'dark' : 'light'], [isDark]);
@@ -1404,7 +1311,7 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [targets]);
 
-  // 상세 분석 다운로드 (모바일 최적화)
+  // 상세 분석 다운로드 (완전 수정)
   const downloadDetailedAnalysis = useCallback(() => {
     if (lapTimes.length < 6) {
       showToast('상세 분석을 위해서는 최소 6개의 측정 기록이 필요합니다.', 'warning');
@@ -1418,25 +1325,34 @@ const EnhancedLogisticsTimer = () => {
 
     const analysis = calculateGageRR(lapTimes);
     
-    const analysisData = [
+    const analysisData: (string | number)[][] = [
       ['=== Gage R&R 상세 분석 보고서 ==='],
       [''],
       ['세션명', currentSession.name],
       ['작업유형', currentSession.workType],
       ['측정일시', currentSession.startTime],
-      ['총 측정횟수', lapTimes.length.toString()],
+      ['총 측정횟수', lapTimes.length],
       [''],
-      ['Gage R&R 비율 (%)', `${analysis.gageRRPercent.toFixed(1)}%`],
+      ['=== 분석 결과 ==='],
+      ['Gage R&R 비율 (%)', analysis.gageRRPercent.toFixed(1)],
       ['측정시스템 상태', analysis.status === 'excellent' ? '우수' :
         analysis.status === 'acceptable' ? '양호' :
         analysis.status === 'marginal' ? '보통' : '불량'],
+      ['공정 능력 지수 (Cpk)', analysis.cpk.toFixed(2)],
+      ['구별 범주 수 (NDC)', analysis.ndc],
       ['위험도', analysis.interpretation.riskLevel === 'low' ? '낮음' :
         analysis.interpretation.riskLevel === 'medium' ? '보통' : '높음'],
       [''],
-      ['개선 권장사항'],
+      ['=== ANOVA 분석 ==='],
+      ['측정자 기여율 (%)', analysis.anova.operatorPercent.toFixed(1)],
+      ['부품 기여율 (%)', analysis.anova.partPercent.toFixed(1)],
+      ['상호작용 기여율 (%)', analysis.anova.interactionPercent.toFixed(1)],
+      ['오차 기여율 (%)', analysis.anova.errorPercent.toFixed(1)],
+      [''],
+      ['=== 개선 권장사항 ==='],
       ...analysis.interpretation.recommendations.map((rec, idx) => [`${idx + 1}. ${rec}`]),
       [''],
-      ['측정 기록'],
+      ['=== 측정 기록 ==='],
       ['순번', '측정시간', '측정자', '대상자', '기록시간'],
       ...lapTimes.map((lap, index) => [
         index + 1,
@@ -1447,17 +1363,17 @@ const EnhancedLogisticsTimer = () => {
       ])
     ];
 
-    const csvContent = analysisData.map(row => row.join(',')).join('\n');
-    const filename = `${generateFileName('상세분석보고서', currentSession.name)}.csv`;
+    const csvContent = createCSVContent(analysisData);
+    const filename = generateFileName('상세분석보고서', currentSession.name);
     
-    if (downloadForMobile(csvContent, filename)) {
+    if (downloadCSVFile(csvContent, filename)) {
       showToast('상세 분석 보고서가 다운로드되었습니다.', 'success');
     } else {
       showToast('다운로드에 실패했습니다. 다시 시도해주세요.', 'error');
     }
   }, [lapTimes, currentSession, showToast]);
 
-  // 측정 기록만 다운로드 (모바일 최적화)
+  // 측정 기록만 다운로드 (완전 수정)
   const downloadMeasurementData = useCallback(() => {
     if (lapTimes.length === 0) {
       showToast('다운로드할 측정 기록이 없습니다.', 'warning');
@@ -1469,12 +1385,13 @@ const EnhancedLogisticsTimer = () => {
       return;
     }
 
-    const csvContent = [
-      ['측정 기록'],
+    const measurementData: (string | number)[][] = [
+      ['=== 측정 기록 ==='],
       [''],
       ['세션명', currentSession.name],
       ['작업유형', currentSession.workType],
       ['측정일시', currentSession.startTime],
+      ['총 측정횟수', lapTimes.length],
       [''],
       ['순번', '측정시간', '측정자', '대상자', '기록시간'],
       ...lapTimes.map((lap, index) => [
@@ -1484,11 +1401,12 @@ const EnhancedLogisticsTimer = () => {
         lap.target,
         lap.timestamp
       ])
-    ].map(row => row.join(',')).join('\n');
+    ];
 
-    const filename = `${generateFileName('측정기록', currentSession.name)}.csv`;
+    const csvContent = createCSVContent(measurementData);
+    const filename = generateFileName('측정기록', currentSession.name);
     
-    if (downloadForMobile(csvContent, filename)) {
+    if (downloadCSVFile(csvContent, filename)) {
       showToast('측정 기록이 다운로드되었습니다.', 'success');
     } else {
       showToast('다운로드에 실패했습니다. 다시 시도해주세요.', 'error');
@@ -1540,7 +1458,7 @@ const EnhancedLogisticsTimer = () => {
       {/* 뒤로가기 경고 */}
       <BackWarning isVisible={showBackWarning} />
 
-      {/* 헤더 (모바일 최적화) */}
+      {/* 헤더 */}
       <div className={`${theme.card} shadow-sm border-b ${theme.border} sticky top-0 z-40`}>
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -1551,7 +1469,7 @@ const EnhancedLogisticsTimer = () => {
                   물류 인시수 측정 타이머
                 </h1>
                 <div className={`text-xs ${theme.textMuted} truncate`}>
-                  Gage R&R 분석 v6.0 Mobile
+                  Gage R&R 분석 v7.0 최적화
                 </div>
               </div>
             </div>
@@ -1664,7 +1582,7 @@ const EnhancedLogisticsTimer = () => {
               {isRunning ? '측정 중...' : '대기 중'}
             </div>
 
-            {/* 개선된 버튼 레이아웃 */}
+            {/* 버튼 레이아웃 */}
             <div className="grid grid-cols-3 gap-3 mb-4">
               <button
                 onClick={toggleTimer}
@@ -2003,7 +1921,7 @@ const EnhancedLogisticsTimer = () => {
           </div>
         )}
 
-        {/* 하단 여백 (모바일 네비게이션 바 고려) */}
+        {/* 하단 여백 */}
         <div className="h-8"></div>
       </div>
 
