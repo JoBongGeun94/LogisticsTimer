@@ -624,7 +624,7 @@ const ModernLandingPage = memo<{
               </div>
               <div className="text-left flex-1">
                 <div className="text-white font-semibold text-base">정밀 측정</div>
-                <div className="text-blue-200 text-sm">소숫점 단위 정확한 측정 가</div>
+                <div className="text-blue-200 text-sm">소숫점 단위 정확한 측정 </div>
               </div>
             </div>
           </div>
@@ -637,7 +637,7 @@ const ModernLandingPage = memo<{
               </div>
               <div className="text-left flex-1">
                 <div className="text-white font-semibold text-base">실시간 분석</div>
-                <div className="text-blue-200 text-sm">각종 통계도구 활용 및 결과 제</div>
+                <div className="text-blue-200 text-sm">각종 통계도구 활용 및 결과 제공 </div>
               </div>
             </div>
           </div>
@@ -650,7 +650,7 @@ const ModernLandingPage = memo<{
               </div>
               <div className="text-left flex-1">
                 <div className="text-white font-semibold text-base">분석결과 Excel 다운로드</div>
-                <div className="text-blue-200 text-sm">RAW DATA 내려받기 기능 제</div>
+                <div className="text-blue-200 text-sm">RAW DATA 내려받기 기능 제공 </div>
               </div>
             </div>
           </div>
