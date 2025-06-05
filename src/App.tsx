@@ -609,7 +609,7 @@ const ModernLandingPage = memo<{
           <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-md border border-white/20 shadow-2xl">
             <div className="w-2 h-2 bg-green-400 rounded-full mr-3 animate-pulse"></div>
             <span className="text-blue-100 text-sm font-medium tracking-wide">
-              Gage R&R 분석 v7.0 최적화
+              측정, 기록, 저장, 분석을 동시에
             </span>
           </div>
         </div>
@@ -624,7 +624,7 @@ const ModernLandingPage = memo<{
               </div>
               <div className="text-left flex-1">
                 <div className="text-white font-semibold text-base">정밀 측정</div>
-                <div className="text-blue-200 text-sm">센티초 단위 정확도</div>
+                <div className="text-blue-200 text-sm">소숫점 단위 정확한 측정 가</div>
               </div>
             </div>
           </div>
@@ -637,7 +637,7 @@ const ModernLandingPage = memo<{
               </div>
               <div className="text-left flex-1">
                 <div className="text-white font-semibold text-base">실시간 분석</div>
-                <div className="text-blue-200 text-sm">Gage R&R 자동 계산</div>
+                <div className="text-blue-200 text-sm">각종 통계도구 활용 및 결과 제</div>
               </div>
             </div>
           </div>
@@ -649,8 +649,8 @@ const ModernLandingPage = memo<{
                 <Download className="w-6 h-6 text-white" />
               </div>
               <div className="text-left flex-1">
-                <div className="text-white font-semibold text-base">CSV 다운로드</div>
-                <div className="text-blue-200 text-sm">완벽한 호환성</div>
+                <div className="text-white font-semibold text-base">분석결과 Excel 다운로드</div>
+                <div className="text-blue-200 text-sm">RAW DATA 내려받기 기능 제</div>
               </div>
             </div>
           </div>
@@ -1652,7 +1652,7 @@ const EnhancedLogisticsTimer = () => {
                   물류 인시수 측정 타이머
                 </h1>
                 <div className={`text-xs ${theme.textMuted} truncate`}>
-                  Gage R&R 분석 v7.1 최적화
+                  측정부터 분석까지 한번 
                 </div>
               </div>
             </div>
