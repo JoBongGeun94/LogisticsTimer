@@ -542,7 +542,7 @@ const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg
   const sizeConfig = {
     sm: { container: 'w-16 h-16' },
     md: { container: 'w-24 h-24' },
-    lg: { container: 'w-32 h-32' }
+    lg: { container: 'w-64 h-64' }
   };
 
   const { container } = sizeConfig[size];
