@@ -44,6 +44,8 @@ import {
   ArrowLeft,
   TrendingUp as TrendingUpIcon,
   AlertTriangle,
+  Flag,
+  MousePointerClick,
   Share2,
 } from 'lucide-react';
 // ==================== 타입 정의 (Single Responsibility) ====================
@@ -940,10 +942,20 @@ const HelpModal = memo<{
         title: '⌨️ 키보드 단축키',
         icon: Settings,
         items: [
-          { key: '스페이스바', desc: '타이머 시작/정지', shortcut: 'SPACE' },
-          { key: 'Enter', desc: '랩타임 기록 (측정 완료)', shortcut: '⏎' },
-          { key: 'Esc', desc: '타이머 중지', shortcut: 'ESC' },
-          { key: 'R', desc: '타이머 리셋', shortcut: 'R' },
+          { key: '스페이스바', desc: '타이머 시작/일시정지', shortcut: 'SPACE' },
+          { key: 'Enter', desc: '랩타임 기록', shortcut: '⏎' },
+          { key: 'Esc', desc: '측정 정지', shortcut: 'ESC' },
+          { key: 'R', desc: '모든 기록 리셋', shortcut: 'R' },
+        ],
+      },
+      {
+        title: '🖱️ 주요 버튼',
+        icon: MousePointerClick,
+        items: [
+          { key: '세션생성', desc: '새 측정 세션을 시작합니다.' },
+          { key: '랩타임', desc: '현재 시간을 기록하고 초기화합니다.' },
+          { key: '정지', desc: '타이머를 멈추고 시간을 0으로 돌립니다.' },
+          { key: '내려받기', desc: '측정 기록을 CSV로 저장합니다.' },
         ],
       },
       {
@@ -2169,29 +2181,43 @@ const EnhancedLogisticsTimer = () => {
               <h2 className={`text-lg font-bold ${theme.text}`}>실시간 타이머</h2>
               <button
                 onClick={() => setShowNewSessionModal(true)}
-                className="text-blue-500 hover:text-blue-700 transition-colors"
+                className="px-3 py-1 rounded-lg bg-blue-500 text-white text-sm hover:bg-blue-600 transition-colors"
                 title="새 세션 생성"
               >
-                <Plus className="w-5 h-5" />
+                세션생성
               </button>
             </div>
             <div className="text-center mb-4">
               <div className="text-3xl font-bold font-mono text-blue-600">{formatTime(currentTime)}</div>
             </div>
-            <div className="flex items-center justify-center space-x-4 mb-4">
+            <div className="flex items-center justify-center space-x-2 mb-4">
               <button
                 onClick={toggleTimer}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors ${
                   isRunning ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
                 } hover:opacity-90`}
                 disabled={!currentSession || !currentOperator || !currentTarget}
               >
                 {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                {isRunning ? '정지' : '시작'}
+                {isRunning ? '일시정지' : '시작'}
+              </button>
+              <button
+                onClick={recordLap}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-500 text-white hover:opacity-90 transition-colors"
+              >
+                <Flag className="w-5 h-5" />
+                랩타임
+              </button>
+              <button
+                onClick={stopTimer}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500 text-white hover:opacity-90 transition-colors"
+              >
+                <Square className="w-5 h-5" />
+                정지
               </button>
               <button
                 onClick={resetTimer}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500 text-white hover:opacity-90 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500 text-white hover:opacity-90 transition-colors"
               >
                 <RotateCcw className="w-5 h-5" />
                 리셋
@@ -2237,10 +2263,10 @@ const EnhancedLogisticsTimer = () => {
               <h2 className={`text-lg font-bold ${theme.text}`}>최근 측정 기록</h2>
               <button
                 onClick={downloadMeasurementData}
-                className="text-green-500 hover:text-green-700 transition-colors"
-                title="측정 기록 다운로드"
+                className="px-3 py-1 rounded-lg bg-green-500 text-white text-sm hover:bg-green-600 transition-colors"
+                title="측정 기록 내려받기"
               >
-                <Download className="w-5 h-5" />
+                내려받기
               </button>
             </div>
             <div className="flex gap-2 mb-2">
