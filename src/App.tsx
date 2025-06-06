@@ -3,8 +3,182 @@ import {
   Play, Pause, RotateCcw, Download, Plus, Users, Clock,
   BarChart3, Calculator, Target, HelpCircle, ArrowLeft, XCircle,
   AlertCircle, CheckCircle, AlertTriangle, Search, Loader2, Sun, Moon, Zap, Trash2, Activity,
-  Timer
+  Timer, Settings
 } from 'lucide-react';
+
+// ==================== NewSessionModal 컴포넌트 ====================
+interface NewSessionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  sessionName: string;
+  setSessionName: (val: string) => void;
+  workType: string;
+  setWorkType: (val: string) => void;
+  operators: string[];
+  setOperators: (arr: string[]) => void;
+  targets: string[];
+  setTargets: (arr: string[]) => void;
+  onCreate: () => void;
+}
+
+const NewSessionModal = memo<NewSessionModalProps>(({
+  isOpen,
+  onClose,
+  sessionName,
+  setSessionName,
+  workType,
+  setWorkType,
+  operators,
+  setOperators,
+  targets,
+  setTargets,
+  onCreate
+}) => {
+  if (!isOpen) return null;
+
+  const addOperatorField = () => setOperators([ ...operators, '' ]);
+  const removeOperatorField = (idx: number) => {
+    if (operators.length > 1) {
+      const copy = [...operators];
+      copy.splice(idx, 1);
+      setOperators(copy);
+    }
+  };
+  const changeOperatorField = (idx: number, value: string) => {
+    const copy = [...operators];
+    copy[idx] = value;
+    setOperators(copy);
+  };
+
+  const addTargetField = () => setTargets([ ...targets, '' ]);
+  const removeTargetField = (idx: number) => {
+    if (targets.length > 1) {
+      const copy = [...targets];
+      copy.splice(idx, 1);
+      setTargets(copy);
+    }
+  };
+  const changeTargetField = (idx: number, value: string) => {
+    const copy = [...targets];
+    copy[idx] = value;
+    setTargets(copy);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
+        <h3 className="text-lg font-semibold text-gray-800">새 세션 생성</h3>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">세션 이름</label>
+            <input
+              type="text"
+              value={sessionName}
+              onChange={(e) => setSessionName(e.target.value)}
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2"
+              placeholder="예: 오전 물류 투입"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">작업 유형</label>
+            <input
+              type="text"
+              value={workType}
+              onChange={(e) => setWorkType(e.target.value)}
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2"
+              placeholder="예: 포장, 검수 등"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">측정자 목록</label>
+            {operators.map((op, idx) => (
+              <div key={idx} className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={op}
+                  onChange={(e) => changeOperatorField(idx, e.target.value)}
+                  className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2"
+                  placeholder={`측정자 ${idx + 1}`}
+                />
+                <button
+                  onClick={() => removeOperatorField(idx)}
+                  className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                  disabled={operators.length === 1}
+                  type="button"
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={addOperatorField}
+              type="button"
+              className="mt-1 text-blue-600 text-sm hover:underline"
+            >
+              + 측정자 추가
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">대상자 목록</label>
+            {targets.map((tg, idx) => (
+              <div key={idx} className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={tg}
+                  onChange={(e) => changeTargetField(idx, e.target.value)}
+                  className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2"
+                  placeholder={`대상자 ${idx + 1}`}
+                />
+                <button
+                  onClick={() => removeTargetField(idx)}
+                  className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                  disabled={targets.length === 1}
+                  type="button"
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={addTargetField}
+              type="button"
+              className="mt-1 text-blue-600 text-sm hover:underline"
+            >
+              + 대상자 추가
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+            type="button"
+          >
+            취소
+          </button>
+          <button
+            onClick={onCreate}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm disabled:opacity-50"
+            disabled={
+              !sessionName.trim() ||
+              !workType.trim() ||
+              operators.some((op) => !op.trim()) ||
+              targets.some((tg) => !tg.trim())
+            }
+            type="button"
+          >
+            생성
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 // ==================== 타입 정의 (SRP) ====================
 interface ToastProps {
@@ -597,7 +771,7 @@ const ModernLandingPage = memo<{ isDark: boolean; onStart: () => void }>(({ isDa
           <div className="group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-2xl blur-lg group-hover:blur-xl transition-all duration-300"></div>
             <div className="relative flex items-center space-x-4 p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex	items-center justify-center shadow-lg">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-lg">
                 <BarChart3 className="w-6 h-6 text-white" />
               </div>
               <div className="text-left flex-1">
@@ -614,7 +788,7 @@ const ModernLandingPage = memo<{ isDark: boolean; onStart: () => void }>(({ isDa
               </div>
               <div className="text-left flex-1">
                 <div className="text-white font-semibold text-base">분석결과 Excel 다운로드</div>
-                <div className="text-blue-200 text-sm">RAW DATA 내려받기 기능 제공 </div>
+                <div className="text-blue-200 text-sm">RAW Data 내려받기 기능 제공 </div>
               </div>
             </div>
           </div>
@@ -634,7 +808,7 @@ const ModernLandingPage = memo<{ isDark: boolean; onStart: () => void }>(({ isDa
           <div className="inline-flex items-center space-x-3 px-6 py-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
             <div className="flex space-x-1">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-blue-400rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
               <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
             </div>
             <span className="text-blue-200 text-sm font-medium">시스템 준비 완료</span>
@@ -1122,7 +1296,7 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
         {/* 개선 권장사항 */}
         <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
           <h3 className={`text-lg font-bold ${theme.text} mb-4 flex items-center gap-2`}>
-            <TrendingUp className="w-5 h-5 text-green-500" />
+            <Activity className="w-5 h-5 text-green-500" />
             개선 권장사항
           </h3>
           <div className="space-y-3">
@@ -1400,14 +1574,14 @@ const EnhancedLogisticsTimer = () => {
 
   // 세션 생성
   const createSession = useCallback(() => {
-    if (!sessionName || !workType || operators.some((op) => !op.trim()) || targets.some((tg) => !tg.trim())) {
+    if (!sessionName.trim() || !workType.trim() || operators.some((op) => !op.trim()) || targets.some((tg) => !tg.trim())) {
       showToast('모든 필드를 입력해주세요.', 'warning');
       return;
     }
     const newSession: SessionData = {
       id: Date.now().toString(),
-      name: sessionName,
-      workType,
+      name: sessionName.trim(),
+      workType: workType.trim(),
       operators: operators.filter((op) => op.trim()),
       targets: targets.filter((tg) => tg.trim()),
       lapTimes: [],
@@ -1465,6 +1639,15 @@ const EnhancedLogisticsTimer = () => {
       setAnalysisResult(result);
 
       // CSV 내보내기 데이터 준비
+      const basicStats = {
+        mean: lapTimes.reduce((a, b) => a + b.time, 0) / lapTimes.length,
+        variance: lapTimes.reduce((acc, lap) => acc + Math.pow(lap.time - (lapTimes.reduce((a, b) => a + b.time, 0) / lapTimes.length), 2), 0) / Math.max(1, lapTimes.length - 1),
+        stdDev: Math.sqrt(lapTimes.reduce((acc, lap) => acc + Math.pow(lap.time - (lapTimes.reduce((a, b) => a + b.time, 0) / lapTimes.length), 2), 0) / Math.max(1, lapTimes.length - 1)),
+        cv: lapTimes.length > 0 ? (Math.sqrt(lapTimes.reduce((acc, lap) => acc + Math.pow(lap.time - (lapTimes.reduce((a, b) => a + b.time, 0) / lapTimes.length), 2), 0) / Math.max(1, lapTimes.length - 1)) / (lapTimes.reduce((a, b) => a + b.time, 0) / lapTimes.length)) * 100 : 0,
+        min: Math.min(...lapTimes.map((lap) => lap.time)),
+        max: Math.max(...lapTimes.map((lap) => lap.time))
+      };
+
       const analysisData: (string | number)[][] = [
         ['=== Gage R&R 상세 분석 보고서 ==='],
         [''],
@@ -1569,7 +1752,7 @@ const EnhancedLogisticsTimer = () => {
       setIsBatchModalOpen(false);
       showToast('일괄 편집이 완료되었습니다.', 'success');
     },
-    [allLapTimes, selectedIds, selectedSessionHistory, showToast, setSessions]
+    [allLapTimes, selectedIds, selectedSessionHistory, showToast]
   );
 
   // 세션 삭제
@@ -1600,7 +1783,6 @@ const EnhancedLogisticsTimer = () => {
     [currentSession]
   );
 
-  // 세션 클릭 시 상세화면 or 히스토리화면
   const renderMainContent = () => {
     if (showLanding) {
       return <ModernLandingPage isDark={isDark} onStart={() => setShowLanding(false)} />;
@@ -1617,7 +1799,7 @@ const EnhancedLogisticsTimer = () => {
                 className={`${theme.accent} text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center gap-1`}
               >
                 <Plus className="w-5 h-5" />
-                새 세션
+                + 새 세션
               </button>
             </div>
             <div className="space-y-4 px-4">
@@ -1856,6 +2038,21 @@ const EnhancedLogisticsTimer = () => {
         </button>
       </header>
       <main className="flex-grow">{renderMainContent()}</main>
+
+      {/* NewSessionModal 삽입 */}
+      <NewSessionModal
+        isOpen={showNewSessionModal}
+        onClose={() => setShowNewSessionModal(false)}
+        sessionName={sessionName}
+        setSessionName={setSessionName}
+        workType={workType}
+        setWorkType={setWorkType}
+        operators={operators}
+        setOperators={setOperators}
+        targets={targets}
+        setTargets={setTargets}
+        onCreate={createSession}
+      />
     </div>
   );
 };
