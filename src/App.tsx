@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from '
 import {
   Play, Pause, RotateCcw, Download, Plus, Users, Clock,
   BarChart3, Calculator, Target, HelpCircle, ArrowLeft, XCircle,
-  AlertCircle, CheckCircle, AlertTriangle, Search, Loader2
+  AlertCircle, CheckCircle, AlertTriangle, Search, Loader2, Sun, Moon, Zap, Trash2, Activity
 } from 'lucide-react';
 
 // ==================== 타입 정의 (SRP) ====================
@@ -472,12 +472,12 @@ const Toast = memo<ToastProps>(({ message, type, isVisible, onClose }) => {
   const { style, icon: Icon } = typeConfig[type];
 
   return (
-    <div className=\"fixed top-4 right-4 z-60 animate-in slide-in-from-right duration-300\">
+    <div className="fixed top-4 right-4 z-60 animate-in slide-in-from-right duration-300">
       <div className={`${style} px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm`}>
-        <Icon className=\"w-5 h-5 flex-shrink-0\" />
-        <span className=\"text-sm font-medium\">{message}</span>
-        <button onClick={onClose} className=\"ml-2 hover:bg-white/20 rounded p-1\">
-          <XCircle className=\"w-4 h-4\" />
+        <Icon className="w-5 h-5 flex-shrink-0" />
+        <span className="text-sm font-medium">{message}</span>
+        <button onClick={onClose} className="ml-2 hover:bg-white/20 rounded p-1">
+          <XCircle className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -487,10 +487,10 @@ const Toast = memo<ToastProps>(({ message, type, isVisible, onClose }) => {
 const BackWarning = memo<{ isVisible: boolean }>(({ isVisible }) => {
   if (!isVisible) return null;
   return (
-    <div className=\"fixed bottom-4 left-4 right-4 z-70 animate-in slide-in-from-bottom duration-300\">
-      <div className=\"bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2\">
-        <AlertTriangle className=\"w-5 h-5 flex-shrink-0\" />
-        <span className=\"text-sm font-medium\">한 번 더 뒤로가기 하면 종료됩니다</span>
+    <div className="fixed bottom-4 left-4 right-4 z-70 animate-in slide-in-from-bottom duration-300">
+      <div className="bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2">
+        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+        <span className="text-sm font-medium">한 번 더 뒤로가기 하면 종료됩니다</span>
       </div>
     </div>
   );
@@ -532,11 +532,120 @@ const StatusBadge = memo<{
   );
 });
 
-const HelpModal = memo<{
-  isOpen: boolean;
-  onClose: () => void;
-  theme: Theme;
-}>(({ isOpen, onClose, theme }) => {
+const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg' }>(({ isDark = false, size = 'lg' }) => {
+  const sizeConfig = { sm: { container: 'w-16 h-16' }, md: { container: 'w-24 h-24' }, lg: { container: 'w-64 h-64' } };
+  const { container } = sizeConfig[size];
+  return (
+    <div className={`flex items-center justify-center ${container} mx-auto mb-6`}>
+      <img
+        src="/logo-rokaf-supply.png"
+        alt="공군 종합보급창 로고"
+        className="w-full h-full object-contain"
+        style={{ filter: isDark ? 'brightness(1.1)' : 'none' }}
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          const parent = target.parentElement;
+          if (parent && !parent.querySelector('.logo-fallback')) {
+            const fallback = document.createElement('div');
+            fallback.className = 'logo-fallback flex items-center justify-center w-full h-full bg-blue-600 text-white rounded-full text-sm font-bold';
+            fallback.textContent = '종합보급창';
+            parent.appendChild(fallback);
+          }
+        }}
+      />
+    </div>
+  );
+});
+
+const ModernLandingPage = memo<{ isDark: boolean; onStart: () => void }>(({ isDark, onStart }) => {
+  return (
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-br from-blue-400/20 via-purple-500/15 to-transparent rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-32 left-16 w-80 h-80 bg-gradient-to-tr from-indigo-400/15 via-blue-500/10 to-transparent rounded-full blur-3xl"></div>
+        <div className="absolute top-1/3 left-1/4 w-32 h-32 bg-gradient-to-r from-cyan-400/10 to-blue-500/10 rounded-full blur-2xl animate-bounce"></div>
+        <div className="absolute bottom-1/4 right-1/3 w-40 h-40 bg-gradient-to-l from-purple-400/10 to-indigo-500/10 rounded-full blur-2xl"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]"></div>
+      </div>
+      <div className="relative z-10 flex flex-col items-center justify-start min-h-screen px-6 text-center pt-20">
+        <div className="transform hover:scale-105 transition-transform duration-300 mb-16 mt-16">
+          <ConsolidatedSupplyLogo isDark={isDark} size="lg" />
+        </div>
+        <div className="mb-20 space-y-6">
+          <h2 className="text-4xl font-bold text-white leading-tight tracking-tight">물류 작업현장<br />인시수 측정 타이머</h2>
+          <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-md border border-white/20 shadow-2xl">
+            <div className="w-2 h-2 bg-green-400 rounded-full mr-3 animate-pulse"></div>
+            <span className="text-blue-100 text-sm font-medium tracking-wide">측정, 기록, 저장, 분석을 동시에</span>
+          </div>
+        </div>
+        <div className="mb-20 grid grid-cols-1 gap-6 w-full max-w-sm">
+          <div className="group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl blur-lg group-hover:blur-xl transition-all duration-300"></div>
+            <div className="relative flex items-center space-x-4 p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg">
+                <Timer className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left flex-1">
+                <div className="text-white font-semibold text-base">정밀 측정</div>
+                <div className="text-blue-200 text-sm">소수수점 단위 정확한 측정 </div>
+              </div>
+            </div>
+          </div>
+          <div className="group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-2xl blur-lg group-hover:blur-xl transition-all duration-300"></div>
+            <div className="relative flex items-center space-x-4 p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex	items-center justify-center shadow-lg">
+                <BarChart3 className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left flex-1">
+                <div className="text-white font-semibold text-base">실시간 분석</div>
+                <div className="text-blue-200 text-sm">각종 통계도구 활용 및 결과 제공 </div>
+              </div>
+            </div>
+          </div>
+          <div className="group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-violet-500/20 rounded-2xl blur-lg group-hover:blur-xl transition-all duration-300"></div>
+            <div className="relative flex items-center space-x-4 p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center shadow-lg">
+                <Download className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left flex-1">
+                <div className="text-white font-semibold text-base">분석결과 Excel 다운로드</div>
+                <div className="text-blue-200 text-sm">RAW DATA 내려받기 기능 제공 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button onClick={onStart} className="group relative overflow-hidden px-12 py-5 rounded-2xl font-bold text-xl shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2">
+          <div className="absolute inset-0 bg-gradient-to-r from-white via-blue-50 to-white rounded-2xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <span className="relative z-10 group-hover:text-white transition-colors duration-300 flex items-center space-x-3 text-slate-800">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center group-hover:bg-white/20 transition-all duration-300">
+              <Play className="w-4 h-4 text-white" />
+            </div>
+            <span>시스템 시작</span>
+          </span>
+          <div className="absolute inset-0 rounded-2xl border-2 border-white/20 group-hover:border-white/40 transition-colors duration-300"></div>
+        </button>
+        <div className="mt-12 text-center">
+          <div className="inline-flex items-center space-x-3 px-6 py-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+            <span className="text-blue-200 text-sm font-medium">시스템 준비 완료</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ==================== 도움말 모달 ====================
+const HelpModal = memo<{ isOpen: boolean; onClose: () => void; theme: Theme }>(({ isOpen, onClose, theme }) => {
   const helpSections = useMemo(
     () => [
       {
@@ -584,33 +693,33 @@ const HelpModal = memo<{
 
   if (!isOpen) return null;
   return (
-    <div className=\"fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4\">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className={`${theme.card} rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border ${theme.border}`}>
         <div className={`${theme.accent} px-6 py-4`}>
-          <div className=\"flex items-center justify-between\">
-            <div className=\"flex items-center gap-3\">
-              <HelpCircle className=\"w-6 h-6 text-white\" />
-              <h3 className=\"text-xl font-bold text-white\">사용자 가이드</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <HelpCircle className="w-6 h-6 text-white" />
+              <h3 className="text-xl font-bold text-white">사용자 가이드</h3>
             </div>
-            <button onClick={onClose} className=\"text-white/80 hover:text-white transition-colors p-1\">
-              <XCircle className=\"w-6 h-6\" />
+            <button onClick={onClose} className="text-white/80 hover:text-white transition-colors p-1">
+              <XCircle className="w-6 h-6" />
             </button>
           </div>
         </div>
-        <div className=\"p-6 overflow-y-auto max-h-[calc(90vh-80px)] space-y-8\">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)] space-y-8">
           {helpSections.map((section, idx) => {
             const IconComp = section.icon;
             return (
-              <div key={idx} className=\"space-y-4\">
-                <div className=\"flex items-center gap-3\">
+              <div key={idx} className="space-y-4">
+                <div className="flex items-center gap-3">
                   <IconComp className={`w-5 h-5 ${theme.textSecondary}`} />
                   <h4 className={`text-lg font-semibold ${theme.text}`}>{section.title}</h4>
                 </div>
-                <div className=\"grid gap-3\">
+                <div className="grid gap-3">
                   {section.items.map((item, i) => (
                     <div key={i} className={`p-4 rounded-lg border ${theme.border} ${theme.surface} hover:shadow-md transition-shadow`}>
-                      <div className=\"flex items-start justify-between gap-4\">
-                        <div className=\"flex-1\">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
                           <div className={`font-medium ${theme.text} mb-1`}>{item.key}</div>
                           <div className={`text-sm ${theme.textMuted}`}>{item.desc}</div>
                         </div>
@@ -628,12 +737,12 @@ const HelpModal = memo<{
           })}
         </div>
         <div className={`px-6 py-4 border-t ${theme.border}`}>
-          <div className=\"flex justify-center\">
+          <div className="flex justify-center">
             <button
               onClick={onClose}
               className={`${theme.accent} text-white px-6 py-2 rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2`}
             >
-              <CheckCircle className=\"w-4 h-4\" />
+              <CheckCircle className="w-4 h-4" />
               확인했습니다
             </button>
           </div>
@@ -662,36 +771,36 @@ const BatchEditModal = memo<BatchEditModalProps>(({ isOpen, onClose, selectedIds
   if (!isOpen) return null;
 
   return (
-    <div className=\"fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4\">
-      <div className=\"bg-white rounded-lg max-w-md w-full p-6 space-y-4\">
-        <h3 className=\"text-lg font-semibold text-gray-800\">일괄 편집</h3>
-        <p className=\"text-sm text-gray-600\">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
+        <h3 className="text-lg font-semibold text-gray-800">일괄 편집</h3>
+        <p className="text-sm text-gray-600">
           선택된 레코드 수: {selectedIds.length}
         </p>
-        <div className=\"space-y-3\">
+        <div className="space-y-3">
           <div>
-            <label className=\"block text-sm font-medium text-gray-700\">새로운 측정자</label>
+            <label className="block text-sm font-medium text-gray-700">새로운 측정자</label>
             <input
-              type=\"text\"
+              type="text"
               value={newOperator}
               onChange={(e) => setNewOperator(e.target.value)}
-              className=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2\"
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2"
             />
           </div>
           <div>
-            <label className=\"block text-sm font-medium text-gray-700\">새로운 대상자</label>
+            <label className="block text-sm font-medium text-gray-700">새로운 대상자</label>
             <input
-              type=\"text\"
+              type="text"
               value={newTarget}
               onChange={(e) => setNewTarget(e.target.value)}
-              className=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2\"
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-2"
             />
           </div>
         </div>
-        <div className=\"flex justify-end space-x-2 pt-4 border-t border-gray-200\">
+        <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200">
           <button
             onClick={onClose}
-            className=\"px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm\"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
           >
             취소
           </button>
@@ -699,7 +808,7 @@ const BatchEditModal = memo<BatchEditModalProps>(({ isOpen, onClose, selectedIds
             onClick={() => {
               onApply(newOperator.trim(), newTarget.trim());
             }}
-            className=\"px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm disabled:bg-gray-300\"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm disabled:bg-gray-300"
             disabled={!newOperator.trim() && !newTarget.trim()}
           >
             적용
@@ -760,42 +869,42 @@ const HistoryList = memo<HistoryListProps>(({
   }, [lapTimes, filterOperator, filterTarget, sortKey]);
 
   return (
-    <div className=\"max-h-64 overflow-y-auto border border-gray-200 rounded-md\">
-      <table className=\"w-full text-sm text-left text-gray-700 dark:text-gray-300\">
-        <thead className=\"bg-gray-100 dark:bg-gray-800\">
+    <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-md">
+      <table className="w-full text-sm text-left text-gray-700 dark:text-gray-300">
+        <thead className="bg-gray-100 dark:bg-gray-800">
           <tr>
-            <th className=\"px-2 py-1\"><input type=\"checkbox\" disabled /></th>
-            <th className=\"px-2 py-1\">시간</th>
-            <th className=\"px-2 py-1\">측정자</th>
-            <th className=\"px-2 py-1\">대상자</th>
-            <th className=\"px-2 py-1\">날짜</th>
-            <th className=\"px-2 py-1\">삭제</th>
+            <th className="px-2 py-1"><input type="checkbox" disabled /></th>
+            <th className="px-2 py-1">시간</th>
+            <th className="px-2 py-1">측정자</th>
+            <th className="px-2 py-1">대상자</th>
+            <th className="px-2 py-1">날짜</th>
+            <th className="px-2 py-1">삭제</th>
           </tr>
         </thead>
         <tbody>
           {filtered.map((lap) => (
-            <tr key={lap.id} className=\"border-t border-gray-200 dark:border-gray-700\">
-              <td className=\"px-2 py-1 text-center\">
+            <tr key={lap.id} className="border-t border-gray-200 dark:border-gray-700">
+              <td className="px-2 py-1 text-center">
                 <input
-                  type=\"checkbox\"
+                  type="checkbox"
                   checked={selectedIds.has(lap.id)}
                   onChange={() => onToggleSelect(lap.id)}
                 />
               </td>
-              <td className=\"px-2 py-1 font-mono\">{formatTime(lap.time)}</td>
-              <td className=\"px-2 py-1\">{lap.operator}</td>
-              <td className=\"px-2 py-1\">{lap.target}</td>
-              <td className=\"px-2 py-1\">{lap.timestamp}</td>
-              <td className=\"px-2 py-1 text-center\">
+              <td className="px-2 py-1 font-mono">{formatTime(lap.time)}</td>
+              <td className="px-2 py-1">{lap.operator}</td>
+              <td className="px-2 py-1">{lap.target}</td>
+              <td className="px-2 py-1">{lap.timestamp}</td>
+              <td className="px-2 py-1 text-center">
                 <button onClick={() => onDelete(lap.id)}>
-                  <Trash2 className=\"w-4 h-4 text-red-500 hover:text-red-700\" />
+                  <Trash2 className="w-4 h-4 text-red-500 hover:text-red-700" />
                 </button>
               </td>
             </tr>
           ))}
           {filtered.length === 0 && (
             <tr>
-              <td colSpan={6} className=\"px-2 py-3 text-center text-gray-500\">
+              <td colSpan={6} className="px-2 py-3 text-center text-gray-500">
                 검색 결과가 없습니다.
               </td>
             </tr>
@@ -852,9 +961,9 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
     <div className={`min-h-screen ${theme.bg}`}>
       {/* 헤더 */}
       <div className={`${theme.card} shadow-sm border-b ${theme.border} sticky top-0 z-40`}>
-        <div className=\"px-4 py-3 flex items-center justify-between\">
+        <div className="px-4 py-3 flex items-center justify-between">
           <button onClick={onBack} className={`p-2 rounded-lg ${theme.textMuted} hover:${theme.textSecondary} ${theme.surfaceHover}`}>
-            <ArrowLeft className=\"w-5 h-5\" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className={`text-lg font-bold ${theme.text}`}>상세 분석 보고서</h1>
           <button
@@ -862,17 +971,17 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
             className={`flex items-center px-3 py-1 rounded-lg ${theme.accent} text-white hover:opacity-90`}
             disabled={isLoading}
           >
-            {isLoading ? <Loader2 className=\"animate-spin w-5 h-5 mr-2\" /> : <Download className=\"w-5 h-5 mr-1\" />}
+            {isLoading ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <Download className="w-5 h-5 mr-1" />}
             다운로드
           </button>
         </div>
-        <div className=\"px-4 pb-2 flex items-center justify-between\">
-          <label className=\"flex items-center space-x-2\">
+        <div className="px-4 pb-2 flex items-center justify-between">
+          <label className="flex items-center space-x-2">
             <input
-              type=\"checkbox\"
+              type="checkbox"
               checked={useLogTransform}
               onChange={(e) => setUseLogTransform(e.target.checked)}
-              className=\"form-checkbox h-4 w-4 text-blue-600\"
+              className="form-checkbox h-4 w-4 text-blue-600"
             />
             <span className={`text-sm ${theme.text}`}>로그 변환 사용</span>
           </label>
@@ -880,13 +989,13 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
         </div>
       </div>
 
-      <div className=\"px-4 py-4 space-y-6 max-w-4xl mx-auto\">
+      <div className="px-4 py-4 space-y-6 max-w-4xl mx-auto">
         {/* 종합 평가 */}
         <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
-          <div className=\"flex items-center justify-between mb-4\">
+          <div className="flex items-center justify-between mb-4">
             <h2 className={`text-xl font-bold ${theme.text}`}>종합 평가</h2>
-            <div className=\"flex items-center gap-2\">
-              <StatusBadge status={analysis.status as any} size=\"md\" isDark={isDark} />
+            <div className="flex items-center gap-2">
+              <StatusBadge status={analysis.gageRRPercent < 10 ? 'excellent' : analysis.gageRRPercent < 30 ? 'acceptable' : analysis.gageRRPercent < 50 ? 'marginal' : 'unacceptable'} size="md" isDark={isDark} />
               <div
                 className={`px-3 py-1 rounded-lg text-xs font-medium ${
                   analysis.interpretation.riskLevel === 'high'
@@ -909,9 +1018,9 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
           <div className={`${theme.surface} p-4 rounded-lg mb-4`}>
             <p className={`text-base leading-relaxed ${theme.text}`}>{analysis.interpretation.overall}</p>
           </div>
-          <div className=\"grid grid-cols-1 gap-4 md:grid-cols-3\">
-            <div className=\"p-4 rounded-lg border ${theme.border} ${theme.surface} hover:shadow-lg\">
-              <div className=\"flex justify-between mb-2\">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="p-4 rounded-lg border ${theme.border} ${theme.surface} hover:shadow-lg">
+              <div className="flex justify-between mb-2">
                 <BarChart3 className={`w-5 h-5 ${theme.textSecondary}`} />
               </div>
               <div className={`font-medium ${theme.textMuted} text-sm mb-1`}>Gage R&R 비율</div>
@@ -924,8 +1033,8 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
                   : '개선 필요: 신뢰도 낮음'}
               </p>
             </div>
-            <div className=\"p-4 rounded-lg border ${theme.border} ${theme.surface} hover:shadow-lg\">
-              <div className=\"flex justify-between mb-2\">
+            <div className="p-4 rounded-lg border ${theme.border} ${theme.surface} hover:shadow-lg">
+              <div className="flex justify-between mb-2">
                 <Target className={`w-5 h-5 ${theme.textSecondary}`} />
               </div>
               <div className={`font-medium ${theme.textMuted} text-sm mb-1`}>P/T 비율</div>
@@ -936,8 +1045,8 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
                   : '낮음: 시스템 개선 필요'}
               </p>
             </div>
-            <div className=\"p-4 rounded-lg border ${theme.border} ${theme.surface} hover:shadow-lg\">
-              <div className=\"flex justify-between mb-2\">
+            <div className="p-4 rounded-lg border ${theme.border} ${theme.surface} hover:shadow-lg">
+              <div className="flex justify-between mb-2">
                 <Calculator className={`w-5 h-5 ${theme.textSecondary}`} />
               </div>
               <div className={`font-medium ${theme.textMuted} text-sm mb-1`}>구별 범주 수 (NDC)</div>
@@ -956,10 +1065,10 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
         {/* ANOVA 및 기초 통계 */}
         <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
           <h3 className={`text-lg font-bold ${theme.text} mb-4 flex items-center gap-2`}>
-            <BarChart3 className=\"w-5 h-5 text-purple-500\" />
+            <BarChart3 className="w-5 h-5 text-purple-500" />
             ANOVA 분산 성분 분석
           </h3>
-          <div className=\"space-y-6\">
+          <div className="space-y-6">
             <div className={`${theme.surface} p-4 rounded-lg mb-4 border-l-4 border-purple-500`}>
               <p className={`text-sm ${theme.textMuted} leading-relaxed`}>
                 <strong>ANOVA 분석</strong>은 전체 변동을 측정자, 대상자, 상호작용, 오차로 분해합니다.
@@ -967,15 +1076,15 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
             </div>
             <div>
               <h4 className={`font-semibold ${theme.textSecondary} mb-3 flex items-center gap-2`}>
-                <Calculator className=\"w-4 h-4\" />
+                <Calculator className="w-4 h-4" />
                 기초 통계 정보
               </h4>
-              <div className=\"grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3\">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                 <div className={`${theme.surface} p-4 rounded-lg`}>
-                  <div className=\"flex justify-between items-center mb-2\">
+                  <div className="flex justify-between items-center mb-2">
                     <div>
                       <span className={`font-medium ${theme.text} text-sm flex items-center gap-1`}>
-                        <Clock className=\"w-3 h-3\" /> 평균 측정시간
+                        <Clock className="w-3 h-3" /> 평균 측정시간
                       </span>
                       <span className={`text-xs ${theme.textMuted}`}>전체 측정 중심값</span>
                     </div>
@@ -985,10 +1094,10 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
                   </div>
                 </div>
                 <div className={`${theme.surface} p-4 rounded-lg`}>
-                  <div className=\"flex justify-between items-center mb-2\">
+                  <div className="flex justify-between items-center mb-2">
                     <div>
                       <span className={`font-medium ${theme.text} text-sm flex items-center gap-1`}>
-                        <Activity className=\"w-3 h-3\" /> 변동계수 (CV)
+                        <Activity className="w-3 h-3" /> 변동계수 (CV)
                       </span>
                       <span className={`text-xs ${theme.textMuted}`}>상대적 변동 (표준편차/평균×100)</span>
                     </div>
@@ -1012,13 +1121,13 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
         {/* 개선 권장사항 */}
         <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
           <h3 className={`text-lg font-bold ${theme.text} mb-4 flex items-center gap-2`}>
-            <TrendingUp className=\"w-5 h-5 text-green-500\" />
+            <TrendingUp className="w-5 h-5 text-green-500" />
             개선 권장사항
           </h3>
-          <div className=\"space-y-3\">
+          <div className="space-y-3">
             {analysis.interpretation.recommendations.map((rec, idx) => (
               <div key={idx} className={`${theme.surface} p-4 rounded-lg border-l-4 border-green-500`}>
-                <div className=\"flex items-start gap-3\">
+                <div className="flex items-start gap-3">
                   <div className={`w-6 h-6 rounded-full ${isDark ? 'bg-green-900/30' : 'bg-green-50'} flex items-center justify-center flex-shrink-0 mt-0.5`}>
                     <span className={`text-xs font-bold ${isDark ? 'text-green-300' : 'text-green-600'}`}>{idx + 1}</span>
                   </div>
@@ -1027,12 +1136,12 @@ const DetailedAnalysisPage = memo<DetailedAnalysisPageProps>(({
               </div>
             ))}
           </div>
-        </div>
+        </div>  
 
         {/* 측정 데이터 요약 */}
         <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
           <h3 className={`text-lg font-bold ${theme.text} mb-4`}>측정 데이터 요약</h3>
-          <div className=\"grid grid-cols-2 gap-4 mb-4 md:grid-cols-4\">
+          <div className="grid grid-cols-2 gap-4 mb-4 md:grid-cols-4">
             <div className={`${theme.surface} p-4 rounded-lg text-center`}>
               <div className={`text-2xl font-bold ${theme.text}`}>{lapTimes.length}</div>
               <div className={`text-xs ${theme.textMuted}`}>총 측정 횟수</div>
@@ -1202,18 +1311,10 @@ const EnhancedLogisticsTimer = () => {
       showToast('먼저 작업 세션을 생성해주세요.', 'warning');
       return;
     }
-    // 30분 초과 경고
-    if (!isRunning && currentTime === 0) {
-      // 시작 직후에는 경고하지 않음
-    } else if (!isRunning && currentTime > 0) {
-      // 이미 측정 중이었다면, 재시작 시 경고 안 함
-    }
     if (isRunning) {
       setIsRunning(false);
     } else {
-      const projected = Date.now() - startTimeRef.current;
-      // 중지 후 재시작 시, 기존 시간 유지
-      if (currentTime > 30 * 60 * 1000) {
+      if (currentTime > 0 && currentTime > 30 * 60 * 1000) {
         const confirmOver = window.confirm('측정 시간이 30분을 초과했습니다. 계속 진행하시겠습니까?');
         if (!confirmOver) return;
       }
@@ -1507,18 +1608,18 @@ const EnhancedLogisticsTimer = () => {
       // 세션 목록
       return (
         <div className={`min-h-screen ${theme.bg} py-8`}>
-          <div className=\"max-w-3xl mx-auto space-y-6\">
-            <div className=\"flex justify-between items-center px-4\">
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="flex justify-between items-center px-4">
               <h2 className={`text-2xl font-bold ${theme.text}`}>세션 목록</h2>
               <button
                 onClick={() => setShowNewSessionModal(true)}
                 className={`${theme.accent} text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center gap-1`}
               >
-                <Plus className=\"w-5 h-5\" />
+                <Plus className="w-5 h-5" />
                 새 세션
               </button>
             </div>
-            <div className=\"space-y-4 px-4\">
+            <div className="space-y-4 px-4">
               {sessions.length === 0 && (
                 <p className={`text-center ${theme.textMuted}`}>생성된 세션이 없습니다.</p>
               )}
@@ -1528,25 +1629,25 @@ const EnhancedLogisticsTimer = () => {
                   className={`flex justify-between items-center p-4 border rounded-lg ${theme.card} ${theme.border} hover:shadow-md`}
                 >
                   <div
-                    className=\"flex-1 cursor-pointer\"
+                    className="flex-1 cursor-pointer"
                     onClick={() => openHistory(session)}
                   >
                     <h3 className={`text-lg font-semibold ${theme.text}`}>{session.name}</h3>
                     <p className={`text-sm ${theme.textMuted}`}>{session.startTime}</p>
                   </div>
-                  <div className=\"flex items-center gap-3\">
+                  <div className="flex items-center gap-3">
                     <button
                       onClick={() => deleteSession(session.id)}
-                      className=\"hover:text-red-600\"
+                      className="hover:text-red-600"
                     >
-                      <Trash2 className=\"w-5 h-5\" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
-                    <label className=\"flex items-center space-x-2 text-sm\">
+                    <label className="flex items-center space-x-2 text-sm">
                       <input
-                        type=\"checkbox\"
+                        type="checkbox"
                         checked={session.isActive}
                         onChange={() => toggleSessionActive(session)}
-                        className=\"form-checkbox h-4 w-4 text-blue-600\"
+                        className="form-checkbox h-4 w-4 text-blue-600"
                       />
                       <span className={`${theme.textSecondary}`}>활성</span>
                     </label>
@@ -1564,32 +1665,32 @@ const EnhancedLogisticsTimer = () => {
       return (
         <div className={`min-h-screen ${theme.bg}`}>
           <div className={`${theme.card} shadow-sm border-b ${theme.border} sticky top-0 z-40`}>
-            <div className=\"px-4 py-3 flex items-center justify-between\">
+            <div className="px-4 py-3 flex items-center justify-between">
               <button onClick={closeHistory} className={`p-2 rounded-lg ${theme.textMuted} hover:${theme.textSecondary} ${theme.surfaceHover}`}>
-                <ArrowLeft className=\"w-5 h-5\" />
+                <ArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className={`text-lg font-bold ${theme.text}`}>\"{selectedSessionHistory.name}\" 기록</h1>
+              <h1 className={`text-lg font-bold ${theme.text}`}>{`"${selectedSessionHistory.name}" 기록`}</h1>
               <button
                 onClick={() => setIsBatchModalOpen(true)}
                 className={`flex items-center px-3 py-1 rounded-lg ${theme.accent} text-white hover:opacity-90`}
                 disabled={selectedIds.size === 0}
               >
-                <Zap className=\"w-5 h-5 mr-1\" />
+                <Zap className="w-5 h-5 mr-1" />
                 일괄 편집
               </button>
             </div>
-            <div className=\"px-4 pb-2 flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0\">
-              <div className=\"flex space-x-2\">
+            <div className="px-4 pb-2 flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
+              <div className="flex space-x-2">
                 <input
-                  type=\"text\"
-                  placeholder=\"측정자 검색\"
+                  type="text"
+                  placeholder="측정자 검색"
                   value={filterOperator}
                   onChange={(e) => setFilterOperator(e.target.value)}
                   className={`border rounded-md px-2 py-1 text-sm ${theme.input}`}
                 />
                 <input
-                  type=\"text\"
-                  placeholder=\"대상자 검색\"
+                  type="text"
+                  placeholder="대상자 검색"
                   value={filterTarget}
                   onChange={(e) => setFilterTarget(e.target.value)}
                   className={`border rounded-md px-2 py-1 text-sm ${theme.input}`}
@@ -1600,10 +1701,10 @@ const EnhancedLogisticsTimer = () => {
                 onChange={(e) => setSortKey(e.target.value as SortKey)}
                 className={`border rounded-md px-2 py-1 text-sm ${theme.input}`}
               >
-                <option value=\"timestamp\">최신순</option>
-                <option value=\"time\">시간순</option>
-                <option value=\"operator\">측정자순</option>
-                <option value=\"target\">대상자순</option>
+                <option value="timestamp">최신순</option>
+                <option value="time">시간순</option>
+                <option value="operator">측정자순</option>
+                <option value="target">대상자순</option>
               </select>
             </div>
             <HistoryList
@@ -1625,7 +1726,7 @@ const EnhancedLogisticsTimer = () => {
             lapTimesMap={Object.fromEntries(allLapTimes.map((lap) => [lap.id, lap]))}
             onApply={applyBatchEdit}
           />
-          <div className=\"h-4\"></div>
+          <div className="h-4"></div>
         </div>
       );
     }
@@ -1652,23 +1753,23 @@ const EnhancedLogisticsTimer = () => {
     return (
       <div className={`min-h-screen ${theme.bg}`}>
         <div className={`${theme.card} shadow-sm border-b ${theme.border} sticky top-0 z-40`}>
-          <div className=\"px-4 py-3 flex items-center justify-between\">
+          <div className="px-4 py-3 flex items-center justify-between">
             <h1 className={`text-lg font-bold ${theme.text}`}>측정 중</h1>
             <button onClick={() => setShowHelp(true)} className={`p-2 ${theme.textMuted} hover:${theme.textSecondary} ${theme.surfaceHover}`}>
-              <HelpCircle className=\"w-5 h-5\" />
+              <HelpCircle className="w-5 h-5" />
             </button>
           </div>
         </div>
-        <div className=\"px-4 py-6 max-w-xl mx-auto space-y-6\">
-          <div className=\"flex justify-center items-center space-x-4\">
-            <div className=\"text-center\">
+        <div className="px-4 py-6 max-w-xl mx-auto space-y-6">
+          <div className="flex justify-center items-center space-x-4">
+            <div className="text-center">
               <div className={`font-mono text-5xl ${theme.text}`}>{formatTime(currentTime)}</div>
               <div className={`text-sm ${theme.textMuted}`}>(ms 단위)</div>
             </div>
           </div>
-          <div className=\"grid grid-cols-1 gap-4 md:grid-cols-2\">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className=\"block text-sm font-medium text-gray-700 mb-1\">측정자</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">측정자</label>
               <select
                 value={currentOperator}
                 onChange={(e) => setCurrentOperator(e.target.value)}
@@ -1681,7 +1782,7 @@ const EnhancedLogisticsTimer = () => {
               </select>
             </div>
             <div>
-              <label className=\"block text-sm font-medium text-gray-700 mb-1\">대상자</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">대상자</label>
               <select
                 value={currentTarget}
                 onChange={(e) => setCurrentTarget(e.target.value)}
@@ -1694,13 +1795,13 @@ const EnhancedLogisticsTimer = () => {
               </select>
             </div>
           </div>
-          <div className=\"flex justify-center space-x-4\">
+          <div className="flex justify-center space-x-4">
             <button
               onClick={toggleTimer}
               className={`px-6 py-3 rounded-lg font-bold text-lg ${theme.accent} text-white hover:opacity-90 flex items-center space-x-2`}
               disabled={isAnyLoading}
             >
-              {isRunning ? <Pause className=\"w-6 h-6\" /> : <Play className=\"w-6 h-6\" />}
+              {isRunning ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
               <span>{isRunning ? '중지' : '시작'}</span>
             </button>
             <button
@@ -1708,17 +1809,17 @@ const EnhancedLogisticsTimer = () => {
               className={`px-6 py-3 rounded-lg font-bold text-lg bg-green-600 text-white hover:bg-green-700 flex items-center space-x-2`}
               disabled={isAnyLoading || !isRunning}
             >
-              <Clock className=\"w-6 h-6\" />
+              <Clock className="w-6 h-6" />
               <span>기록</span>
             </button>
           </div>
-          <div className=\"flex justify-center space-x-4\">
+          <div className="flex justify-center space-x-4">
             <button
               onClick={resetTimer}
               className={`px-4 py-2 rounded-lg text-sm ${theme.warning} text-white hover:opacity-90 flex items-center gap-1`}
               disabled={isAnyLoading}
             >
-              <RotateCcw className=\"w-5 h-5\" />
+              <RotateCcw className="w-5 h-5" />
               초기화
             </button>
             <button
@@ -1726,7 +1827,7 @@ const EnhancedLogisticsTimer = () => {
               className={`px-4 py-2 rounded-lg text-sm ${theme.success} text-white hover:opacity-90 flex items-center gap-1`}
               disabled={isAnyLoading || lapTimes.length < 6}
             >
-              <BarChart3 className=\"w-5 h-5\" />
+              <BarChart3 className="w-5 h-5" />
               분석
             </button>
           </div>
@@ -1747,13 +1848,13 @@ const EnhancedLogisticsTimer = () => {
   };
 
   return (
-    <div className=\"min-h-screen flex flex-col\">
+    <div className="min-h-screen flex flex-col">
       <header className={`flex justify-end px-4 py-3 border-b ${theme.border} ${theme.card}`}>
-        <button onClick={() => setIsDark((prev) => !prev)} className=\"p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700\">
-          {isDark ? <Sun className=\"w-5 h-5 text-yellow-300\" /> : <Moon className=\"w-5 h-5 text-gray-600\" />}
+        <button onClick={() => setIsDark((prev) => !prev)} className="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
+          {isDark ? <Sun className="w-5 h-5 text-yellow-300" /> : <Moon className="w-5 h-5 text-gray-600" />}
         </button>
       </header>
-      <main className=\"flex-grow\">{renderMainContent()}</main>
+      <main className="flex-grow">{renderMainContent()}</main>
     </div>
   );
 };
