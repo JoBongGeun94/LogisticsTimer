@@ -46,7 +46,7 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "simple-statistics": "^8.12.0",
+    "simple-statistics": "^7.8.8",
     "lucide-react": "^0.263.1",
         "serve": "^14.2.1"
   },
