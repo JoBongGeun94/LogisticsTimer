@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from '
 import {
   Play, Pause, RotateCcw, Download, Plus, Users, Clock,
   BarChart3, Calculator, Target, HelpCircle, ArrowLeft, XCircle,
-  AlertCircle, CheckCircle, AlertTriangle, Search, Loader2, Sun, Moon, Zap, Trash2, Activity
+  AlertCircle, CheckCircle, AlertTriangle, Search, Loader2, Sun, Moon, Zap, Trash2, Activity,
+  Timer
 } from 'lucide-react';
 
 // ==================== 타입 정의 (SRP) ====================
