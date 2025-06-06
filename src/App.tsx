@@ -46,7 +46,7 @@ import {
   AlertTriangle,
   Share2,
 } from 'lucide-react';
-import { shapiroWilk } from 'simple-statistics';
+import ss from 'simple-statistics';
 
 // ==================== 타입 정의 (Single Responsibility) ====================
 interface ToastProps {
@@ -368,7 +368,7 @@ const calculateGageRR = (
     if (logValues.length < 6) return defaultResult;
 
     // 정규성 검정
-    const { p: pValueLog } = shapiroWilk(logValues);
+    const { p: pValueLog } = ss.shapiroWilk(logValues);
     // 만약 pValueLog < 0.05 이면 정규성 부족, 그러나 분석 진행은 계속 (비정규 데이터 경고만 삽입)
     // (Interpretation 단계에서 경고를 추가할 수 있음)
 
