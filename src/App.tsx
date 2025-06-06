@@ -472,7 +472,7 @@ const Toast = memo<ToastProps>(({ message, type, isVisible, onClose }) => {
   const { style, icon: Icon } = typeConfig[type];
 
   return (
-    <div className=\"fixed top-4 right-4 z-[60] animate-in slide-in-from-right duration-300\">
+    <div className=\"fixed top-4 right-4 z-60 animate-in slide-in-from-right duration-300\">
       <div className={`${style} px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm`}>
         <Icon className=\"w-5 h-5 flex-shrink-0\" />
         <span className=\"text-sm font-medium\">{message}</span>
