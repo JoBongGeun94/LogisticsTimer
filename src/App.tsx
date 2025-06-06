@@ -487,7 +487,7 @@ const Toast = memo<ToastProps>(({ message, type, isVisible, onClose }) => {
 const BackWarning = memo<{ isVisible: boolean }>(({ isVisible }) => {
   if (!isVisible) return null;
   return (
-    <div className=\"fixed bottom-4 left-4 right-4 z-[70] animate-in slide-in-from-bottom duration-300\">
+    <div className=\"fixed bottom-4 left-4 right-4 z-70 animate-in slide-in-from-bottom duration-300\">
       <div className=\"bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2\">
         <AlertTriangle className=\"w-5 h-5 flex-shrink-0\" />
         <span className=\"text-sm font-medium\">한 번 더 뒤로가기 하면 종료됩니다</span>
