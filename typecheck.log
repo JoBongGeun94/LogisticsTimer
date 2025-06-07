@@ -1,0 +1,75 @@
+
+> logistics-timer-enhanced@3.0.3 type-check
+> tsc --noEmit
+
+src/services/ValidationService.ts(9,18): error TS1011: An element access expression should take an argument.
+src/services/ValidationService.ts(10,1): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(32,5): error TS1068: Unexpected token. A constructor, method, accessor, or property was expected.
+src/services/ValidationService.ts(35,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(36,1): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(49,5): error TS1068: Unexpected token. A constructor, method, accessor, or property was expected.
+src/services/ValidationService.ts(52,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(53,1): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(63,5): error TS1068: Unexpected token. A constructor, method, accessor, or property was expected.
+src/services/ValidationService.ts(66,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(67,1): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(85,5): error TS1068: Unexpected token. A constructor, method, accessor, or property was expected.
+src/services/ValidationService.ts(88,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(89,1): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(101,5): error TS1068: Unexpected token. A constructor, method, accessor, or property was expected.
+src/services/ValidationService.ts(114,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(115,1): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(130,10): error TS1359: Identifier expected. 'const' is a reserved word that cannot be used here.
+src/services/ValidationService.ts(130,16): error TS1005: ',' expected.
+src/services/ValidationService.ts(130,21): error TS1005: ',' expected.
+src/services/ValidationService.ts(130,24): error TS1005: ',' expected.
+src/services/ValidationService.ts(130,28): error TS1005: ',' expected.
+src/services/ValidationService.ts(136,5): error TS1068: Unexpected token. A constructor, method, accessor, or property was expected.
+src/services/ValidationService.ts(140,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(141,1): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(257,5): error TS1068: Unexpected token. A constructor, method, accessor, or property was expected.
+src/services/ValidationService.ts(258,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(264,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(270,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(276,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(285,5): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(289,5): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(300,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(305,34): error TS1005: ',' expected.
+src/services/ValidationService.ts(306,17): error TS1005: ',' expected.
+src/services/ValidationService.ts(307,21): error TS1005: ',' expected.
+src/services/ValidationService.ts(308,23): error TS1011: An element access expression should take an argument.
+src/services/ValidationService.ts(308,24): error TS1005: ',' expected.
+src/services/ValidationService.ts(309,21): error TS1011: An element access expression should take an argument.
+src/services/ValidationService.ts(309,22): error TS1005: ',' expected.
+src/services/ValidationService.ts(310,17): error TS1005: ',' expected.
+src/services/ValidationService.ts(311,17): error TS1005: ',' expected.
+src/services/ValidationService.ts(312,11): error TS1005: ':' expected.
+src/services/ValidationService.ts(312,20): error TS1005: ',' expected.
+src/services/ValidationService.ts(312,28): error TS1005: ',' expected.
+src/services/ValidationService.ts(312,29): error TS1109: Expression expected.
+src/services/ValidationService.ts(312,31): error TS1005: ':' expected.
+src/services/ValidationService.ts(312,35): error TS1005: ',' expected.
+src/services/ValidationService.ts(319,18): error TS1005: ',' expected.
+src/services/ValidationService.ts(320,18): error TS1005: ',' expected.
+src/services/ValidationService.ts(321,5): error TS1005: ',' expected.
+src/services/ValidationService.ts(327,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(328,1): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(342,5): error TS1005: ',' expected.
+src/services/ValidationService.ts(342,11): error TS1005: ',' expected.
+src/services/ValidationService.ts(342,32): error TS1005: ',' expected.
+src/services/ValidationService.ts(344,5): error TS1390: 'if' is not allowed as a parameter name.
+src/services/ValidationService.ts(344,9): error TS1003: Identifier expected.
+src/services/ValidationService.ts(348,9): error TS1003: Identifier expected.
+src/services/ValidationService.ts(352,9): error TS1003: Identifier expected.
+src/services/ValidationService.ts(356,5): error TS1068: Unexpected token. A constructor, method, accessor, or property was expected.
+src/services/ValidationService.ts(360,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(366,21): error TS1005: ',' expected.
+src/services/ValidationService.ts(367,21): error TS1005: ',' expected.
+src/services/ValidationService.ts(368,19): error TS1005: ',' expected.
+src/services/ValidationService.ts(369,16): error TS1005: ',' expected.
+src/services/ValidationService.ts(370,5): error TS1005: ',' expected.
+src/services/ValidationService.ts(392,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(393,1): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(435,3): error TS1128: Declaration or statement expected.
+src/services/ValidationService.ts(436,1): error TS1128: Declaration or statement expected.

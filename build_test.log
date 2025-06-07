@@ -1,0 +1,5 @@
+npm error code EJSONPARSE
+npm error JSON.parse Invalid package.json: JSONParseError: Expected ',' or '}' after property value in JSON at position 1415 (line 45 column 47) while parsing near "...t -l ${PORT:-3000}\"}\"\n  },\n  \"dependenci..."
+npm error JSON.parse Failed to parse JSON data.
+npm error JSON.parse Note: package.json must be actual JSON, not just JavaScript.
+npm error A complete log of this run can be found in: C:\Users\bong\AppData\Local\npm-cache\_logs\2025-06-07T07_24_11_689Z-debug-0.log

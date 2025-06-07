@@ -1,0 +1,61 @@
+// components/Timer/TimerDisplay.tsx - 시간 표시 전용 (SRP)
+import React from 'react';
+import { formatTime } from '../../utils/dateUtils';
+
+interface TimerDisplayProps {
+  time: number;
+  isRunning: boolean;
+  className?: string;
+}
+
+/**
+ * 타이머 시간 표시 컴포넌트
+ * SRP: 시간 표시만 담당
+ * OCP: 스타일링 확장 가능
+ */
+export const TimerDisplay: React.FC<TimerDisplayProps> = ({
+  time,
+  isRunning,
+  className = '',
+}) => {
+  return (
+    <div className={`text-center ${className}`}>
+      <div
+        className={`text-6xl font-mono font-bold ${
+          isRunning
+            ? 'text-green-500 animate-pulse'
+            : 'text-gray-700 dark:text-gray-300'
+        }`}
+      >
+        {formatTime(time)}
+      </div>
+      <div className="text-sm text-gray-500 mt-2">
+        {isRunning ? '측정 중...' : '대기 중'}
+      </div>
+    </div>
+  );
+};
+
+// 키보드 단축키 적용 (기존 파일 끝에 추가)
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+
+// useEffect 내부에 추가:
+// const { onToggleTimer, onRecordLap, onStopTimer, onResetTimer } = props;
+// useKeyboardShortcuts({
+//   onToggleTimer,
+//   onRecordLap, 
+//   onStopTimer,
+//   onResetTimer
+// }, [onToggleTimer, onRecordLap, onStopTimer, onResetTimer]);
+
+// 키보드 단축키 적용 (기존 파일 끝에 추가)
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+
+// useEffect 내부에 추가:
+// const { onToggleTimer, onRecordLap, onStopTimer, onResetTimer } = props;
+// useKeyboardShortcuts({
+//   onToggleTimer,
+//   onRecordLap, 
+//   onStopTimer,
+//   onResetTimer
+// }, [onToggleTimer, onRecordLap, onStopTimer, onResetTimer]);

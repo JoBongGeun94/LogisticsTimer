@@ -1,0 +1,98 @@
+// components/AppShell/MainContent.tsx - 메인 콘텐츠 (조합 패턴)
+import React from 'react';
+import { TimerContainer } from '../Timer/TimerContainer';
+import { SessionSelector } from '../Session/SessionSelector';
+import { RecordsSection } from '../Records/RecordsSection';
+import { SessionList } from '../Session/SessionList';
+import { useSession } from '../../contexts/SessionContext';
+import { useTheme } from '../../contexts/ThemeContext';
+
+interface MainContentProps {
+  currentOperator: string;
+  currentTarget: string;
+  onOperatorChange: (operator: string) => void;
+  onTargetChange: (target: string) => void;
+  onOpenSessionModal: () => void;
+}
+
+/**
+ * 메인 콘텐츠 컴포넌트
+ * SRP: 메인 화면의 레이아웃 조합만 담당
+ * OCP: 새로운 섹션 추가 시 확장 가능
+ */
+export const MainContent: React.FC<MainContentProps> = ({
+  currentOperator,
+  currentTarget,
+  onOperatorChange,
+  onTargetChange,
+  onOpenSessionModal,
+}) => {
+  const { currentSession } = useSession();
+  const { theme } = useTheme();
+
+  return (
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* 왼쪽: 타이머 및 세션 선택 */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* 세션 선택 섹션 */}
+          <div
+            className={`rounded-xl p-6 border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700'
+                : 'bg-white border-gray-200'
+            } shadow-lg`}
+          >
+            <h2
+              className={`text-xl font-bold mb-6 ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}
+            >
+              작업 세션
+            </h2>
+            <SessionSelector
+              currentSession={currentSession}
+              operators={currentSession?.operators || []}
+              targets={currentSession?.targets || []}
+              currentOperator={currentOperator}
+              currentTarget={currentTarget}
+              onOperatorChange={onOperatorChange}
+              onTargetChange={onTargetChange}
+              onCreateSession={onOpenSessionModal}
+            />
+          </div>
+
+          {/* 타이머 섹션 */}
+          <div
+            className={`rounded-xl p-6 border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700'
+                : 'bg-white border-gray-200'
+            } shadow-lg`}
+          >
+            <h2
+              className={`text-xl font-bold mb-6 ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}
+            >
+              실시간 타이머
+            </h2>
+            <TimerContainer
+              currentOperator={currentOperator}
+              currentTarget={currentTarget}
+            />
+          </div>
+        </div>
+
+        {/* 오른쪽: 기록 및 세션 목록 */}
+        <div className="space-y-8">
+          {/* 측정 기록 섹션 */}
+          <RecordsSection />
+
+          {/* 세션 목록 섹션 */}
+          <SessionList />
+        </div>
+      </div>
+    </main>
+  );
+};

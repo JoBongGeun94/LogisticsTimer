@@ -1,0 +1,149 @@
+2025-06-03T09:44:54.157639686Z added 7 packages, removed 2 packages, changed 11 packages, and audited 617 packages in 3s
+2025-06-03T09:44:54.157648936Z 
+2025-06-03T09:44:54.157677016Z 76 packages are looking for funding
+2025-06-03T09:44:54.157682197Z   run `npm fund` for details
+2025-06-03T09:44:54.184306149Z 
+2025-06-03T09:44:54.18432461Z 10 vulnerabilities (7 moderate, 3 high)
+2025-06-03T09:44:54.18432871Z 
+2025-06-03T09:44:54.18433318Z To address issues that do not require attention, run:
+2025-06-03T09:44:54.18433723Z   npm audit fix
+2025-06-03T09:44:54.18434081Z 
+2025-06-03T09:44:54.18434486Z To address all issues possible (including breaking changes), run:
+2025-06-03T09:44:54.18434917Z   npm audit fix --force
+2025-06-03T09:44:54.18435249Z 
+2025-06-03T09:44:54.18435593Z Some issues need review, and may require choosing
+2025-06-03T09:44:54.18435938Z a different dependency.
+2025-06-03T09:44:54.18436268Z 
+2025-06-03T09:44:54.18436657Z Run `npm audit` for details.
+2025-06-03T09:44:54.344589933Z 
+2025-06-03T09:44:54.344613414Z > rest-express@1.0.0 build
+2025-06-03T09:44:54.344619064Z > vite build
+2025-06-03T09:44:54.344623094Z 
+2025-06-03T09:44:54.576812279Z vite v5.4.19 building for production...
+2025-06-03T09:44:54.632692666Z transforming...
+2025-06-03T09:45:00.297551638Z ✓ 2526 modules transformed.
+2025-06-03T09:45:00.539996729Z rendering chunks...
+2025-06-03T09:45:00.789777537Z computing gzip size...
+2025-06-03T09:45:00.804843486Z ../dist/index.html                         1.70 kB │ gzip:   0.91 kB
+2025-06-03T09:45:00.804868436Z ../dist/assets/image01-le3y2fG8.png      209.51 kB
+2025-06-03T09:45:00.804983268Z ../dist/assets/index-SMLyB9HS.css         77.09 kB │ gzip:  13.07 kB
+2025-06-03T09:45:00.805053399Z ../dist/assets/chart-column-DYQ9gWqZ.js    0.42 kB │ gzip:   0.29 kB
+2025-06-03T09:45:00.805185321Z ../dist/assets/badge-D1TFxVGA.js           0.71 kB │ gzip:   0.37 kB
+2025-06-03T09:45:00.805198832Z ../dist/assets/not-found-BgF0ja-e.js       0.99 kB │ gzip:   0.55 kB
+2025-06-03T09:45:00.805235162Z ../dist/assets/card-xHvjRVsf.js            0.99 kB │ gzip:   0.36 kB
+2025-06-03T09:45:00.805273873Z ../dist/assets/button-CFJmPOhe.js          1.22 kB │ gzip:   0.60 kB
+2025-06-03T09:45:00.805286393Z ../dist/assets/authUtils-_gwSM-Ef.js       3.36 kB │ gzip:   1.52 kB
+2025-06-03T09:45:00.805330934Z ../dist/assets/landing-D-aBvbuV.js        10.21 kB │ gzip:   2.94 kB
+2025-06-03T09:45:00.805336694Z ../dist/assets/history-DpzkPQgd.js        12.26 kB │ gzip:   4.36 kB
+2025-06-03T09:45:00.805397435Z ../dist/assets/timer-utils-C-7q0RJF.js    13.27 kB │ gzip:   5.16 kB
+2025-06-03T09:45:00.805405705Z ../dist/assets/select-DEtSa2ah.js         38.96 kB │ gzip:  13.49 kB
+2025-06-03T09:45:00.805418495Z ../dist/assets/timer-D5M42rZ4.js          55.72 kB │ gzip:  14.86 kB
+2025-06-03T09:45:00.805441485Z ../dist/assets/index-Cmep6w0z.js         262.07 kB │ gzip:  86.02 kB
+2025-06-03T09:45:00.805447536Z ../dist/assets/analysis-Dy2yTfsg.js      468.53 kB │ gzip: 123.49 kB
+2025-06-03T09:45:00.806056435Z ✓ built in 6.20s
+2025-06-03T09:45:42.827313674Z ==> Uploading build...
+2025-06-03T09:48:15.483407472Z ==> Uploaded in 12.7s. Compression took 139.9s
+2025-06-03T09:48:15.531080293Z ==> Build successful 🎉
+2025-06-03T09:48:18.511412266Z ==> Deploying...
+2025-06-03T09:48:46.182223205Z ==> Running 'node server/render-production.js'
+2025-06-03T09:48:51.182790897Z Starting SOLID-based database initialization...
+2025-06-03T09:48:51.583504178Z Removed constraint: users_email_key
+2025-06-03T09:48:51.599615494Z Removed constraint: users_worker_id_key
+2025-06-03T09:48:51.674607173Z Database initialization error: error: update or delete on table "users" violates foreign key constraint "work_sessions_user_id_fkey" on table "work_sessions"
+2025-06-03T09:48:51.674636404Z     at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-06-03T09:48:51.674639794Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-06-03T09:48:51.674642744Z     at async safeUserUpsert (file:///opt/render/project/src/server/render-production.js:182:7)
+2025-06-03T09:48:51.674647464Z     at async initializeDatabase (file:///opt/render/project/src/server/render-production.js:200:5) {
+2025-06-03T09:48:51.674650124Z   length: 313,
+2025-06-03T09:48:51.674653424Z   severity: 'ERROR',
+2025-06-03T09:48:51.674655974Z   code: '23503',
+2025-06-03T09:48:51.674658724Z   detail: 'Key (id)=(demo-user-001) is still referenced from table "work_sessions".',
+2025-06-03T09:48:51.674661344Z   hint: undefined,
+2025-06-03T09:48:51.674663764Z   position: undefined,
+2025-06-03T09:48:51.674667124Z   internalPosition: undefined,
+2025-06-03T09:48:51.674669544Z   internalQuery: undefined,
+2025-06-03T09:48:51.674672244Z   where: undefined,
+2025-06-03T09:48:51.674674684Z   schema: 'public',
+2025-06-03T09:48:51.674677045Z   table: 'work_sessions',
+2025-06-03T09:48:51.674679735Z   column: undefined,
+2025-06-03T09:48:51.674682005Z   dataType: undefined,
+2025-06-03T09:48:51.674685595Z   constraint: 'work_sessions_user_id_fkey',
+2025-06-03T09:48:51.674688125Z   file: 'ri_triggers.c',
+2025-06-03T09:48:51.674690565Z   line: '2612',
+2025-06-03T09:48:51.674693275Z   routine: 'ri_ReportViolation'
+2025-06-03T09:48:51.674695825Z }
+2025-06-03T09:48:51.674859439Z Failed to initialize database, cannot start server: error: update or delete on table "users" violates foreign key constraint "work_sessions_user_id_fkey" on table "work_sessions"
+2025-06-03T09:48:51.674867209Z     at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-06-03T09:48:51.674869559Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-06-03T09:48:51.674871259Z     at async safeUserUpsert (file:///opt/render/project/src/server/render-production.js:182:7)
+2025-06-03T09:48:51.674873609Z     at async initializeDatabase (file:///opt/render/project/src/server/render-production.js:200:5) {
+2025-06-03T09:48:51.674875349Z   length: 313,
+2025-06-03T09:48:51.674877559Z   severity: 'ERROR',
+2025-06-03T09:48:51.674879269Z   code: '23503',
+2025-06-03T09:48:51.674880919Z   detail: 'Key (id)=(demo-user-001) is still referenced from table "work_sessions".',
+2025-06-03T09:48:51.674882619Z   hint: undefined,
+2025-06-03T09:48:51.674884359Z   position: undefined,
+2025-06-03T09:48:51.67488908Z   internalPosition: undefined,
+2025-06-03T09:48:51.674891189Z   internalQuery: undefined,
+2025-06-03T09:48:51.674892909Z   where: undefined,
+2025-06-03T09:48:51.6748945Z   schema: 'public',
+2025-06-03T09:48:51.67489611Z   table: 'work_sessions',
+2025-06-03T09:48:51.67489778Z   column: undefined,
+2025-06-03T09:48:51.67489938Z   dataType: undefined,
+2025-06-03T09:48:51.67490173Z   constraint: 'work_sessions_user_id_fkey',
+2025-06-03T09:48:51.67490335Z   file: 'ri_triggers.c',
+2025-06-03T09:48:51.67490501Z   line: '2612',
+2025-06-03T09:48:51.67490668Z   routine: 'ri_ReportViolation'
+2025-06-03T09:48:51.67492258Z }
+2025-06-03T09:48:54.078485063Z ==> Exited with status 1
+2025-06-03T09:48:54.243692657Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+2025-06-03T09:48:59.082138702Z ==> Running 'node server/render-production.js'
+2025-06-03T09:49:04.086164924Z Starting SOLID-based database initialization...
+2025-06-03T09:49:04.49063411Z Removed constraint: users_email_key
+2025-06-03T09:49:04.494397095Z Removed constraint: users_worker_id_key
+2025-06-03T09:49:04.58775872Z Database initialization error: error: update or delete on table "users" violates foreign key constraint "work_sessions_user_id_fkey" on table "work_sessions"
+2025-06-03T09:49:04.587780321Z     at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-06-03T09:49:04.587783761Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-06-03T09:49:04.587786811Z     at async safeUserUpsert (file:///opt/render/project/src/server/render-production.js:182:7)
+2025-06-03T09:49:04.587790391Z     at async initializeDatabase (file:///opt/render/project/src/server/render-production.js:200:5) {
+2025-06-03T09:49:04.587793401Z   length: 313,
+2025-06-03T09:49:04.587796711Z   severity: 'ERROR',
+2025-06-03T09:49:04.587799681Z   code: '23503',
+2025-06-03T09:49:04.587802141Z   detail: 'Key (id)=(demo-user-001) is still referenced from table "work_sessions".',
+2025-06-03T09:49:04.587804661Z   hint: undefined,
+2025-06-03T09:49:04.587806992Z   position: undefined,
+2025-06-03T09:49:04.587809952Z   internalPosition: undefined,
+2025-06-03T09:49:04.587812822Z   internalQuery: undefined,
+2025-06-03T09:49:04.587815262Z   where: undefined,
+2025-06-03T09:49:04.587816912Z   schema: 'public',
+2025-06-03T09:49:04.587818612Z   table: 'work_sessions',
+2025-06-03T09:49:04.587820252Z   column: undefined,
+2025-06-03T09:49:04.587821982Z   dataType: undefined,
+2025-06-03T09:49:04.587824512Z   constraint: 'work_sessions_user_id_fkey',
+2025-06-03T09:49:04.587826112Z   file: 'ri_triggers.c',
+2025-06-03T09:49:04.587831832Z   line: '2612',
+2025-06-03T09:49:04.587833532Z   routine: 'ri_ReportViolation'
+2025-06-03T09:49:04.587835202Z }
+2025-06-03T09:49:04.587982726Z Failed to initialize database, cannot start server: error: update or delete on table "users" violates foreign key constraint "work_sessions_user_id_fkey" on table "work_sessions"
+2025-06-03T09:49:04.587990906Z     at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-06-03T09:49:04.587993806Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-06-03T09:49:04.587996136Z     at async safeUserUpsert (file:///opt/render/project/src/server/render-production.js:182:7)
+2025-06-03T09:49:04.587998696Z     at async initializeDatabase (file:///opt/render/project/src/server/render-production.js:200:5) {
+2025-06-03T09:49:04.588000816Z   length: 313,
+2025-06-03T09:49:04.588003626Z   severity: 'ERROR',
+2025-06-03T09:49:04.588005916Z   code: '23503',
+2025-06-03T09:49:04.588008016Z   detail: 'Key (id)=(demo-user-001) is still referenced from table "work_sessions".',
+2025-06-03T09:49:04.588010076Z   hint: undefined,
+2025-06-03T09:49:04.588012116Z   position: undefined,
+2025-06-03T09:49:04.588014406Z   internalPosition: undefined,
+2025-06-03T09:49:04.588016557Z   internalQuery: undefined,
+2025-06-03T09:49:04.588018706Z   where: undefined,
+2025-06-03T09:49:04.588020806Z   schema: 'public',
+2025-06-03T09:49:04.588022977Z   table: 'work_sessions',
+2025-06-03T09:49:04.588025287Z   column: undefined,
+2025-06-03T09:49:04.588027417Z   dataType: undefined,
+2025-06-03T09:49:04.588030257Z   constraint: 'work_sessions_user_id_fkey',
+2025-06-03T09:49:04.588032467Z   file: 'ri_triggers.c',
+2025-06-03T09:49:04.588034967Z   line: '2612',
+2025-06-03T09:49:04.588050497Z   routine: 'ri_ReportViolation'
+2025-06-03T09:49:04.588053067Z }
