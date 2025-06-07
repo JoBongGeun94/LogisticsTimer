@@ -1,44 +1,53 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 
-// 디바운스 훅
-export const useDebounce = <T extends (...args: any[]) => any>(
-  callback: T,
-  delay: number
-): T => {
-  const timeoutRef = useRef<NodeJS.Timeout>();
+interface PerformanceMetrics {
+  renderCount: number;
+  lastRenderDuration: number;
+  averageRenderDuration: number;
+}
 
-  return useCallback(
-    (...args: Parameters<T>) => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      timeoutRef.current = setTimeout(() => callback(...args), delay);
-    },
-    [callback, delay]
-  ) as T;
-};
+export const useOptimization = () => {
+  const renderCountRef = useRef(0);
+  const renderTimesRef = useRef<number[]>([]);
+  const startTimeRef = useRef<number>(0);
 
-// 메모이제이션 훅
-export const useStableMemo = <T>(
-  factory: () => T,
-  deps: React.DependencyList
-): T => {
-  return useMemo(factory, deps);
-};
-
-// 성능 모니터링 훅
-export const usePerformanceMonitor = (name: string) => {
-  const startTime = useRef<number>();
-
-  const start = useCallback(() => {
-    startTime.current = performance.now();
+  const startMeasurement = useCallback(() => {
+    startTimeRef.current = performance.now();
   }, []);
 
-  const end = useCallback(() => {
-    if (startTime.current) {
-      const duration = performance.now() - startTime.current;
+  const endMeasurement = useCallback(() => {
+    const duration = performance.now() - startTimeRef.current;
+    renderCountRef.current += 1;
+    renderTimesRef.current.push(duration);
+    
+    // 최근 10개 렌더링 시간만 유지
+    if (renderTimesRef.current.length > 10) {
+      renderTimesRef.current.shift();
     }
-  }, [name]);
+  }, []);
 
-  return { start, end };
+  const getMetrics = useCallback((): PerformanceMetrics => {
+    const times = renderTimesRef.current;
+    const averageRenderDuration = times.length > 0 
+      ? times.reduce((sum, time) => sum + time, 0) / times.length 
+      : 0;
+
+    return {
+      renderCount: renderCountRef.current,
+      lastRenderDuration: times[times.length - 1] || 0,
+      averageRenderDuration
+    };
+  }, []);
+
+  const resetMetrics = useCallback(() => {
+    renderCountRef.current = 0;
+    renderTimesRef.current = [];
+  }, []);
+
+  return {
+    startMeasurement,
+    endMeasurement,
+    getMetrics,
+    resetMetrics
+  };
 };

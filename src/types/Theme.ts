@@ -14,7 +14,9 @@ export interface Theme {
   surfaceHover: string;
 }
 
-export const THEME_COLORS = {
+export type ThemeMode = 'light' | 'dark';
+
+export const THEME_COLORS: Record<ThemeMode, Theme> = {
   light: {
     bg: 'bg-gray-50',
     card: 'bg-white',
@@ -44,24 +46,5 @@ export const THEME_COLORS = {
     input: 'bg-gray-700 border-gray-600 text-white placeholder-gray-400',
     surface: 'bg-gray-700',
     surfaceHover: 'hover:bg-gray-600'
-  }
-} as const;
-
-export const STATUS_COLORS = {
-  excellent: {
-    light: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-200', icon: 'text-green-600' },
-    dark: { bg: 'bg-green-900/30', text: 'text-green-300', border: 'border-green-700', icon: 'text-green-400' }
-  },
-  acceptable: {
-    light: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', icon: 'text-blue-600' },
-    dark: { bg: 'bg-blue-900/30', text: 'text-blue-300', border: 'border-blue-700', icon: 'text-blue-400' }
-  },
-  marginal: {
-    light: { bg: 'bg-yellow-50', text: 'text-yellow-800', border: 'border-yellow-200', icon: 'text-yellow-600' },
-    dark: { bg: 'bg-yellow-900/30', text: 'text-yellow-300', border: 'border-yellow-700', icon: 'text-yellow-400' }
-  },
-  unacceptable: {
-    light: { bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-200', icon: 'text-red-600' },
-    dark: { bg: 'bg-red-900/30', text: 'text-red-300', border: 'border-red-700', icon: 'text-red-400' }
   }
 } as const;

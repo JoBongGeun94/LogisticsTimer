@@ -1,30 +1,29 @@
 import { LapTime } from './Timer';
 
-export interface SessionData {
+export interface SessionCore {
   id: string;
   name: string;
   workType: string;
+}
+
+export interface SessionParticipants {
   operators: string[];
   targets: string[];
-  usl?: number;
-  lsl?: number;
+}
+
+export interface SessionMetadata {
   startTime: string;
+  endTime?: string;
+  isActive: boolean;
+}
+
+export interface SessionData extends SessionCore, SessionParticipants, SessionMetadata {
   lapTimes: LapTime[];
 }
 
 export interface SessionFormData {
-  name: string;
+  sessionName: string;
   workType: string;
   operators: string[];
   targets: string[];
-  usl?: number;
-  lsl?: number;
 }
-
-export type WorkType = 'packaging' | 'sorting' | 'loading' | 'custom';
-export const WORK_TYPES: { value: WorkType; label: string }[] = [
-  { value: 'packaging', label: '포장 작업' },
-  { value: 'sorting', label: '분류 작업' },
-  { value: 'loading', label: '적재 작업' },
-  { value: 'custom', label: '기타' },
-];

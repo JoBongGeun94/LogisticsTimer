@@ -5,16 +5,16 @@ export interface ToastProps {
   onClose: () => void;
 }
 
-export interface Theme {
-  bg: string;
-  card: string;
-  text: string;
-  textSecondary: string;
-  textMuted: string;
-  border: string;
-  accent: string;
-  warning: string;
-  input: string;
-  surface: string;
-  surfaceHover: string;
+export type QualityStatus = 'excellent' | 'acceptable' | 'marginal' | 'unacceptable';
+export type RiskLevel = 'low' | 'medium' | 'high';
+export type ColorScheme = 'green' | 'blue' | 'yellow' | 'red';
+
+export interface StatusConfig {
+  readonly icon: React.ComponentType<{ className?: string }>;
+  readonly text: string;
+  readonly colorScheme: ColorScheme;
 }
+
+export type StatusConfigMap = {
+  readonly [K in QualityStatus]: StatusConfig;
+};
