@@ -1,73 +1,58 @@
-import { SessionData, LapTime } from '../types';
-import { createCSVContent, convertMeasurementDataToCSV, downloadCSVFile, generateFileName, formatTime } from '../utils';
+import { LapTime } from '../types';
 
 export class ExportService {
-  static exportMeasurementData(session: SessionData, lapTimes: LapTime[]): boolean {
-    if (lapTimes.length === 0) {
-      throw new Error('다운로드할 측정 기록이 없습니다.');
+  static exportToCSV(measurements: LapTime[], filename: string = 'measurements'): void {
+    if (measurements.length === 0) {
+      throw new Error('내보낼 측정 데이터가 없습니다.');
     }
 
-    if (!session) {
-      throw new Error('활성 세션이 없습니다.');
-    }
-
-    // 시간 포맷팅이 적용된 랩타임 생성
-    const formattedLapTimes = lapTimes.map(lap => ({
-      ...lap,
-      formattedTime: formatTime(lap.time)
-    }));
-
-    const measurementData = convertMeasurementDataToCSV(session, formattedLapTimes);
-    const csvContent = createCSVContent(measurementData);
-    const filename = generateFileName('측정기록', session.name);
-
-    return downloadCSVFile(csvContent, filename);
-  }
-
-  static exportAnalysisReport(session: SessionData, analysis: any): boolean {
-    const statusMap: Record<string, string> = {
-      'excellent': '우수',
-      'acceptable': '양호',
-      'marginal': '보통',
-      'unacceptable': '불량'
-    };
-
-    const reportData = [
-      ['=== Gage R&R 분석 보고서 ==='],
-      [''],
-      ['세션 정보'],
-      ['세션명', session.name],
-      ['작업유형', session.workType],
-      ['분석일시', new Date().toLocaleString('ko-KR')],
-      [''],
-      ['분석 결과'],
-      ['Gage R&R (%)', analysis.gageRRPercent.toFixed(1) + '%'],
-      ['반복성', analysis.repeatability.toFixed(3)],
-      ['재현성', analysis.reproducibility.toFixed(3)],
-      ['Cpk', analysis.cpk.toFixed(2)],
-      ['NDC', analysis.ndc],
-      ['상태', statusMap[analysis.status] || analysis.status],
-      [''],
-      ['ANOVA 분석'],
-      ['측정자 변동 (%)', analysis.anova.operatorPercent.toFixed(1) + '%'],
-      ['대상자 변동 (%)', analysis.anova.partPercent.toFixed(1) + '%'],
-      ['상호작용 (%)', analysis.anova.interactionPercent.toFixed(1) + '%'],
-      ['오차 (%)', analysis.anova.errorPercent.toFixed(1) + '%'],
-      [''],
-      ['해석'],
-      ['전체 평가', analysis.interpretation.overall],
-      ['반복성 평가', analysis.interpretation.repeatability],
-      ['재현성 평가', analysis.interpretation.reproducibility],
-      [''],
-      ['권장사항'],
-      ...analysis.interpretation.recommendations.map((rec: string, index: number) => [
-        `${index + 1}.`, rec
-      ])
+    // CSV 헤더
+    const headers = [
+      'ID',
+      '측정시간(초)',
+      '타임스탬프',
+      '측정자ID',
+      '대상자ID',
+      '세션ID'
     ];
 
-    const csvContent = createCSVContent(reportData);
-    const filename = generateFileName('분석보고서', session.name);
+    // CSV 데이터 변환
+    const csvData = measurements.map(measurement => [
+      measurement.id,
+      measurement.time.toFixed(3),
+      measurement.timestamp.toISOString(),
+      measurement.operatorId,
+      measurement.partId,
+      measurement.sessionId
+    ]);
 
-    return downloadCSVFile(csvContent, filename);
+    // CSV 문자열 생성
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.join(','))
+    ].join('\n');
+
+    // BOM 추가 (UTF-8 인코딩을 위해)
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    // 다운로드 링크 생성
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    URL.revokeObjectURL(url);
+  }
+
+  // 사용되지 않는 매개변수에 언더스코어 추가
+  static exportDetailedReport(_measurements: LapTime[], _analysisResult?: any): void {
+    // 상세 분석 보고서 생성 (향후 구현)
+    console.log('상세 보고서 기능은 향후 구현 예정입니다.');
   }
 }

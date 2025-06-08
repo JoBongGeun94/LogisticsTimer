@@ -1,55 +1,58 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { UseTimerReturn } from '../types';
-import { TIMER_CONFIG } from '../constants';
+import { useState, useRef, useCallback } from 'react';
 
-export const useTimer = (_sessionId?: string): UseTimerReturn => {
+export interface UseTimerReturn {
+  currentTime: number;
+  isRunning: boolean;
+  start: () => void;
+  stop: () => void;
+  reset: () => void;
+  pause: () => void;
+}
+
+export const useTimer = (): UseTimerReturn => {
   const [currentTime, setCurrentTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const intervalRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(0);
+  const startTimeRef = useRef<number | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const toggle = useCallback(() => {
-    if (isRunning) {
-      setIsRunning(false);
-    } else {
+  const updateTime = useCallback(() => {
+    if (startTimeRef.current) {
+      setCurrentTime(Date.now() - startTimeRef.current);
+    }
+  }, []);
+
+  const start = useCallback(() => {
+    if (!isRunning) {
       startTimeRef.current = Date.now() - currentTime;
       setIsRunning(true);
+      intervalRef.current = setInterval(updateTime, 10);
     }
-  }, [isRunning, currentTime]);
+  }, [isRunning, currentTime, updateTime]);
 
   const stop = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
     setIsRunning(false);
-    setCurrentTime(0);
   }, []);
 
   const reset = useCallback(() => {
-    setIsRunning(false);
+    stop();
     setCurrentTime(0);
-  }, []);
+    startTimeRef.current = null;
+  }, [stop]);
 
-  const recordLap = useCallback((_operator: string, _target: string) => {
-    // 이 함수는 App.tsx에서 오버라이드될 예정
-    setIsRunning(false);
-    setCurrentTime(0);
-  }, []);
+  const pause = useCallback(() => {
+    stop();
+  }, [stop]);
 
-  useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = window.setInterval(() => {
-        setCurrentTime(Date.now() - startTimeRef.current);
-      }, TIMER_CONFIG.UPDATE_INTERVAL);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isRunning]);
-
-  return { currentTime, isRunning, toggle, stop, reset, recordLap };
+  return {
+    currentTime: currentTime / 1000, // 초 단위로 반환
+    isRunning,
+    start,
+    stop,
+    reset,
+    pause
+  };
 };

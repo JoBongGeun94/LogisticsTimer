@@ -1,73 +1,57 @@
 import { useState, useCallback } from 'react';
-import { SessionData, SessionFormData, LapTime } from '../types';
-import { validateSessionData } from '../utils';
+import { Session, LapTime } from '../types';
 
-interface UseSessionReturn {
-  sessions: SessionData[];
-  currentSession: SessionData | null;
-  createSession: (formData: SessionFormData) => boolean;
-  setCurrentSession: (session: SessionData | null) => void;
-  updateSessionLapTimes: (sessionId: string, lapTimes: LapTime[]) => void;
-  deleteSession: (sessionId: string) => void;
-  clearAllSessions: () => void;
+export interface UseSessionReturn {
+  sessions: Session[];
+  currentSession: Session | null;
+  measurements: LapTime[];
+  createSession: (sessionData: Omit<Session, 'id' | 'createdAt'>) => void;
+  selectSession: (sessionId: string) => void;
+  addMeasurement: (measurement: LapTime) => void;
+  clearMeasurements: () => void;
 }
 
 export const useSession = (): UseSessionReturn => {
-  const [sessions, setSessions] = useState<SessionData[]>([]);
-  const [currentSession, setCurrentSession] = useState<SessionData | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [measurements, setMeasurements] = useState<LapTime[]>([]);
 
-  const createSession = useCallback((formData: SessionFormData): boolean => {
-    if (!validateSessionData(formData)) {
-      return false;
-    }
-
-    const newSession: SessionData = {
+  const createSession = useCallback((sessionData: Omit<Session, 'id' | 'createdAt'>) => {
+    const newSession: Session = {
+      ...sessionData,
       id: Date.now().toString(),
-      name: formData.sessionName,
-      workType: formData.workType,
-      operators: formData.operators.filter(op => op.trim()),
-      targets: formData.targets.filter(tg => tg.trim()),
-      lapTimes: [],
-      startTime: new Date().toLocaleString('ko-KR'),
-      isActive: true
+      createdAt: new Date()
     };
-
+    
     setSessions(prev => [...prev, newSession]);
     setCurrentSession(newSession);
-    return true;
+    setMeasurements([]); // 새 세션 시작 시 측정 데이터 초기화
   }, []);
 
-  const updateSessionLapTimes = useCallback((sessionId: string, lapTimes: LapTime[]) => {
-    setSessions(prev => prev.map(session => 
-      session.id === sessionId 
-        ? { ...session, lapTimes }
-        : session
-    ));
-    
-    setCurrentSession(prev => 
-      prev?.id === sessionId 
-        ? { ...prev, lapTimes }
-        : prev
-    );
+  const selectSession = useCallback((sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (session) {
+      setCurrentSession(session);
+      // 해당 세션의 측정 데이터만 필터링 (실제로는 localStorage나 API에서 가져와야 함)
+      setMeasurements(prev => prev.filter(m => m.sessionId === sessionId));
+    }
+  }, [sessions]);
+
+  const addMeasurement = useCallback((measurement: LapTime) => {
+    setMeasurements(prev => [...prev, measurement]);
   }, []);
 
-  const deleteSession = useCallback((sessionId: string) => {
-    setSessions(prev => prev.filter(session => session.id !== sessionId));
-    setCurrentSession(prev => prev?.id === sessionId ? null : prev);
-  }, []);
-
-  const clearAllSessions = useCallback(() => {
-    setSessions([]);
-    setCurrentSession(null);
+  const clearMeasurements = useCallback(() => {
+    setMeasurements([]);
   }, []);
 
   return {
     sessions,
     currentSession,
+    measurements,
     createSession,
-    setCurrentSession,
-    updateSessionLapTimes,
-    deleteSession,
-    clearAllSessions
+    selectSession,
+    addMeasurement,
+    clearMeasurements
   };
 };

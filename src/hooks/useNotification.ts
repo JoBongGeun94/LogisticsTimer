@@ -1,32 +1,42 @@
 import { useState, useCallback } from 'react';
 import { ToastProps } from '../types';
 
-interface UseNotificationReturn {
-  toast: ToastProps;
-  showToast: (message: string, type: ToastProps['type']) => void;
-  hideToast: () => void;
-}
+export const useNotification = () => {
+  const [toast, setToast] = useState<ToastProps | null>(null);
 
-export const useNotification = (): UseNotificationReturn => {
-  const [toast, setToast] = useState<ToastProps>({
-    message: '',
-    type: 'info',
-    isVisible: false,
-    onClose: () => {}
-  });
-
-  const showToast = useCallback((message: string, type: ToastProps['type']) => {
+  const showToast = useCallback((
+    message: string,
+    type: ToastProps['type'] = 'info',
+    duration: number = 3000
+  ) => {
     setToast({
       message,
       type,
       isVisible: true,
-      onClose: () => setToast(prev => ({ ...prev, isVisible: false }))
+      duration,
+      onClose: () => setToast((prev: ToastProps | null) => 
+        prev ? { ...prev, isVisible: false } : null
+      )
     });
+
+    if (duration > 0) {
+      setTimeout(() => {
+        setToast((prev: ToastProps | null) => 
+          prev ? { ...prev, isVisible: false } : null
+        );
+      }, duration);
+    }
   }, []);
 
   const hideToast = useCallback(() => {
-    setToast(prev => ({ ...prev, isVisible: false }));
+    setToast((prev: ToastProps | null) => 
+      prev ? { ...prev, isVisible: false } : null
+    );
   }, []);
 
-  return { toast, showToast, hideToast };
+  return {
+    toast,
+    showToast,
+    hideToast
+  };
 };

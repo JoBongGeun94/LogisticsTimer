@@ -1,45 +1,41 @@
 import { SessionFormData } from '../types';
 import { ANALYSIS_CONFIG } from '../constants';
 
-/**
- * 세션 생성 데이터 검증
- */
-export const validateSessionData = (data: SessionFormData): boolean => {
-  return !!(
-    data.sessionName.trim() &&
-    data.workType &&
-    data.operators.every(op => op.trim()) &&
-    data.targets.every(tg => tg.trim()) &&
-    data.operators.length >= 1 &&
-    data.targets.length >= 1
-  );
+export const validateSessionForm = (data: SessionFormData): {
+  isValid: boolean;
+  errors: string[];
+} => {
+  const errors: string[] = [];
+
+  if (!data.name.trim()) {
+    errors.push('세션명을 입력해주세요.');
+  }
+
+  if (!data.workType.trim()) {
+    errors.push('작업 유형을 입력해주세요.');
+  }
+
+  if (data.operators.length < ANALYSIS_CONFIG.MIN_OPERATORS ||
+      !data.operators.every((op: string) => op.trim())) {
+    errors.push(`최소 ${ANALYSIS_CONFIG.MIN_OPERATORS}명의 측정자가 필요합니다.`);
+  }
+
+  if (data.targets.length < ANALYSIS_CONFIG.MIN_PARTS ||
+      !data.targets.every((tg: string) => tg.trim())) {
+    errors.push(`최소 ${ANALYSIS_CONFIG.MIN_PARTS}개의 대상자가 필요합니다.`);
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
 };
 
-/**
- * 분석 가능 여부 검증
- */
-export const canPerformAnalysis = (measurementCount: number): boolean => {
-  return measurementCount >= ANALYSIS_CONFIG.MIN_SAMPLE_SIZE;
+export const validateMeasurement = (value: number): boolean => {
+  return !isNaN(value) && value > 0 && value < 3600; // 1시간 미만
 };
 
-/**
- * 이메일 형식 검증
- */
-export const isValidEmail = (email: string): boolean => {
+export const validateEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
-};
-
-/**
- * 빈 문자열 또는 공백 검증
- */
-export const isNotEmpty = (value: string): boolean => {
-  return value.trim().length > 0;
-};
-
-/**
- * 숫자 범위 검증
- */
-export const isInRange = (value: number, min: number, max: number): boolean => {
-  return value >= min && value <= max;
 };
