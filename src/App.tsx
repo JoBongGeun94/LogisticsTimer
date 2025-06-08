@@ -1,23 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import {
-  Play, Pause, Square, RotateCcw, Download, Plus, Users,
+  Play, Pause, Square, Download, Plus, Users,
   Package, Clock, BarChart3, FileText, Calculator,
-  Zap, Target, Home, HelpCircle, RefreshCw, LogOut,
-  Moon, Sun, TrendingUp, PieChart, Info, CheckCircle,
-  AlertCircle, XCircle, Timer, Activity, Settings,
-  Trash2, Filter, Search, X, Minus, ArrowLeft,
-  TrendingUp as TrendingUpIcon, AlertTriangle, Share2
+  Zap, Target, RefreshCw, LogOut,
+  Moon, Sun, PieChart, Info, CheckCircle,
+  AlertCircle, XCircle, Timer, Activity,
+  Trash2, Filter, X, Minus, AlertTriangle
 } from 'lucide-react';
 
 // 타입 및 서비스 import
 import { 
   LapTime, 
   SessionData, 
-  GageRRAnalysis, 
   Theme, 
   ToastProps, 
-  FilterOptions,
-  ValidationResult 
+  FilterOptions
 } from './types';
 import { ValidationService } from './services/ValidationService';
 import { AnalysisService } from './services/AnalysisService';
@@ -1317,7 +1314,7 @@ const EnhancedLogisticsTimer = () => {
                     />
                   </div>
                   <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme.textSecondary}`}>작업 유형 * (요구사항 7번)</label>
+                    <label className={`block text-sm font-medium mb-1 ${theme.textSecondary}`}>작업 유형 * </label>
                     <select
                       value={workType}
                       onChange={(e) => setWorkType(e.target.value)}
@@ -1333,7 +1330,7 @@ const EnhancedLogisticsTimer = () => {
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className={`text-sm font-medium ${theme.textSecondary}`}>측정자 설정 (요구사항 6번 - 2명 이하도 허용)</label>
+                    <label className={`text-sm font-medium ${theme.textSecondary}`}>측정자 설정 </label>
                     <button
                       onClick={addOperator}
                       className="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-600 transition-colors"
@@ -1369,7 +1366,7 @@ const EnhancedLogisticsTimer = () => {
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className={`text-sm font-medium ${theme.textSecondary}`}>대상자 설정 (요구사항 6번 - 5개 이하도 허용)</label>
+                    <label className={`text-sm font-medium ${theme.textSecondary}`}>대상자 설정 </label>
                     <button
                       onClick={addTarget}
                       className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-600 transition-colors"
@@ -1406,7 +1403,7 @@ const EnhancedLogisticsTimer = () => {
                 <div className={`${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'} p-4 rounded-lg border`}>
                   <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-2">
                     <Info className="w-4 h-4" />
-                    Gage R&R 분석 안내 (요구사항 6번)
+                    Gage R&R 분석 안내
                   </h4>
                   <ul className={`${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 text-xs`}>
                     <li>• 측정자 2명 이상: 재현성(Reproducibility) 분석</li>
