@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 // 타입 및 서비스 imports (실제 사용되는 것만)
-import { LapTime, SessionData, ToastProps } from './types';
+import { LapTime, SessionData, ToastProps, FilterOptions } from './types';
 import { ValidationService } from './services/ValidationService';
 import { AnalysisService } from './services/AnalysisService';
 import { ExportService } from './services/ExportService';
@@ -166,12 +166,12 @@ const ModernLandingPage = React.memo<{
 const EnhancedLogisticsTimer = () => {
   // ============ 기본 상태 관리 (기존 보존) ============
   const [isDark, setIsDark] = useState(true);
-  const [_currentTime, setCurrentTime] = useState(0);
-  const [_isRunning, _setIsRunning] = useState(false);
-  const [lapTimes, _setLapTimes] = useState<LapTime[]>([]);
-  const [_allLapTimes, _setAllLapTimes] = useState<LapTime[]>([]);
-  const [_sessions, _setSessions] = useState<SessionData[]>([]);
-  const [currentSession, _setCurrentSession] = useState<SessionData | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [lapTimes, setLapTimes] = useState<LapTime[]>([]);
+  const [allLapTimes, setAllLapTimes] = useState<LapTime[]>([]);
+  const [sessions, setSessions] = useState<SessionData[]>([]);
+  const [currentSession, setCurrentSession] = useState<SessionData | null>(null);
 
   // ============ UI 상태 관리 (기존 보존) ============
   const [showLanding, setShowLanding] = useState(true);
@@ -190,14 +190,14 @@ const EnhancedLogisticsTimer = () => {
   });
 
   // ============ 폼 상태 (기존 보존) ============
-  const [_currentOperator, _setCurrentOperator] = useState('');
-  const [_currentTarget, _setCurrentTarget] = useState('');
+  const [currentOperator, setCurrentOperator] = useState('');
+  const [currentTarget, setCurrentTarget] = useState('');
 
   // ============ 참조 및 훅 ============
   const intervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const { showBackWarning } = useBackButtonPrevention();
-  const { /* incrementVersion, */ validateDataIntegrity } = useDataSynchronization();
+  const { incrementVersion, validateDataIntegrity } = useDataSynchronization();
 
   // ============ 테마 정의 (기존 보존) ============
   const theme = useMemo(() => THEME_COLORS[isDark ? 'dark' : 'light'], [isDark]);
@@ -300,7 +300,7 @@ const EnhancedLogisticsTimer = () => {
   }, [lapTimes, currentSession, showToast]);
 
   // ============ 계산된 값들 (기존 보존) ============
-  const _analysis = useMemo(() => {
+  const analysis = useMemo(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     return validation.isValid ? AnalysisService.calculateGageRR(lapTimes) : null;
   }, [lapTimes]);

@@ -89,3 +89,36 @@ export interface ValidationResult {
   canAnalyze: boolean;
   analysisMessage?: string;
 }
+
+// 강화된 MSA 관련 타입
+export interface MSAValidationResult {
+  isValid: boolean;
+  message?: string;
+  analysisMessage?: string;
+  canAnalyze: boolean;
+  strictMode?: boolean;
+}
+
+export interface EnhancedAnalysisOptions {
+  logTransform: boolean;
+  outlierDetection: boolean;
+  confidenceLevel: number;
+  strictMode: boolean;
+}
+
+// 데이터 무결성 관련 타입
+export interface DataIntegrityIssue {
+  type: 'orphaned_lap' | 'duplicate_session' | 'inconsistent_data';
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+  recommendation: string;
+}
+
+// 도움말 시스템 타입
+export interface HelpContent {
+  id: string;
+  title: string;
+  content: string;
+  category: 'usage' | 'analysis' | 'troubleshooting';
+  keywords: string[];
+}
