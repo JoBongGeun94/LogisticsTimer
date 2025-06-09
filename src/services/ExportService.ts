@@ -1,134 +1,231 @@
-import { SessionData, LapTime, GageRRAnalysis } from '../types';
+import { SessionData, LapTime } from '../types';
 
 export class ExportService {
-  static formatTime(ms: number): string {
-    if (ms < 0) return '00:00.00';
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    const centiseconds = Math.floor((ms % 1000) / 10);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
-  }
-
-  static generateFileName(prefix: string, sessionName: string): string {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const hour = now.getHours().toString().padStart(2, '0');
-    const minute = now.getMinutes().toString().padStart(2, '0');
-    const timestamp = `${year}${month}${day}${hour}${minute}`;
-    
-    const safeName = sessionName.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
-    return `${prefix}-${safeName}-(${timestamp}).csv`;
-  }
-
-  static createCSVContent(data: (string | number)[][]): string {
-    const csvRows = data.map(row => 
-      row.map(cell => {
-        const cellStr = String(cell);
-        if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
-          return `"${cellStr.replace(/"/g, '""')}"`;
-        }
-        return cellStr;
-      }).join(',')
-    );
-    
-    return '\ufeff' + csvRows.join('\n');
-  }
-
-  static downloadCSVFile(content: string, filename: string): boolean {
+  /**
+   * 측정 데이터를 CSV 형식으로 내보내기
+   */
+  static exportMeasurementData(session: SessionData, lapTimes: LapTime[]): boolean {
     try {
-      const blob = new Blob([content], { 
-        type: 'text/csv;charset=utf-8;' 
+      const timestamp = new Date().toLocaleString('ko-KR').replace(/[/:]/g, '-');
+      
+      let csvContent = '\uFEFF'; // UTF-8 BOM for Korean compatibility
+      
+      // 헤더 정보
+      csvContent += `물류 인시수 측정 데이터\n`;
+      csvContent += `세션명,${session.name}\n`;
+      csvContent += `작업유형,${session.workType}\n`;
+      csvContent += `측정자,"${session.operators.join(', ')}"\n`;
+      csvContent += `대상자,"${session.targets.join(', ')}"\n`;
+      csvContent += `총 측정 횟수,${lapTimes.length}\n`;
+      csvContent += `생성일시,${timestamp}\n\n`;
+      
+      // 데이터 헤더
+      csvContent += `측정번호,측정시간(초),측정자,대상자,타임스탬프\n`;
+      
+      // 측정 데이터
+      lapTimes.forEach((lap, index) => {
+        const timeInSeconds = (lap.time / 1000).toFixed(3);
+        csvContent += `${index + 1},${timeInSeconds},${lap.operator},${lap.target},${lap.timestamp}\n`;
       });
       
-      const url = URL.createObjectURL(blob);
-      
+      // 파일 다운로드
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      link.style.display = 'none';
+      const filename = `측정데이터_${session.name}_${timestamp}.csv`;
       
-      document.body.appendChild(link);
-      link.click();
-      
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
       
       return true;
     } catch (error) {
-      console.error('CSV download failed:', error);
+      console.error('CSV export failed:', error);
       return false;
     }
   }
 
-  static exportMeasurementData(session: SessionData, lapTimes: LapTime[]): boolean {
-    const measurementData: (string | number)[][] = [
-      ['=== 측정 기록 ==='],
-      [''],
-      ['세션명', session.name],
-      ['작업유형', session.workType],
-      ['측정일시', session.startTime],
-      ['총 측정횟수', lapTimes.length],
-      [''],
-      ['순번', '측정시간', '측정자', '대상자', '기록시간'],
-      ...lapTimes.map((lap, index) => [
-        index + 1,
-        this.formatTime(lap.time),
-        lap.operator,
-        lap.target,
-        lap.timestamp
-      ])
-    ];
-
-    const csvContent = this.createCSVContent(measurementData);
-    const filename = this.generateFileName('측정기록', session.name);
-    
-    return this.downloadCSVFile(csvContent, filename);
+  /**
+   * 상세 분석 결과를 CSV 형식으로 내보내기
+   */
+  static exportDetailedAnalysis(session: SessionData, lapTimes: LapTime[], analysis: any): boolean {
+    try {
+      const timestamp = new Date().toLocaleString('ko-KR').replace(/[/:]/g, '-');
+      
+      let csvContent = '\uFEFF'; // UTF-8 BOM
+      
+      // 헤더 정보
+      csvContent += `물류 인시수 측정 상세 분석 보고서\n`;
+      csvContent += `생성일시,${timestamp}\n`;
+      csvContent += `세션명,${session.name}\n`;
+      csvContent += `작업유형,${session.workType}\n`;
+      csvContent += `측정자,"${session.operators.join(', ')}"\n`;
+      csvContent += `대상자,"${session.targets.join(', ')}"\n`;
+      csvContent += `총 측정 횟수,${lapTimes.length}\n\n`;
+      
+      // Gage R&R 분석 결과
+      csvContent += `=== Gage R&R 분석 결과 ===\n`;
+      csvContent += `Gage R&R,${analysis.gageRRPercent.toFixed(2)}%\n`;
+      csvContent += `반복성,${analysis.repeatability.toFixed(4)}\n`;
+      csvContent += `재현성,${analysis.reproducibility.toFixed(4)}\n`;
+      csvContent += `NDC,${analysis.ndc}\n`;
+      csvContent += `Cpk,${analysis.cpk.toFixed(4)}\n`;
+      csvContent += `상태 평가,${this.getStatusText(analysis.status)}\n\n`;
+      
+      // 통계 요약
+      csvContent += `=== 통계 요약 ===\n`;
+      const times = lapTimes.map(lap => lap.time);
+      const mean = times.reduce((sum, t) => sum + t, 0) / times.length;
+      const variance = times.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / times.length;
+      const stdDev = Math.sqrt(variance);
+      
+      csvContent += `평균 시간,${this.formatTime(mean)}\n`;
+      csvContent += `표준편차,${(stdDev / 1000).toFixed(4)}초\n`;
+      csvContent += `변동계수,${((stdDev / mean) * 100).toFixed(2)}%\n`;
+      csvContent += `최소값,${this.formatTime(Math.min(...times))}\n`;
+      csvContent += `최대값,${this.formatTime(Math.max(...times))}\n\n`;
+      
+      // 측정 데이터
+      csvContent += `=== 측정 데이터 ===\n`;
+      csvContent += `측정번호,측정시간,측정자,대상자,타임스탬프\n`;
+      
+      lapTimes.forEach((lap, index) => {
+        csvContent += `${index + 1},${this.formatTime(lap.time)},${lap.operator},${lap.target},${lap.timestamp}\n`;
+      });
+      
+      // 파일 다운로드
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const filename = `상세분석_${session.name}_${timestamp}.csv`;
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Detailed analysis export failed:', error);
+      return false;
+    }
   }
 
-  static exportDetailedAnalysis(session: SessionData, lapTimes: LapTime[], analysis: GageRRAnalysis): boolean {
-    const analysisData: (string | number)[][] = [
-      ['=== Gage R&R 상세 분석 보고서 ==='],
-      [''],
-      ['세션명', session.name],
-      ['작업유형', session.workType],
-      ['측정일시', session.startTime],
-      ['총 측정횟수', lapTimes.length],
-      [''],
-      ['=== 분석 결과 ==='],
-      ['Gage R&R 비율 (%)', analysis.gageRRPercent.toFixed(1)],
-      ['측정시스템 상태', analysis.status === 'excellent' ? '우수' :
-        analysis.status === 'acceptable' ? '양호' :
-        analysis.status === 'marginal' ? '보통' : '불량'],
-      ['공정 능력 지수 (Cpk)', analysis.cpk.toFixed(2)],
-      ['구별 범주 수 (NDC)', analysis.ndc],
-      ['위험도', analysis.interpretation.riskLevel === 'low' ? '낮음' :
-        analysis.interpretation.riskLevel === 'medium' ? '보통' : '높음'],
-      [''],
-      ['=== ANOVA 분석 ==='],
-      ['측정자 기여율 (%)', analysis.anova.operatorPercent.toFixed(1)],
-      ['대상자 기여율 (%)', analysis.anova.partPercent.toFixed(1)],
-      ['상호작용 기여율 (%)', analysis.anova.interactionPercent.toFixed(1)],
-      ['오차 기여율 (%)', analysis.anova.errorPercent.toFixed(1)],
-      [''],
-      ['=== 개선 권장사항 ==='],
-      ...analysis.interpretation.recommendations.map((rec, idx) => [`${idx + 1}. ${rec}`]),
-      [''],
-      ['=== 측정 기록 ==='],
-      ['순번', '측정시간', '측정자', '대상자', '기록시간'],
-      ...lapTimes.map((lap, index) => [
-        index + 1,
-        this.formatTime(lap.time),
-        lap.operator,
-        lap.target,
-        lap.timestamp
-      ])
-    ];
-
-    const csvContent = this.createCSVContent(analysisData);
-    const filename = this.generateFileName('상세분석보고서', session.name);
+  /**
+   * 시간을 포맷팅 (MM:SS.mmm)
+   */
+  static formatTime(milliseconds: number): string {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const ms = Math.floor((milliseconds % 1000) / 10);
     
-    return this.downloadCSVFile(csvContent, filename);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * 상태 텍스트 변환
+   */
+  private static getStatusText(status: string): string {
+    const statusMap: Record<string, string> = {
+      'excellent': '우수',
+      'acceptable': '양호',
+      'marginal': '보통',
+      'unacceptable': '불량'
+    };
+    return statusMap[status] || status;
+  }
+
+  /**
+   * 강화된 분석 결과 내보내기 (신규)
+   */
+  static exportEnhancedAnalysis(
+    session: SessionData,
+    lapTimes: LapTime[],
+    analysis: any
+  ): boolean {
+    try {
+      const timestamp = new Date().toLocaleString('ko-KR').replace(/[/:]/g, '-');
+      
+      let csvContent = '\uFEFF'; // UTF-8 BOM
+      
+      // 헤더 정보
+      csvContent += `물류 인시수 측정 상세 분석 보고서\n`;
+      csvContent += `생성일시,${timestamp}\n`;
+      csvContent += `세션명,${session.name}\n`;
+      csvContent += `작업유형,${session.workType}\n`;
+      csvContent += `측정자,"${session.operators.join(', ')}"\n`;
+      csvContent += `대상자,"${session.targets.join(', ')}"\n`;
+      csvContent += `총 측정 횟수,${lapTimes.length}\n\n`;
+      
+      // MSA 분석 결과
+      csvContent += `=== MSA 분석 결과 ===\n`;
+      csvContent += `Gage R&R,${analysis.gageRRPercent.toFixed(2)}%\n`;
+      csvContent += `반복성,${analysis.repeatability.toFixed(4)}\n`;
+      csvContent += `재현성,${analysis.reproducibility.toFixed(4)}\n`;
+      csvContent += `P/T 비율,${analysis.ptRatio.toFixed(4)}\n`;
+      csvContent += `NDC,${analysis.ndc}\n`;
+      csvContent += `Cpk,${analysis.cpk.toFixed(4)}\n`;
+      csvContent += `상태 평가,${analysis.status}\n\n`;
+      
+      // 신뢰구간
+      csvContent += `=== 95% 신뢰구간 ===\n`;
+      csvContent += `Gage R&R 하한,${analysis.confidenceIntervals.gageRR.lower.toFixed(4)}\n`;
+      csvContent += `Gage R&R 상한,${analysis.confidenceIntervals.gageRR.upper.toFixed(4)}\n\n`;
+      
+      // 기본 통계
+      csvContent += `=== 기본 통계량 ===\n`;
+      csvContent += `평균,${analysis.basicStatistics.mean.toFixed(4)}\n`;
+      csvContent += `표준편차,${analysis.basicStatistics.stdDev.toFixed(4)}\n`;
+      csvContent += `변동계수,${analysis.basicStatistics.cv.toFixed(2)}%\n`;
+      csvContent += `범위,${analysis.basicStatistics.range.toFixed(4)}\n\n`;
+      
+      // 권장사항
+      csvContent += `=== 개선 권장사항 ===\n`;
+      analysis.recommendations.forEach((rec: string, index: number) => {
+        csvContent += `${index + 1},${rec}\n`;
+      });
+      csvContent += `\n`;
+      
+      // 원시 데이터
+      csvContent += `=== 원시 측정 데이터 ===\n`;
+      csvContent += `측정번호,측정시간(초),측정자,대상자,타임스탬프\n`;
+      
+      lapTimes.forEach((lap, index) => {
+        csvContent += `${index + 1},${(lap.time / 1000).toFixed(3)},${lap.operator},${lap.target},${lap.timestamp}\n`;
+      });
+      
+      // 파일 다운로드
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const filename = `상세분석_${session.name}_${timestamp}.csv`;
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Enhanced analysis export failed:', error);
+      return false;
+    }
   }
 }
