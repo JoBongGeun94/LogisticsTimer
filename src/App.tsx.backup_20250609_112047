@@ -7,8 +7,8 @@ import {
 
 // 타입 및 서비스 imports (실제 사용되는 것만)
 import { LapTime, SessionData, ToastProps } from './types';
-import { ValidationService as _ValidationService } from './services/ValidationService';
-import { AnalysisService as _AnalysisService } from './services/AnalysisService';
+import { ValidationService } from './services/ValidationService';
+import { AnalysisService } from './services/AnalysisService';
 import { ExportService } from './services/ExportService';
 
 // 페이지 imports
@@ -220,7 +220,7 @@ const EnhancedLogisticsTimer = () => {
 
   // 타이머 로직 (기존과 동일)
   useEffect(() => {
-    if (_isRunning) {
+    if (isRunning) {
       intervalRef.current = window.setInterval(() => {
         setCurrentTime(Date.now() - startTimeRef.current);
       }, 10);
@@ -235,7 +235,7 @@ const EnhancedLogisticsTimer = () => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [_isRunning]);
+  }, [isRunning]);
 
   // 키보드 이벤트 (확장)
   useEffect(() => {
@@ -267,8 +267,8 @@ const EnhancedLogisticsTimer = () => {
 
   // 데이터 무결성 검증 (신규 - 위험 예방대책)
   useEffect(() => {
-    if (_sessions.length > 0 || _allLapTimes.length > 0) {
-      const report = validateDataIntegrity(_sessions, _allLapTimes);
+    if (sessions.length > 0 || allLapTimes.length > 0) {
+      const report = validateDataIntegrity(sessions, allLapTimes);
       if (!report.isValid) {
         console.warn('데이터 무결성 경고:', report);
         if (report.recommendations.length > 0) {
@@ -276,7 +276,7 @@ const EnhancedLogisticsTimer = () => {
         }
       }
     }
-  }, [_sessions, _allLapTimes, validateDataIntegrity]);
+  }, [sessions, allLapTimes, validateDataIntegrity]);
 
   // ============ 모든 기존 함수들 보존 ============
 
@@ -300,10 +300,10 @@ const EnhancedLogisticsTimer = () => {
   }, [lapTimes, currentSession, showToast]);
 
   // ============ 계산된 값들 (기존 보존) ============
-  //   const _analysis = useMemo(() => {
-  //     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
-  //     return validation.isValid ? AnalysisService.calculateGageRR(lapTimes) : null;
-  //   }, [lapTimes]);
+  const _analysis = useMemo(() => {
+    const validation = ValidationService.validateGageRRAnalysis(lapTimes);
+    return validation.isValid ? AnalysisService.calculateGageRR(lapTimes) : null;
+  }, [lapTimes]);
 
   // ============ 랜딩 페이지 (기존 보존) ============
   if (showLanding) {

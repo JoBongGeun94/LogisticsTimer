@@ -61,7 +61,7 @@ export class EnhancedMSAService {
    */
   static calculateEnhancedGageRR(
     lapTimes: LapTime[], 
-    options: MSAOptions = {
+    _options: MSAOptions = {
       logTransform: false,
       confidenceLevel: 0.95,
       strictMode: true,
@@ -73,7 +73,7 @@ export class EnhancedMSAService {
     const basicStatistics = this.calculateBasicStatistics(lapTimes);
     
     // 엄격 모드 검증 (10회 이상)
-    const canPerformGRR = options.strictMode 
+    const canPerformGRR = _options.strictMode 
       ? this.validateStrictMSA(lapTimes)
       : this.validateBasicMSA(lapTimes);
     
@@ -83,17 +83,17 @@ export class EnhancedMSAService {
     }
     
     // 로그 변환 적용 (선택적)
-    const processedData = options.logTransform 
+    const processedData = _options.logTransform 
       ? this.applyLogTransform(lapTimes) 
       : lapTimes;
     
     // 이상치 탐지 및 제거 (선택적)
-    const cleanData = options.outlierDetection 
+    const cleanData = _options.outlierDetection 
       ? this.removeOutliers(processedData)
       : processedData;
     
     // 완전한 MSA 분석 수행
-    return this.performCompleteAnalysis(cleanData, basicStatistics, options);
+    return this.performCompleteAnalysis(cleanData, basicStatistics, _options);
   }
   
   /**
@@ -256,7 +256,7 @@ export class EnhancedMSAService {
   private static performCompleteAnalysis(
     lapTimes: LapTime[], 
     basicStatistics: any, 
-    options: MSAOptions
+    _options: MSAOptions
   ): EnhancedGageRRResult {
     
     // 기존 AnalysisService 로직 활용하되 강화
