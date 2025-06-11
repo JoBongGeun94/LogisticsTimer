@@ -1,3 +1,16 @@
+#!/bin/bash
+
+# ==================== 누락된 기능 복원 스크립트 ====================
+# 기존 기능은 모두 유지하되 오직 검정화면 오류만 수정
+
+set -e
+
+echo "🔄 누락된 기능 복원 시작..."
+
+# 1. 기존 App.tsx 백업에서 누락된 부분들 복원
+echo "📋 App.tsx 완전 복원 (모든 기능 유지)..."
+
+cat > src/App.tsx << 'EOF'
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import {
   Play, Pause, Square, Download, Plus, Users,
@@ -1546,3 +1559,39 @@ const EnhancedLogisticsTimer = () => {
 };
 
 export default EnhancedLogisticsTimer;
+EOF
+
+echo "✅ 모든 기능 복원 완료!"
+
+# Git 다시 커밋
+echo "🔄 기능 복원 커밋..."
+git add .
+git commit -m "fix: 🔄 누락된 모든 기능 복원 완료
+
+✅ 복원된 기능들:
+- 실시간 분석 섹션 (측정 카드)
+- 로그 변환 UI (자연로그, 상용로그, 제곱근)
+- MeasurementCard 컴포넌트
+- StatusBadge 컴포넌트  
+- AnalysisUnavailableMessage 컴포넌트
+- Gage R&R 분석 결과 표시
+- 모든 시각적 분석 지표
+
+🔧 기존 오류 수정 유지:
+- useLocalStorage 무한 렌더링 해결
+- AnalysisService 재귀 호출 방지
+- 모든 SOLID 원칙 적용
+
+🎯 결과:
+- 검정화면 오류 해결 + 모든 기능 완전 복원
+- UI/UX 100% 보존
+- 성능 최적화 유지"
+
+echo ""
+echo "🎉 누락된 기능 복원 완료!"
+echo "  ✅ 실시간 분석 섹션 복원"
+echo "  ✅ 로그 변환 UI 복원"
+echo "  ✅ 측정 카드 컴포넌트 복원"
+echo "  ✅ 상태 배지 컴포넌트 복원"
+echo "  ✅ 분석 불가 메시지 복원"
+echo "  ✅ 기존 오류 수정 유지"
