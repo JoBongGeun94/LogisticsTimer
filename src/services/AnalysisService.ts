@@ -43,6 +43,11 @@ interface GageRRMetrics {
   ndc: number;
   ptRatio: number;
   cpk: number;
+  // 작업시간 분석용 추가 지표
+  icc: number;           // 급내상관계수 - 측정자간 신뢰성
+  cv: number;            // 변동계수 - 일관성 지표  
+  q99: number;           // 99% 달성가능 시간
+  isReliableForStandard: boolean; // 표준시간 설정 가능 여부
 }
 
 /**
@@ -178,15 +183,24 @@ class ANOVACalculator implements IANOVACalculator {
     const nParts = parts.length;
     const nOperators = operators.length;
     
-    // 측정 횟수 계산 (각 part-operator 조합당)
-    let nRepeats = 0;
+    // 측정 횟수 계산 및 균형성 검증
+    let minRepeats = Infinity;
+    let maxRepeats = 0;
     for (const [partKey, operatorMap] of groupedData) {
       for (const [operatorKey, measurements] of operatorMap) {
         if (measurements.length > 0) {
-          nRepeats = Math.max(nRepeats, measurements.length);
+          minRepeats = Math.min(minRepeats, measurements.length);
+          maxRepeats = Math.max(maxRepeats, measurements.length);
         }
       }
     }
+    
+    // 비균형 데이터 경고
+    if (minRepeats !== maxRepeats) {
+      console.warn(`⚠️ 비균형 반복수 감지: ${minRepeats}~${maxRepeats}회. MS 추정 왜곡 위험`);
+    }
+    
+    const nRepeats = maxRepeats;
     
     // Part SS 계산 (올바른 공식)
     let partSS = 0;
@@ -278,11 +292,11 @@ class ANOVACalculator implements IANOVACalculator {
     // Equipment SS (Repeatability) 계산
     const equipmentSS = Math.max(0, totalSS - partSS - operatorSS - interactionSS);
     
-    // 자유도 계산
+    // 자유도 계산 (MSA 표준)
     const partDF = Math.max(1, nParts - 1);
     const operatorDF = Math.max(1, nOperators - 1);
-    const interactionDF = Math.max(1, partDF * operatorDF);
-    const equipmentDF = Math.max(1, totalCount - nParts * nOperators);
+    const interactionDF = Math.max(1, (nParts - 1) * (nOperators - 1));
+    const equipmentDF = Math.max(1, nParts * nOperators * (nRepeats - 1));
     
     // 평균제곱 계산
     const partMS = partSS / partDF;
@@ -314,13 +328,25 @@ class ANOVACalculator implements IANOVACalculator {
   }
   
   private calculatePValue(fStat: number, df1: number, df2: number): number {
-    // F 분포 기반 p-value 근사 계산
-    if (fStat < 1) return 0.5;
-    if (fStat > 10) return 0.001;
-    if (fStat > 5) return 0.01;
-    if (fStat > 3) return 0.05;
-    if (fStat > 2) return 0.1;
-    return 0.2;
+    // F 분포 기반 p-value 개선된 근사 계산
+    if (fStat <= 0) return 1.0;
+    if (fStat < 0.5) return 0.8;
+    
+    // df2가 클 때와 작을 때 구분하여 더 정확한 근사
+    if (df2 >= 30) {
+      if (fStat > 6.63) return 0.001;  // α=0.001
+      if (fStat > 4.61) return 0.01;   // α=0.01  
+      if (fStat > 3.84) return 0.05;   // α=0.05
+      if (fStat > 2.71) return 0.1;    // α=0.1
+    } else {
+      // 소표본에서는 더 보수적
+      if (fStat > 8.0) return 0.001;
+      if (fStat > 5.5) return 0.01;
+      if (fStat > 4.0) return 0.05;
+      if (fStat > 3.0) return 0.1;
+    }
+    
+    return Math.min(0.5, 0.2 + (2.0 - fStat) * 0.1);
   }
 }
 
@@ -362,6 +388,9 @@ class GageRRCalculator implements IGageRRCalculator {
     // Cpk 계산 (공정 능력 지수)
     const cpk = gageRR > 0 ? (partVariation * Math.sqrt(2)) / (3 * gageRR) : 0;
     
+    // 작업시간 분석용 추가 지표 계산
+    const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats);
+    
     return {
       gageRRPercent: Math.min(100, Math.max(0, gageRRPercent)),
       repeatability,
@@ -370,7 +399,39 @@ class GageRRCalculator implements IGageRRCalculator {
       totalVariation,
       ndc,
       ptRatio,
-      cpk: Math.max(0, cpk)
+      cpk: Math.max(0, cpk),
+      ...workTimeMetrics
+    };
+  }
+
+  /**
+   * 작업시간 분석용 지표 계산
+   */
+  private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number) {
+    const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
+    
+    // ICC(2,1) 계산 - 측정자간 신뢰성
+    const totalVar = varianceComponents.part + varianceComponents.operator + 
+                    varianceComponents.interaction + varianceComponents.equipment;
+    const icc = totalVar > 0 ? varianceComponents.part / totalVar : 0;
+    
+    // CV 계산 - 전체 변동계수 (%)
+    const meanSquare = (anova.partMS + anova.operatorMS + anova.interactionMS + anova.equipmentMS) / 4;
+    const grandMean = Math.sqrt(Math.max(0.01, meanSquare)); // 근사 평균
+    const cv = grandMean > 0 ? (Math.sqrt(totalVar) / grandMean) * 100 : 100;
+    
+    // Q99 계산 - 99% 달성가능 시간 (정규분포 가정)
+    const totalStd = Math.sqrt(totalVar);
+    const q99 = grandMean + 2.326 * totalStd; // 99% 분위수
+    
+    // 표준시간 설정 신뢰성 판단
+    const isReliableForStandard = (cv <= 5.0) && (icc >= 0.80);
+    
+    return {
+      icc: Math.max(0, Math.min(1, icc)),
+      cv: Math.max(0, cv),
+      q99: Math.max(0, q99),
+      isReliableForStandard
     };
   }
 
@@ -378,26 +439,26 @@ class GageRRCalculator implements IGageRRCalculator {
     // MSA-4 표준에 따른 분산 성분 계산
     
     // Repeatability (Equipment Variance)
-    const σ²_equipment = anova.equipmentMS;
+    const var_equipment = anova.equipmentMS;
     
     // Interaction Variance
-    const σ²_interaction = Math.max(0, (anova.interactionMS - anova.equipmentMS) / nRepeats);
+    const var_interaction = Math.max(0, (anova.interactionMS - anova.equipmentMS) / nRepeats);
     
     // Reproducibility (Operator Variance)
-    const σ²_operator = Math.max(0, (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats));
+    const var_operator = Math.max(0, (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats));
     
     // Part-to-Part Variance
-    const σ²_part = Math.max(0, (anova.partMS - anova.interactionMS) / (nOperators * nRepeats));
+    const var_part = Math.max(0, (anova.partMS - anova.interactionMS) / (nOperators * nRepeats));
     
     // Total Variance
-    const σ²_total = σ²_part + σ²_operator + σ²_interaction + σ²_equipment;
+    const var_total = var_part + var_operator + var_interaction + var_equipment;
     
     return {
-      part: σ²_part,
-      operator: σ²_operator,
-      interaction: σ²_interaction,
-      equipment: σ²_equipment,
-      total: σ²_total
+      part: var_part,
+      operator: var_operator,
+      interaction: var_interaction,
+      equipment: var_equipment,
+      total: var_total
     };
   }
 }
