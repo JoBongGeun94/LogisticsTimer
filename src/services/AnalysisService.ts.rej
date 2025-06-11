@@ -1,0 +1,43 @@
+--- src/services/AnalysisService.ts
++++ src/services/AnalysisService.ts
+@@ -1,6 +1,40 @@
+ import { LapTime, GageRRResult } from '../types';
+ 
+ export class AnalysisService {
++  // 로그 변환 기능 추가
++  static transformData(data: number[], transformType?: 'ln' | 'log10' | 'sqrt'): number[] {
++    if (!transformType || transformType === 'none') return data;
++    
++    switch(transformType) {
++      case 'ln': 
++        return data.map(d => d > 0 ? Math.log(d) : 0);
++      case 'log10': 
++        return data.map(d => d > 0 ? Math.log10(d) : 0);
++      case 'sqrt': 
++        return data.map(d => d >= 0 ? Math.sqrt(d) : 0);
++      default:
++        return data;
++    }
++  }
++
++  // ANOVA 분석 추가
++  private static performANOVA(dataByOperatorTarget: Map<string, Map<string, number[]>>) {
++    // ANOVA 구현
++    const grandMean = this.calculateGrandMean(dataByOperatorTarget);
++    const sst = this.calculateSST(dataByOperatorTarget, grandMean);
++    const sso = this.calculateSSO(dataByOperatorTarget, grandMean);
++    const ssp = this.calculateSSP(dataByOperatorTarget, grandMean);
++    const sse = sst - sso - ssp;
++    
++    return {
++      fOperators: sso / sse,
++      fParts: ssp / sse,
++      pValueOperators: 0.05, // 간단한 구현
++      pValueParts: 0.05
++    };
++  }
++
++  // 기존 calculateGageRR 메서드 개선
+   static calculateGageRR(lapTimes: LapTime[]): GageRRResult {
+     // 데이터 그룹화
+     const dataByOperatorTarget = new Map<string, Map<string, number[]>>();
