@@ -20,6 +20,9 @@ import { ValidationService } from './services/ValidationService';
 import { AnalysisService } from './services/AnalysisService';
 import { ExportService } from './services/ExportService';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useTimerLogic } from './hooks/useTimerLogic';
+import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
+import { useSessionManager } from './hooks/useSessionManager';
 
 // ==================== 테마 상수 (Open/Closed Principle) ====================
 const THEME_COLORS = {
@@ -77,81 +80,7 @@ const STATUS_COLORS = {
 // 작업 유형 상수 (요구사항 7번)
 const WORK_TYPES = ['물자검수팀', '저장관리팀', '포장관리팀'] as const;
 
-// === NEW 통계 계산 함수들 시작 ===
-type WindowBuffer<T> = { 
-  size: number; 
-  push: (v: T) => void; 
-  values: () => T[] 
-};
-
-function createWindowBuffer<T>(size: number): WindowBuffer<T> {
-  const buffer: T[] = [];
-  
-  return {
-    size,
-    push: (value: T) => {
-      buffer.push(value);
-      if (buffer.length > size) {
-        buffer.shift();
-      }
-    },
-    values: () => [...buffer]
-  };
-}
-
-function calcICC(values: { worker: string; observer: string; time: number }[]): number {
-  if (values.length < 6) return 0;
-  
-  // Two-way random ICC(2,1) 계산
-  const workers = Array.from(new Set(values.map(v => v.worker)));
-  const observers = Array.from(new Set(values.map(v => v.observer)));
-  
-  if (workers.length < 2 || observers.length < 2) return 0;
-  
-  // 간단한 ICC 근사 계산
-  const grandMean = values.reduce((sum, v) => sum + v.time, 0) / values.length;
-  
-  let betweenWorkerSS = 0;
-  let withinWorkerSS = 0;
-  
-  for (const worker of workers) {
-    const workerValues = values.filter(v => v.worker === worker);
-    if (workerValues.length > 0) {
-      const workerMean = workerValues.reduce((sum, v) => sum + v.time, 0) / workerValues.length;
-      betweenWorkerSS += workerValues.length * Math.pow(workerMean - grandMean, 2);
-      
-      for (const value of workerValues) {
-        withinWorkerSS += Math.pow(value.time - workerMean, 2);
-      }
-    }
-  }
-  
-  const betweenWorkerMS = betweenWorkerSS / Math.max(1, workers.length - 1);
-  const withinWorkerMS = withinWorkerSS / Math.max(1, values.length - workers.length);
-  
-  const icc = Math.max(0, (betweenWorkerMS - withinWorkerMS) / (betweenWorkerMS + withinWorkerMS));
-  return Math.min(1, icc);
-}
-
-function calcDeltaPair(ev: { tA: number; tB: number }): number {
-  return Math.abs(ev.tA - ev.tB);
-}
-
-function statusFromGRR(grr: number): 'success' | 'warning' | 'error' | 'info' {
-  return grr >= 10 ? 'warning' : 'success';
-}
-
-function statusFromICC(icc: number): 'success' | 'warning' | 'error' | 'info' {
-  if (icc >= 0.8) return 'success';
-  if (icc >= 0.7) return 'warning';
-  return 'error';
-}
-
-function statusFromDP(dp: number): 'success' | 'warning' | 'error' | 'info' {
-  const threshold = 10 * 0.01; // 10 × 분해능(0.01초)
-  return dp > threshold ? 'error' : 'success';
-}
-// === NEW 통계 계산 함수들 끝 ===
+// === 통계 계산 함수들이 useStatisticsAnalysis 훅으로 이동됨 ===
 
 // ==================== 유틸리티 훅 ====================
 const useBackButtonPrevention = () => {
@@ -629,29 +558,17 @@ const DetailedAnalysisModal = memo<{
 const EnhancedLogisticsTimer = () => {
   // 기본 다크모드로 설정 (요구사항 3번)
   const [isDark, setIsDark] = useState(true);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
   const [lapTimes, setLapTimes] = useState<LapTime[]>([]);
   
   // 수정된 useLocalStorage 사용 (무한 렌더링 방지)
   const [allLapTimes, setAllLapTimes] = useLocalStorage<LapTime[]>('logisticsTimer_allLapTimes', []);
-  const [sessions, setSessions] = useLocalStorage<SessionData[]>('logisticsTimer_sessions', []);
   
-  const [currentSession, setCurrentSession] = useState<SessionData | null>(null);
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
   const [showLanding, setShowLanding] = useState(true); // 소개 화면 첫번째 (요구사항 1번)
   const [selectedSessionHistory, setSelectedSessionHistory] = useState<SessionData | null>(null);
 
   // 🔧 상세분석 모달 상태 (최소 변경 - 새로 추가)
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
-
-  // === NEW 통계 상태 변수들 시작 ===
-  const [gaugeData] = useState({ grr: 15.2 }); // 분기별 수동 업데이트
-  const [windowBuffer] = useState(() => createWindowBuffer<{ worker: string; observer: string; time: number }>(30));
-  const [iccValue, setIccValue] = useState(0);
-  const [deltaPairValue, setDeltaPairValue] = useState(0);
-  const [showRetakeModal, setShowRetakeModal] = useState(false);
-  // === NEW 통계 상태 변수들 끝 ===
 
   // 토스트 상태
   const [toast, setToast] = useState<{
@@ -675,11 +592,6 @@ const EnhancedLogisticsTimer = () => {
   const [workType, setWorkType] = useState('');
   const [operators, setOperators] = useState<string[]>(['']);
   const [targets, setTargets] = useState<string[]>(['']);
-  const [currentOperator, setCurrentOperator] = useState('');
-  const [currentTarget, setCurrentTarget] = useState('');
-
-  const intervalRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(0);
 
   // 뒤로가기 방지 훅
   const { showBackWarning } = useBackButtonPrevention();
@@ -691,6 +603,51 @@ const EnhancedLogisticsTimer = () => {
     setToast({ message, type, isVisible: true });
   }, []);
 
+  // 세션 관리 훅
+  const {
+    sessions,
+    currentSession,
+    currentOperator,
+    currentTarget,
+    setCurrentOperator,
+    setCurrentTarget,
+    createSession: createSessionFromManager,
+    updateSessionLapTimes,
+    deleteSession,
+    switchToSession,
+    resetAllSessions
+  } = useSessionManager({ showToast });
+
+  // 랩타임 기록 콜백
+  const handleLapRecorded = useCallback((newLap: LapTime) => {
+    const updatedLaps = [...lapTimes, newLap];
+    setLapTimes(updatedLaps);
+    setAllLapTimes(prev => [...prev, newLap]);
+    updateSessionLapTimes(updatedLaps);
+    
+    // 통계 업데이트
+    statisticsAnalysis.updateStatistics(newLap, updatedLaps);
+  }, [lapTimes, setAllLapTimes, updateSessionLapTimes]);
+
+  // 타이머 로직 훅
+  const {
+    currentTime,
+    isRunning,
+    toggleTimer,
+    stopTimer,
+    resetTimer: resetTimerLogic,
+    recordLap
+  } = useTimerLogic({
+    currentSession,
+    currentOperator,
+    currentTarget,
+    onLapRecorded: handleLapRecorded,
+    showToast
+  });
+
+  // 통계 분석 훅
+  const statisticsAnalysis = useStatisticsAnalysis(lapTimes);
+
   // 다크모드 적용
   useEffect(() => {
     if (isDark) {
@@ -699,25 +656,6 @@ const EnhancedLogisticsTimer = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [isDark]);
-
-  // 타이머 로직
-  useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = window.setInterval(() => {
-        setCurrentTime(Date.now() - startTimeRef.current);
-      }, 10);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isRunning]);
 
   // 키보드 이벤트
   useEffect(() => {
@@ -749,113 +687,18 @@ const EnhancedLogisticsTimer = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
 
-  // 타이머 제어 함수들
-  const toggleTimer = useCallback(() => {
-    if (!currentSession) {
-      showToast('먼저 작업 세션을 생성해주세요.', 'warning');
-      return;
-    }
-
-    if (isRunning) {
-      setIsRunning(false);
-    } else {
-      startTimeRef.current = Date.now() - currentTime;
-      setIsRunning(true);
-    }
-  }, [isRunning, currentTime, currentSession, showToast]);
-
-  const stopTimer = useCallback(() => {
-    setIsRunning(false);
-    setCurrentTime(0);
-  }, []);
-
+  // 리셋 함수 (기존 로직과 통합)
   const resetTimer = useCallback(() => {
-    setIsRunning(false);
-    setCurrentTime(0);
+    resetTimerLogic();
     setLapTimes([]);
     setAllLapTimes(prev => prev.filter(lap => lap.sessionId !== currentSession?.id));
 
     if (currentSession) {
-      const updatedSession = { ...currentSession, lapTimes: [] };
-      setCurrentSession(updatedSession);
-      setSessions(prev => prev.map(s => s.id === currentSession.id ? updatedSession : s));
+      updateSessionLapTimes([]);
     }
 
     showToast('측정 기록이 모두 초기화되었습니다.', 'success');
-  }, [currentSession, showToast, setAllLapTimes, setSessions]);
-
-  const recordLap = useCallback(() => {
-    const validation = ValidationService.validateMeasurement(
-      currentSession,
-      currentOperator,
-      currentTarget,
-      currentTime
-    );
-
-    if (!validation.isValid) {
-      showToast(validation.message!, 'warning');
-      return;
-    }
-
-    const newLap: LapTime = {
-      id: Date.now(),
-      time: currentTime,
-      timestamp: new Date().toLocaleString('ko-KR'),
-      operator: currentOperator,
-      target: currentTarget,
-      sessionId: currentSession!.id
-    };
-
-    const updatedLaps = [...lapTimes, newLap];
-    setLapTimes(updatedLaps);
-    setAllLapTimes(prev => [...prev, newLap]);
-
-    // === NEW 통계 업데이트 시작 ===
-    // 윈도우 버퍼에 데이터 추가
-    windowBuffer.push({
-      worker: currentOperator,
-      observer: currentTarget,
-      time: currentTime / 1000 // ms를 초로 변환
-    });
-
-    // ICC 재계산 (5초마다 - 여기서는 매번 계산)
-    const newICC = calcICC(windowBuffer.values());
-    setIccValue(newICC);
-
-    // ΔPair 계산 (최근 2개 측정값으로)
-    if (updatedLaps.length >= 2) {
-      const lastTwo = updatedLaps.slice(-2);
-      const deltaPair = calcDeltaPair({
-        tA: lastTwo[0].time / 1000,
-        tB: lastTwo[1].time / 1000
-      });
-      setDeltaPairValue(deltaPair);
-
-      // 임계치 초과 시 재측정 모달
-      const threshold = 10 * 0.01;
-      if (deltaPair > threshold) {
-        setShowRetakeModal(true);
-      }
-    }
-    // === NEW 통계 업데이트 끝 ===
-
-    // 랩타임 기록 시 자동 중지 및 시간 초기화
-    setIsRunning(false);
-    setCurrentTime(0);
-
-    // 세션 업데이트 (세션 분리 문제 해결 - 요구사항 4번)
-    const updatedSession = {
-      ...currentSession!,
-      lapTimes: updatedLaps,
-      operators: currentSession!.operators,
-      targets: currentSession!.targets
-    };
-
-    setCurrentSession(updatedSession);
-    setSessions(prev => prev.map(s => s.id === currentSession!.id ? updatedSession : s));
-
-    showToast('측정이 완료되었습니다.', 'success');
-  }, [currentTime, currentSession, currentOperator, currentTarget, lapTimes, showToast, setAllLapTimes, setSessions]);
+  }, [resetTimerLogic, currentSession, showToast, setAllLapTimes, updateSessionLapTimes]);
 
   // 개별 측정 기록 삭제
   const deleteLapTime = useCallback((lapId: number) => {
@@ -874,85 +717,39 @@ const EnhancedLogisticsTimer = () => {
     showToast('측정 기록이 삭제되었습니다.', 'success');
   }, [lapTimes, allLapTimes, currentSession, showToast, setAllLapTimes, setSessions]);
 
-  // 세션 관리 함수들
+  // 세션 생성 함수 (훅과 연동)
   const createSession = useCallback(() => {
-    const validation = ValidationService.validateSessionCreation(
-      sessionName,
-      workType,
-      operators,
-      targets
-    );
-
-    if (!validation.isValid) {
-      showToast(validation.message!, 'warning');
-      return;
+    const success = createSessionFromManager(sessionName, workType, operators, targets);
+    
+    if (success) {
+      setShowNewSessionModal(false);
+      setLapTimes([]);
+      
+      // 폼 리셋
+      setSessionName('');
+      setWorkType('');
+      setOperators(['']);
+      setTargets(['']);
     }
-
-    // 분석 불가 경고 표시 (요구사항 6번)
-    if (!validation.canAnalyze && validation.analysisMessage) {
-      showToast(validation.analysisMessage, 'info');
-    }
-
-    const validOperators = operators.filter(op => op.trim());
-    const validTargets = targets.filter(tg => tg.trim());
-
-    const newSession: SessionData = {
-      id: Date.now().toString(),
-      name: sessionName,
-      workType,
-      operators: validOperators,
-      targets: validTargets,
-      lapTimes: [],
-      startTime: new Date().toLocaleString('ko-KR'),
-      isActive: true
-    };
-
-    setSessions(prev => [...prev, newSession]);
-    setCurrentSession(newSession);
-    setCurrentOperator(newSession.operators[0]);
-    setCurrentTarget(newSession.targets[0]);
-    setShowNewSessionModal(false);
-
-    // 새 세션 시작 시 자동 리셋
-    setLapTimes([]);
-    setCurrentTime(0);
-    setIsRunning(false);
-
-    // 폼 리셋
-    setSessionName('');
-    setWorkType('');
-    setOperators(['']);
-    setTargets(['']);
-
-    showToast('새 세션이 생성되었습니다.', 'success');
-  }, [sessionName, workType, operators, targets, showToast, setSessions]);
+  }, [createSessionFromManager, sessionName, workType, operators, targets]);
 
   // 세션 삭제 함수 (요구사항 8번)
-  const deleteSession = useCallback((sessionId: string) => {
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
+  const handleDeleteSession = useCallback((sessionId: string) => {
+    deleteSession(sessionId);
     setAllLapTimes(prev => prev.filter(lap => lap.sessionId !== sessionId));
 
     if (currentSession?.id === sessionId) {
-      setCurrentSession(null);
       setLapTimes([]);
-      setCurrentTime(0);
-      setIsRunning(false);
     }
-
-    showToast('세션이 삭제되었습니다.', 'success');
-  }, [currentSession, showToast, setSessions, setAllLapTimes]);
+  }, [deleteSession, currentSession, setAllLapTimes]);
 
   // 전체 데이터 초기화 함수 (요구사항 8번)
   const resetAllData = useCallback(() => {
-    setSessions([]);
-    setCurrentSession(null);
+    resetAllSessions();
     setLapTimes([]);
     setAllLapTimes([]);
-    setCurrentTime(0);
-    setIsRunning(false);
     setFilterOptions({ operator: '', target: '' });
-    showToast('모든 데이터가 초기화되었습니다.', 'success');
-  }, [showToast, setSessions, setAllLapTimes]);
+  }, [resetAllSessions, setAllLapTimes]);
 
   // 측정자/대상자 추가/삭제 함수
   const addOperator = useCallback(() => setOperators(prev => [...prev, '']), []);
@@ -1304,27 +1101,27 @@ const EnhancedLogisticsTimer = () => {
               <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
                 <MeasurementCard
                   title="Gage R&R"
-                  value={`${gaugeData.grr.toFixed(1)}%`}
+                  value={`${statisticsAnalysis.gaugeData.grr.toFixed(1)}%`}
                   icon={BarChart3}
-                  status={statusFromGRR(gaugeData.grr)}
+                  status={statisticsAnalysis.statisticsStatus.grr}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
                 <MeasurementCard
                   title="ICC (2,1)"
-                  value={iccValue.toFixed(2)}
+                  value={statisticsAnalysis.iccValue.toFixed(2)}
                   icon={Target}
-                  status={statusFromICC(iccValue)}
+                  status={statisticsAnalysis.statisticsStatus.icc}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
                 <MeasurementCard
                   title="ΔPair"
-                  value={`${deltaPairValue.toFixed(3)}s`}
+                  value={`${statisticsAnalysis.deltaPairValue.toFixed(3)}s`}
                   icon={Calculator}
-                  status={statusFromDP(deltaPairValue)}
+                  status={statisticsAnalysis.statisticsStatus.deltaPair}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
@@ -1546,7 +1343,7 @@ const EnhancedLogisticsTimer = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteSession(session.id);
+                            handleDeleteSession(session.id);
                           }}
                           className="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
                           title="세션 삭제"
@@ -1709,7 +1506,7 @@ const EnhancedLogisticsTimer = () => {
       )}
 
       {/* === NEW 재측정 모달 시작 === */}
-      {showRetakeModal && (
+      {statisticsAnalysis.showRetakeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`${theme.card} rounded-xl w-full max-w-sm shadow-2xl border ${theme.border}`}>
             <div className="p-6 text-center">
@@ -1724,18 +1521,21 @@ const EnhancedLogisticsTimer = () => {
               </p>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowRetakeModal(false)}
+                  onClick={() => statisticsAnalysis.setShowRetakeModal(false)}
                   className={`flex-1 border py-2 rounded-lg font-medium transition-colors ${theme.border} ${theme.textSecondary} ${theme.surfaceHover}`}
                 >
                   무시
                 </button>
                 <button
                   onClick={() => {
-                    setShowRetakeModal(false);
+                    statisticsAnalysis.setShowRetakeModal(false);
                     // 마지막 측정 제거
                     const newLaps = lapTimes.slice(0, -1);
                     setLapTimes(newLaps);
                     setAllLapTimes(prev => prev.filter(lap => lap.id !== lapTimes[lapTimes.length - 1]?.id));
+                    if (currentSession) {
+                      updateSessionLapTimes(newLaps);
+                    }
                   }}
                   className="flex-1 bg-red-500 text-white py-2 rounded-lg font-medium hover:bg-red-600 transition-colors"
                 >
@@ -1799,12 +1599,9 @@ const EnhancedLogisticsTimer = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    setCurrentSession(selectedSessionHistory);
+                    switchToSession(selectedSessionHistory);
                     setLapTimes(allLapTimes.filter(lap => lap.sessionId === selectedSessionHistory.id));
-                    setCurrentOperator(selectedSessionHistory.operators[0]);
-                    setCurrentTarget(selectedSessionHistory.targets[0]);
                     setSelectedSessionHistory(null);
-                    showToast('세션이 활성화되었습니다.', 'success');
                   }}
                   className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
                 >
