@@ -120,13 +120,17 @@ class CSVFileExporter implements IFileExporter {
  */
 class FilenameGenerator {
   static generateMeasurementFilename(sessionName: string): string {
-    const date = new Date().toISOString().slice(0, 10);
-    return `측정기록_${sessionName}_${date}.csv`;
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const time = now.toTimeString().slice(0, 8).replace(/:/g, '');
+    return `측정기록_${sessionName}_${date}_${time}.csv`;
   }
 
   static generateAnalysisFilename(sessionName: string): string {
-    const date = new Date().toISOString().slice(0, 10);
-    return `분석보고서_${sessionName}_${date}.csv`;
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const time = now.toTimeString().slice(0, 8).replace(/:/g, '');
+    return `분석보고서_${sessionName}_${date}_${time}.csv`;
   }
 }
 

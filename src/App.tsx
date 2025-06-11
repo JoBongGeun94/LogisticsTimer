@@ -14,8 +14,7 @@ import {
   SessionData,
   Theme,
   ToastProps,
-  FilterOptions,
-  TransformType
+  FilterOptions
 } from './types';
 import { ValidationService } from './services/ValidationService';
 import { AnalysisService } from './services/AnalysisService';
@@ -670,7 +669,6 @@ const EnhancedLogisticsTimer = () => {
     operator: '',
     target: ''
   });
-  const [transformType, setTransformType] = useState<TransformType>('none');
 
   // 폼 상태
   const [sessionName, setSessionName] = useState('');
@@ -991,7 +989,7 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [lapTimes, currentSession, showToast]);
 
-  // 🔧 수정된 상세분석 다운로드 (로그 변환 적용)
+  // 상세분석 다운로드
   const downloadDetailedAnalysis = useCallback(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     if (!validation.isValid) {
@@ -1005,8 +1003,7 @@ const EnhancedLogisticsTimer = () => {
     }
 
     try {
-      // 🔧 로그 변환 적용하여 분석
-      const analysis = AnalysisService.calculateGageRR(lapTimes, transformType);
+      const analysis = AnalysisService.calculateGageRR(lapTimes, 'none');
       const success = ExportService.exportDetailedAnalysis(currentSession, lapTimes, analysis);
       if (success) {
         showToast('상세 분석 보고서가 다운로드되었습니다.', 'success');
@@ -1017,7 +1014,7 @@ const EnhancedLogisticsTimer = () => {
       console.error('분석 오류:', error);
       showToast('분석 중 오류가 발생했습니다.', 'error');
     }
-  }, [lapTimes, currentSession, transformType, showToast]);
+  }, [lapTimes, currentSession, showToast]);
 
   // 필터링된 측정 기록 (요구사항 8번)
   const filteredLapTimes = useMemo(() => {
@@ -1027,18 +1024,18 @@ const EnhancedLogisticsTimer = () => {
     });
   }, [lapTimes, filterOptions]);
 
-  // 🔧 Gage R&R 분석 (로그 변환 적용)
+  // Gage R&R 분석
   const analysis = useMemo(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     if (!validation.isValid) return null;
 
     try {
-      return AnalysisService.calculateGageRR(lapTimes, transformType);
+      return AnalysisService.calculateGageRR(lapTimes, 'none');
     } catch (error) {
       console.error('분석 오류:', error);
       return null;
     }
-  }, [lapTimes, transformType]); // 🔧 transformType 의존성 추가
+  }, [lapTimes]);
 
   // 분석 가능 여부 확인 (요구사항 6번)
   const canAnalyze = useMemo(() => {
@@ -1258,28 +1255,7 @@ const EnhancedLogisticsTimer = () => {
               </div>
             </div>
 
-            {/* 🔧 로그 변환 선택 (기존 유지) */}
-            <div className="mb-4">
-              <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>
-                데이터 변환
-              </label>
-              <select
-                value={transformType}
-                onChange={(e) => setTransformType(e.target.value as TransformType)}
-                className={`w-full p-2 border rounded text-sm ${theme.input}`}
-              >
-                <option value="none">변환 없음</option>
-                <option value="ln">자연로그 (ln)</option>
-                <option value="log10">상용로그 (log₁₀)</option>
-                <option value="sqrt">제곱근 (√)</option>
-              </select>
-              {transformType !== 'none' && (
-                <p className={`text-xs ${theme.textMuted} mt-1`}>
-                  💡 {transformType === 'ln' ? '지수분포 데이터에 적합' :
-                    transformType === 'log10' ? '넓은 범위 데이터에 적합' : '포아송분포 데이터에 적합'}
-                </p>
-              )}
-            </div>
+            
 
             <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
               <MeasurementCard
