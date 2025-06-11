@@ -1,5 +1,5 @@
 modules = ["nodejs-20", "bash", "web"]
-run = "npm run dev"
+run = "npm run build && npm run preview"
 
 [nix]
 channel = "stable-24_05"
@@ -9,47 +9,15 @@ run = ["sh", "-c", "npm run preview"]
 build = ["sh", "-c", "npm run build"]
 
 [[ports]]
-localPort = 3000
-externalPort = 80
-
-[[ports]]
-localPort = 3001
-externalPort = 6000
-
-[[ports]]
-localPort = 3002
-externalPort = 6800
-
-[[ports]]
 localPort = 4173
-externalPort = 3000
+externalPort = 80
 
 [[ports]]
 localPort = 5000
 externalPort = 5000
 
-[[ports]]
-localPort = 5001
-externalPort = 3001
-
-[[ports]]
-localPort = 5002
-externalPort = 3002
-
-[[ports]]
-localPort = 5003
-externalPort = 3003
-
-[[ports]]
-localPort = 5004
-externalPort = 4200
-
-[[ports]]
-localPort = 5005
-externalPort = 5173
-
 [workflows]
-runButton = "Dev"
+runButton = "Main"
 
 [[workflows.workflow]]
 name = "Dev Server"
@@ -77,3 +45,12 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Main"
+author = 43356922
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build && npm run preview"
