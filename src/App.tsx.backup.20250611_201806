@@ -14,13 +14,11 @@ import {
   SessionData, 
   Theme, 
   ToastProps, 
-  FilterOptions,
-  TransformType
+  FilterOptions
 } from './types';
 import { ValidationService } from './services/ValidationService';
 import { AnalysisService } from './services/AnalysisService';
 import { ExportService } from './services/ExportService';
-import { useLocalStorage } from './hooks/useLocalStorage';
 
 // ==================== 테마 상수 (Open/Closed Principle) ====================
 const THEME_COLORS = {
@@ -435,8 +433,8 @@ const EnhancedLogisticsTimer = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [lapTimes, setLapTimes] = useState<LapTime[]>([]);
-  const [allLapTimes, setAllLapTimes] = useLocalStorage<LapTime[]>('logisticsTimer_allLapTimes', []);
-  const [sessions, setSessions] = useLocalStorage<SessionData[]>('logisticsTimer_sessions', []);
+  const [allLapTimes, setAllLapTimes] = useState<LapTime[]>([]);
+  const [sessions, setSessions] = useState<SessionData[]>([]);
   const [currentSession, setCurrentSession] = useState<SessionData | null>(null);
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
   const [showLanding, setShowLanding] = useState(true); // 소개 화면 첫번째 (요구사항 1번)
@@ -458,7 +456,6 @@ const EnhancedLogisticsTimer = () => {
     operator: '',
     target: ''
   });
-  const [transformType, setTransformType] = useState<TransformType>('none');
 
   // 폼 상태
   const [sessionName, setSessionName] = useState('');
@@ -993,29 +990,6 @@ const EnhancedLogisticsTimer = () => {
                 <BarChart3 className="w-5 h-5 text-green-500" />
                 <h2 className={`font-semibold ${theme.text}`}>실시간 분석</h2>
               </div>
-            </div>
-            
-            {/* 로그 변환 선택 추가 */}
-            <div className="mb-4">
-              <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>
-                데이터 변환
-              </label>
-              <select
-                value={transformType}
-                onChange={(e) => setTransformType(e.target.value as TransformType)}
-                className={`w-full p-2 border rounded text-sm ${theme.input}`}
-              >
-                <option value="none">변환 없음</option>
-                <option value="ln">자연로그 (ln)</option>
-                <option value="log10">상용로그 (log₁₀)</option>
-                <option value="sqrt">제곱근 (√)</option>
-              </select>
-              {transformType !== 'none' && (
-                <p className={`text-xs ${theme.textMuted} mt-1`}>
-                  💡 {transformType === 'ln' ? '지수분포 데이터에 적합' : 
-                     transformType === 'log10' ? '넓은 범위 데이터에 적합' : '포아송분포 데이터에 적합'}
-                </p>
-              )}
             </div>
 
             <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">

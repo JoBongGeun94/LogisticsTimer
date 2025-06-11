@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 
 export const useLocalStorage = <T>(key: string, initialValue: T) => {
   const [value, setValue] = useState<T>(() => {
@@ -6,7 +6,7 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
-      console.error(\`Error reading localStorage key "\${key}":\`, error);
+      console.error(`Error reading localStorage key "${key}":`, error);
       return initialValue;
     }
   });
@@ -19,7 +19,7 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
         return valueToStore;
       });
     } catch (error) {
-      console.error(\`Error setting localStorage key "\${key}":\`, error);
+      console.error(`Error setting localStorage key "${key}":`, error);
     }
   }, [key]);
 
@@ -28,7 +28,7 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
       window.localStorage.removeItem(key);
       setValue(initialValue);
     } catch (error) {
-      console.error(\`Error removing localStorage key "\${key}":\`, error);
+      console.error(`Error removing localStorage key "${key}":`, error);
     }
   }, [key, initialValue]);
 
