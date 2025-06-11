@@ -4,13 +4,15 @@ export class AnalysisService {
   
   // MSA 표준 ANOVA 분산 분석 (DIP 원칙 - 추상화에 의존)
   private static performANOVA(dataByOperatorTarget: Map<string, Map<string, number[]>>) {
-    const operators = Array.from(dataByOperatorTarget.keys());
-    const targets = Array.from(dataByOperatorTarget.values())[0] ? 
-      Array.from(dataByOperatorTarget.values()[0].keys()) : [];
-    
-    if (operators.length < 2 || targets.length < 2) {
-      return null;
-    }
+  const operators = Array.from(dataByOperatorTarget.keys());
+  
+  // 안전한 타겟 추출 (수정됨)
+  const firstOperatorData = operators.length > 0 ? dataByOperatorTarget.get(operators[0]) : null;
+  const targets = firstOperatorData ? Array.from(firstOperatorData.keys()) : [];
+  
+  if (operators.length < 2 || targets.length < 2) {
+    return null;
+  }
 
     const grandMean = this.calculateGrandMean(dataByOperatorTarget);
     const n = this.getReplicateCount(dataByOperatorTarget);
