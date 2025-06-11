@@ -159,7 +159,7 @@ const BackWarning = memo<{ isVisible: boolean }>(({ isVisible }) => {
   );
 });
 
-// 상태 배지 컴포넌트 (복원)
+// 상태 배지 컴포넌트
 const StatusBadge = memo<{
   status: 'excellent' | 'acceptable' | 'marginal' | 'unacceptable';
   size?: 'sm' | 'md' | 'lg';
@@ -346,7 +346,7 @@ const ModernLandingPage = memo<{
   );
 });
 
-// 측정 카드 컴포넌트 (복원)
+// 측정 카드 컴포넌트
 const MeasurementCard = memo<{
   title: string;
   value: string | number;
@@ -395,7 +395,7 @@ const MeasurementCard = memo<{
   );
 });
 
-// 분석 불가 메시지 컴포넌트 (복원)
+// 분석 불가 메시지 컴포넌트
 const AnalysisUnavailableMessage = memo<{
   theme: Theme;
   isDark: boolean;
@@ -424,6 +424,132 @@ const AnalysisUnavailableMessage = memo<{
   );
 });
 
+// 🔧 상세분석 모달 컴포넌트 (최소 변경 - 새로 추가)
+const DetailedAnalysisModal = memo<{
+  isVisible: boolean;
+  onClose: () => void;
+  analysis: any;
+  theme: Theme;
+  isDark: boolean;
+}>(({ isVisible, onClose, analysis, theme, isDark }) => {
+  if (!isVisible || !analysis) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className={`${theme.card} rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border ${theme.border}`}>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={`text-xl font-bold ${theme.text}`}>🔍 상세분석 결과</h3>
+            <button
+              onClick={onClose}
+              className={`${theme.textMuted} hover:${theme.textSecondary} transition-colors p-1`}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            {/* 종합 평가 */}
+            <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+              <h4 className={`font-semibold ${theme.text} mb-3`}>📊 종합 평가</h4>
+              <div className="flex items-center justify-center">
+                <StatusBadge status={analysis.status} size="lg" isDark={isDark} />
+              </div>
+            </div>
+
+            {/* 핵심 지표 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>Gage R&R</h5>
+                <div className={`text-2xl font-bold ${theme.text}`}>{analysis.gageRRPercent.toFixed(1)}%</div>
+              </div>
+              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>NDC</h5>
+                <div className={`text-2xl font-bold ${theme.text}`}>{analysis.ndc}</div>
+              </div>
+              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>Cpk</h5>
+                <div className={`text-2xl font-bold ${theme.text}`}>{analysis.cpk.toFixed(2)}</div>
+              </div>
+              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>P/T 비율</h5>
+                <div className={`text-2xl font-bold ${theme.text}`}>{analysis.ptRatio.toFixed(3)}</div>
+              </div>
+            </div>
+
+            {/* 분산 구성요소 */}
+            <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+              <h4 className={`font-semibold ${theme.text} mb-3`}>🔬 분산 구성요소</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className={theme.textSecondary}>반복성 (Repeatability)</span>
+                  <span className={theme.text}>{analysis.repeatability.toFixed(4)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className={theme.textSecondary}>재현성 (Reproducibility)</span>
+                  <span className={theme.text}>{analysis.reproducibility.toFixed(4)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className={theme.textSecondary}>대상자 변동 (Part Variation)</span>
+                  <span className={theme.text}>{analysis.partVariation.toFixed(4)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className={theme.textSecondary}>총 변동 (Total Variation)</span>
+                  <span className={theme.text}>{analysis.totalVariation.toFixed(4)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 해석 및 권장사항 */}
+            <div className={`${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'} p-4 rounded-lg border`}>
+              <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2">💡 해석 및 권장사항</h4>
+              <div className={`${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 text-sm`}>
+                {analysis.status === 'excellent' && (
+                  <>
+                    <div>✅ 우수한 측정 시스템입니다</div>
+                    <div>• 모든 측정에 신뢰할 수 있습니다</div>
+                    <div>• 현재 측정 절차를 유지하세요</div>
+                  </>
+                )}
+                {analysis.status === 'acceptable' && (
+                  <>
+                    <div>👍 양호한 측정 시스템입니다</div>
+                    <div>• 대부분의 용도로 사용 가능합니다</div>
+                    <div>• 정기적인 교정을 권장합니다</div>
+                  </>
+                )}
+                {analysis.status === 'marginal' && (
+                  <>
+                    <div>⚠️ 제한적 사용을 권장합니다</div>
+                    <div>• 측정 절차 개선이 필요합니다</div>
+                    <div>• 교육 및 장비 점검을 고려하세요</div>
+                  </>
+                )}
+                {analysis.status === 'unacceptable' && (
+                  <>
+                    <div>❌ 측정 시스템 개선이 필요합니다</div>
+                    <div>• 즉시 개선 조치가 필요합니다</div>
+                    <div>• 장비 교체나 절차 전면 개선을 고려하세요</div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-6">
+            <button
+              onClick={onClose}
+              className="bg-blue-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 // 메인 애플리케이션
 const EnhancedLogisticsTimer = () => {
   // 기본 다크모드로 설정 (요구사항 3번)
@@ -440,6 +566,9 @@ const EnhancedLogisticsTimer = () => {
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
   const [showLanding, setShowLanding] = useState(true); // 소개 화면 첫번째 (요구사항 1번)
   const [selectedSessionHistory, setSelectedSessionHistory] = useState<SessionData | null>(null);
+
+  // 🔧 상세분석 모달 상태 (최소 변경 - 새로 추가)
+  const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
 
   // 토스트 상태
   const [toast, setToast] = useState<{
@@ -512,7 +641,7 @@ const EnhancedLogisticsTimer = () => {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (showNewSessionModal || selectedSessionHistory || showLanding) return;
+      if (showNewSessionModal || selectedSessionHistory || showLanding || showDetailedAnalysis) return;
 
       switch (e.code) {
         case 'Space':
@@ -536,7 +665,7 @@ const EnhancedLogisticsTimer = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding]);
+  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
 
   // 타이머 제어 함수들
   const toggleTimer = useCallback(() => {
@@ -749,6 +878,7 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [lapTimes, currentSession, showToast]);
 
+  // 🔧 수정된 상세분석 다운로드 (로그 변환 적용)
   const downloadDetailedAnalysis = useCallback(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     if (!validation.isValid) {
@@ -762,7 +892,8 @@ const EnhancedLogisticsTimer = () => {
     }
 
     try {
-      const analysis = AnalysisService.calculateGageRR(lapTimes);
+      // 🔧 로그 변환 적용하여 분석
+      const analysis = AnalysisService.calculateGageRR(lapTimes, transformType);
       const success = ExportService.exportDetailedAnalysis(currentSession, lapTimes, analysis);
       if (success) {
         showToast('상세 분석 보고서가 다운로드되었습니다.', 'success');
@@ -773,7 +904,7 @@ const EnhancedLogisticsTimer = () => {
       console.error('분석 오류:', error);
       showToast('분석 중 오류가 발생했습니다.', 'error');
     }
-  }, [lapTimes, currentSession, showToast]);
+  }, [lapTimes, currentSession, transformType, showToast]);
 
   // 필터링된 측정 기록 (요구사항 8번)
   const filteredLapTimes = useMemo(() => {
@@ -783,18 +914,18 @@ const EnhancedLogisticsTimer = () => {
     });
   }, [lapTimes, filterOptions]);
 
-  // Gage R&R 분석 (조건부) - 수정된 AnalysisService 사용
+  // 🔧 Gage R&R 분석 (로그 변환 적용)
   const analysis = useMemo(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     if (!validation.isValid) return null;
 
     try {
-      return AnalysisService.calculateGageRR(lapTimes);
+      return AnalysisService.calculateGageRR(lapTimes, transformType);
     } catch (error) {
       console.error('분석 오류:', error);
       return null;
     }
-  }, [lapTimes]);
+  }, [lapTimes, transformType]); // 🔧 transformType 의존성 추가
 
   // 분석 가능 여부 확인 (요구사항 6번)
   const canAnalyze = useMemo(() => {
@@ -840,6 +971,15 @@ const EnhancedLogisticsTimer = () => {
 
       {/* 뒤로가기 경고 */}
       <BackWarning isVisible={showBackWarning} />
+
+      {/* 🔧 상세분석 모달 (최소 변경 - 새로 추가) */}
+      <DetailedAnalysisModal
+        isVisible={showDetailedAnalysis}
+        onClose={() => setShowDetailedAnalysis(false)}
+        analysis={analysis}
+        theme={theme}
+        isDark={isDark}
+      />
 
       {/* 헤더 */}
       <div className={`${theme.card} shadow-sm border-b ${theme.border} sticky top-0 z-40`}>
@@ -995,7 +1135,7 @@ const EnhancedLogisticsTimer = () => {
           </div>
         </div>
 
-        {/* 실시간 분석 섹션 (복원) */}
+        {/* 실시간 분석 섹션 */}
         {lapTimes.length > 0 && (
           <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
             <div className="flex items-center justify-between mb-3">
@@ -1005,7 +1145,7 @@ const EnhancedLogisticsTimer = () => {
               </div>
             </div>
 
-            {/* 로그 변환 선택 추가 (복원) */}
+            {/* 🔧 로그 변환 선택 (기존 유지) */}
             <div className="mb-4">
               <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>
                 데이터 변환
@@ -1064,7 +1204,7 @@ const EnhancedLogisticsTimer = () => {
               />
             </div>
 
-            {/* Gage R&R 분석 결과 또는 분석 불가 메시지 (복원) */}
+            {/* Gage R&R 분석 결과 또는 분석 불가 메시지 */}
             {!canAnalyze.canAnalyze ? (
               <AnalysisUnavailableMessage
                 theme={theme}
@@ -1103,7 +1243,7 @@ const EnhancedLogisticsTimer = () => {
               </div>
             ) : null}
 
-            {/* 간략한 상태 표시 (복원) */}
+            {/* 간략한 상태 표시 */}
             {analysis && lapTimes.length >= 6 && canAnalyze.canAnalyze && (
               <div className={`${theme.surface} p-3 rounded-lg border ${theme.border} text-center`}>
                 <StatusBadge status={analysis.status} size="md" isDark={isDark} />
@@ -1115,8 +1255,8 @@ const EnhancedLogisticsTimer = () => {
           </div>
         )}
 
-        {/* 액션 버튼들 (요구사항 9번) */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* 🔧 액션 버튼들 (상세분석 버튼 수정) */}
+        <div className="grid grid-cols-3 gap-3">
           <button
             onClick={downloadMeasurementData}
             disabled={lapTimes.length === 0}
@@ -1133,6 +1273,16 @@ const EnhancedLogisticsTimer = () => {
           >
             <PieChart className="w-4 h-4" />
             <span>분석</span>
+          </button>
+
+          {/* 🔧 상세분석 모달 버튼 (새로 추가) */}
+          <button
+            onClick={() => setShowDetailedAnalysis(true)}
+            disabled={!analysis || !canAnalyze.canAnalyze || lapTimes.length < 6}
+            className="bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
+          >
+            <Info className="w-4 h-4" />
+            <span>상세</span>
           </button>
         </div>
 
