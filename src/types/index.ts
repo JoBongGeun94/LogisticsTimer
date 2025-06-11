@@ -1,5 +1,4 @@
-// ==================== 기본 인터페이스 (Interface Segregation Principle) ====================
-
+// ==================== 기본 타입 정의 ====================
 export interface LapTime {
   id: number;
   time: number;
@@ -17,42 +16,7 @@ export interface SessionData {
   targets: string[];
   lapTimes: LapTime[];
   startTime: string;
-  endTime?: string;
   isActive: boolean;
-}
-
-export interface GageRRAnalysis {
-  repeatability: number;
-  reproducibility: number;
-  gageRR: number;
-  partVariation: number;
-  totalVariation: number;
-  gageRRPercent: number;
-  ndc: number;
-  status: 'excellent' | 'acceptable' | 'marginal' | 'unacceptable';
-  cpk: number;
-  anova: ANOVAResult;
-  interpretation: AnalysisInterpretation;
-}
-
-export interface ANOVAResult {
-  operator: number;
-  part: number;
-  interaction: number;
-  error: number;
-  total: number;
-  operatorPercent: number;
-  partPercent: number;
-  interactionPercent: number;
-  errorPercent: number;
-}
-
-export interface AnalysisInterpretation {
-  overall: string;
-  repeatability: string;
-  reproducibility: string;
-  recommendations: string[];
-  riskLevel: 'low' | 'medium' | 'high';
 }
 
 export interface Theme {
@@ -83,9 +47,48 @@ export interface FilterOptions {
   target: string;
 }
 
+export type TransformType = 'none' | 'ln' | 'log10' | 'sqrt';
+
+// ==================== 분석 관련 타입 ====================
+export interface GageRRResult {
+  gageRRPercent: number;
+  repeatability: number;
+  reproducibility: number;
+  partVariation: number;
+  totalVariation: number;
+  ndc: number;
+  ptRatio: number;
+  cpk: number;
+  status: 'excellent' | 'acceptable' | 'marginal' | 'unacceptable';
+  anova?: ANOVAResult;
+  varianceComponents?: VarianceComponents;
+}
+
+export interface ANOVAResult {
+  partSS: number;
+  operatorSS: number;
+  interactionSS: number;
+  equipmentSS: number;
+  totalSS: number;
+  partMS: number;
+  operatorMS: number;
+  interactionMS: number;
+  equipmentMS: number;
+  fStatistic: number;
+  pValue: number;
+}
+
+export interface VarianceComponents {
+  part: number;
+  operator: number;
+  interaction: number;
+  equipment: number;
+  total: number;
+}
+
 export interface ValidationResult {
   isValid: boolean;
   message?: string;
-  canAnalyze: boolean;
+  canAnalyze?: boolean;
   analysisMessage?: string;
 }
