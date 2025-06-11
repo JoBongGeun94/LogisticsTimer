@@ -78,6 +78,82 @@ const STATUS_COLORS = {
 // 작업 유형 상수 (요구사항 7번)
 const WORK_TYPES = ['물자검수팀', '저장관리팀', '포장관리팀'] as const;
 
+// === NEW 통계 계산 함수들 시작 ===
+type WindowBuffer<T> = { 
+  size: number; 
+  push: (v: T) => void; 
+  values: () => T[] 
+};
+
+function createWindowBuffer<T>(size: number): WindowBuffer<T> {
+  const buffer: T[] = [];
+  
+  return {
+    size,
+    push: (value: T) => {
+      buffer.push(value);
+      if (buffer.length > size) {
+        buffer.shift();
+      }
+    },
+    values: () => [...buffer]
+  };
+}
+
+function calcICC(values: { worker: string; observer: string; time: number }[]): number {
+  if (values.length < 6) return 0;
+  
+  // Two-way random ICC(2,1) 계산
+  const workers = Array.from(new Set(values.map(v => v.worker)));
+  const observers = Array.from(new Set(values.map(v => v.observer)));
+  
+  if (workers.length < 2 || observers.length < 2) return 0;
+  
+  // 간단한 ICC 근사 계산
+  const grandMean = values.reduce((sum, v) => sum + v.time, 0) / values.length;
+  
+  let betweenWorkerSS = 0;
+  let withinWorkerSS = 0;
+  
+  for (const worker of workers) {
+    const workerValues = values.filter(v => v.worker === worker);
+    if (workerValues.length > 0) {
+      const workerMean = workerValues.reduce((sum, v) => sum + v.time, 0) / workerValues.length;
+      betweenWorkerSS += workerValues.length * Math.pow(workerMean - grandMean, 2);
+      
+      for (const value of workerValues) {
+        withinWorkerSS += Math.pow(value.time - workerMean, 2);
+      }
+    }
+  }
+  
+  const betweenWorkerMS = betweenWorkerSS / Math.max(1, workers.length - 1);
+  const withinWorkerMS = withinWorkerSS / Math.max(1, values.length - workers.length);
+  
+  const icc = Math.max(0, (betweenWorkerMS - withinWorkerMS) / (betweenWorkerMS + withinWorkerMS));
+  return Math.min(1, icc);
+}
+
+function calcDeltaPair(ev: { tA: number; tB: number }): number {
+  return Math.abs(ev.tA - ev.tB);
+}
+
+function statusFromGRR(grr: number): 'success' | 'warning' | 'error' | 'info' {
+  return grr >= 10 ? 'warning' : 'success';
+}
+
+function statusFromICC(icc: number): 'success' | 'warning' | 'error' | 'info' {
+  if (icc >= 0.8) return 'success';
+  if (icc >= 0.7) return 'warning';
+  return 'error';
+}
+
+function statusFromDP(dp: number): 'success' | 'warning' | 'error' | 'info' {
+  const threshold = 10 * 0.01; // 10 × 분해능(0.01초)
+  return dp > threshold ? 'error' : 'success';
+}
+// === NEW 통계 계산 함수들 끝 ===
+
 // ==================== 유틸리티 훅 ====================
 const useBackButtonPrevention = () => {
   const [backPressCount, setBackPressCount] = useState(0);
@@ -570,6 +646,14 @@ const EnhancedLogisticsTimer = () => {
   // 🔧 상세분석 모달 상태 (최소 변경 - 새로 추가)
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
 
+  // === NEW 통계 상태 변수들 시작 ===
+  const [gaugeData] = useState({ grr: 15.2 }); // 분기별 수동 업데이트
+  const [windowBuffer] = useState(() => createWindowBuffer<{ worker: string; observer: string; time: number }>(30));
+  const [iccValue, setIccValue] = useState(0);
+  const [deltaPairValue, setDeltaPairValue] = useState(0);
+  const [showRetakeModal, setShowRetakeModal] = useState(false);
+  // === NEW 통계 상태 변수들 끝 ===
+
   // 토스트 상태
   const [toast, setToast] = useState<{
     message: string;
@@ -727,6 +811,35 @@ const EnhancedLogisticsTimer = () => {
     const updatedLaps = [...lapTimes, newLap];
     setLapTimes(updatedLaps);
     setAllLapTimes(prev => [...prev, newLap]);
+
+    // === NEW 통계 업데이트 시작 ===
+    // 윈도우 버퍼에 데이터 추가
+    windowBuffer.push({
+      worker: currentOperator,
+      observer: currentTarget,
+      time: currentTime / 1000 // ms를 초로 변환
+    });
+
+    // ICC 재계산 (5초마다 - 여기서는 매번 계산)
+    const newICC = calcICC(windowBuffer.values());
+    setIccValue(newICC);
+
+    // ΔPair 계산 (최근 2개 측정값으로)
+    if (updatedLaps.length >= 2) {
+      const lastTwo = updatedLaps.slice(-2);
+      const deltaPair = calcDeltaPair({
+        tA: lastTwo[0].time / 1000,
+        tB: lastTwo[1].time / 1000
+      });
+      setDeltaPairValue(deltaPair);
+
+      // 임계치 초과 시 재측정 모달
+      const threshold = 10 * 0.01;
+      if (deltaPair > threshold) {
+        setShowRetakeModal(true);
+      }
+    }
+    // === NEW 통계 업데이트 끝 ===
 
     // 랩타임 기록 시 자동 중지 및 시간 초기화
     setIsRunning(false);
@@ -1204,44 +1317,45 @@ const EnhancedLogisticsTimer = () => {
               />
             </div>
 
-            {/* Gage R&R 분석 결과 또는 분석 불가 메시지 */}
+            {/* === NEW 3-카드 영역 시작 === */}
             {!canAnalyze.canAnalyze ? (
               <AnalysisUnavailableMessage
                 theme={theme}
                 isDark={isDark}
                 message={canAnalyze.message}
               />
-            ) : analysis && lapTimes.length >= 6 ? (
+            ) : lapTimes.length >= 6 ? (
               <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
                 <MeasurementCard
                   title="Gage R&R"
-                  value={`${analysis.gageRRPercent.toFixed(1)}%`}
+                  value={`${gaugeData.grr.toFixed(1)}%`}
                   icon={BarChart3}
-                  status={analysis.status === 'excellent' || analysis.status === 'acceptable' ? 'success' : 'error'}
+                  status={statusFromGRR(gaugeData.grr)}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
                 <MeasurementCard
-                  title="Cpk"
-                  value={analysis.cpk.toFixed(2)}
+                  title="ICC (2,1)"
+                  value={iccValue.toFixed(2)}
                   icon={Target}
-                  status={analysis.cpk >= 1.33 ? 'success' : analysis.cpk >= 1.0 ? 'warning' : 'error'}
+                  status={statusFromICC(iccValue)}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
                 <MeasurementCard
-                  title="NDC"
-                  value={analysis.ndc}
+                  title="ΔPair"
+                  value={`${deltaPairValue.toFixed(3)}s`}
                   icon={Calculator}
-                  status={analysis.ndc >= 5 ? 'success' : analysis.ndc >= 3 ? 'warning' : 'error'}
+                  status={statusFromDP(deltaPairValue)}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
               </div>
             ) : null}
+            {/* === NEW 3-카드 영역 끝 === */}
 
             {/* 간략한 상태 표시 */}
             {analysis && lapTimes.length >= 6 && canAnalyze.canAnalyze && (
@@ -1617,6 +1731,46 @@ const EnhancedLogisticsTimer = () => {
           </div>
         </div>
       )}
+
+      {/* === NEW 재측정 모달 시작 === */}
+      {showRetakeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`${theme.card} rounded-xl w-full max-w-sm shadow-2xl border ${theme.border}`}>
+            <div className="p-6 text-center">
+              <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-red-900/30' : 'bg-red-50'}`}>
+                <AlertTriangle className={`w-8 h-8 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
+              </div>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-2`}>
+                측정 차이 과다
+              </h3>
+              <p className={`text-sm ${theme.textMuted} mb-4`}>
+                연속 측정값의 차이가 임계치를 초과했습니다. 재측정을 권장합니다.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowRetakeModal(false)}
+                  className={`flex-1 border py-2 rounded-lg font-medium transition-colors ${theme.border} ${theme.textSecondary} ${theme.surfaceHover}`}
+                >
+                  무시
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRetakeModal(false);
+                    // 마지막 측정 제거
+                    const newLaps = lapTimes.slice(0, -1);
+                    setLapTimes(newLaps);
+                    setAllLapTimes(prev => prev.filter(lap => lap.id !== lapTimes[lapTimes.length - 1]?.id));
+                  }}
+                  className="flex-1 bg-red-500 text-white py-2 rounded-lg font-medium hover:bg-red-600 transition-colors"
+                >
+                  재측정
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* === NEW 재측정 모달 끝 === */}
 
       {/* 세션 히스토리 상세 모달 */}
       {selectedSessionHistory && (
