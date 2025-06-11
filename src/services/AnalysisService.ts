@@ -1,4 +1,3 @@
-
 import { LapTime, GageRRResult, ANOVAResult, VarianceComponents, TransformType } from '../types';
 
 /**
@@ -88,7 +87,7 @@ class DataTransformer implements IDataTransformer {
 class DataGrouper {
   static groupSafely(lapTimes: LapTime[]): Map<string, Map<string, number[]>> {
     const grouped = new Map<string, Map<string, number[]>>();
-    
+
     for (const lap of lapTimes) {
       if (!lap || !lap.target || !lap.operator || typeof lap.time !== 'number') {
         console.warn('잘못된 데이터 건너뜀:', lap);
@@ -97,19 +96,19 @@ class DataGrouper {
 
       const partKey = lap.target;
       const operatorKey = lap.operator;
-      
+
       if (!grouped.has(partKey)) {
         grouped.set(partKey, new Map<string, number[]>());
       }
-      
+
       const partGroup = grouped.get(partKey)!;
       if (!partGroup.has(operatorKey)) {
         partGroup.set(operatorKey, []);
       }
-      
+
       partGroup.get(operatorKey)!.push(lap.time);
     }
-    
+
     return grouped;
   }
 }
@@ -122,7 +121,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
     let totalSum = 0;
     let totalCount = 0;
     const means: number[] = [];
-    
+
     for (const [partKey, operators] of groupedData) {
       for (const [operatorKey, measurements] of operators) {
         if (measurements.length > 0) {
@@ -134,9 +133,9 @@ class StatisticsCalculator implements IStatisticsCalculator {
         }
       }
     }
-    
+
     const grandMean = totalCount > 0 ? totalSum / totalCount : 0;
-    
+
     let sumSquaredDeviations = 0;
     for (const [partKey, operators] of groupedData) {
       for (const [operatorKey, measurements] of operators) {
@@ -147,10 +146,10 @@ class StatisticsCalculator implements IStatisticsCalculator {
         }
       }
     }
-    
+
     const variance = totalCount > 1 ? sumSquaredDeviations / (totalCount - 1) : 0;
     const standardDeviation = Math.sqrt(variance);
-    
+
     return {
       grandMean,
       variance,
@@ -168,7 +167,7 @@ class ANOVACalculator implements IANOVACalculator {
   calculate(groupedData: Map<string, Map<string, number[]>>, statistics: BasicStatistics): ANOVAResult {
     const parts = Array.from(groupedData.keys());
     const operators: string[] = [];
-    
+
     // 모든 측정자 수집
     for (const [partKey, operatorMap] of groupedData) {
       for (const operatorKey of operatorMap.keys()) {
@@ -177,12 +176,12 @@ class ANOVACalculator implements IANOVACalculator {
         }
       }
     }
-    
+
     const grandMean = statistics.grandMean;
     const totalCount = statistics.totalCount;
     const nParts = parts.length;
     const nOperators = operators.length;
-    
+
     // 측정 횟수 계산 및 균형성 검증
     let minRepeats = Infinity;
     let maxRepeats = 0;
@@ -194,39 +193,39 @@ class ANOVACalculator implements IANOVACalculator {
         }
       }
     }
-    
+
     // 비균형 데이터 경고
     if (minRepeats !== maxRepeats) {
       console.warn(`⚠️ 비균형 반복수 감지: ${minRepeats}~${maxRepeats}회. MS 추정 왜곡 위험`);
     }
-    
+
     const nRepeats = maxRepeats;
-    
+
     // Part SS 계산 (올바른 공식)
     let partSS = 0;
     for (const part of parts) {
       let partSum = 0;
       let partCount = 0;
-      
+
       if (groupedData.has(part)) {
         for (const [operatorKey, measurements] of groupedData.get(part)!) {
           partSum += measurements.reduce((sum, val) => sum + (isNaN(val) ? 0 : val), 0);
           partCount += measurements.length;
         }
       }
-      
+
       if (partCount > 0) {
         const partMean = partSum / partCount;
         partSS += partCount * Math.pow(partMean - grandMean, 2);
       }
     }
-    
+
     // Operator SS 계산 (올바른 공식)
     let operatorSS = 0;
     for (const operator of operators) {
       let operatorSum = 0;
       let operatorCount = 0;
-      
+
       for (const [partKey, operatorMap] of groupedData) {
         if (operatorMap.has(operator)) {
           const measurements = operatorMap.get(operator)!;
@@ -234,13 +233,13 @@ class ANOVACalculator implements IANOVACalculator {
           operatorCount += measurements.length;
         }
       }
-      
+
       if (operatorCount > 0) {
         const operatorMean = operatorSum / operatorCount;
         operatorSS += operatorCount * Math.pow(operatorMean - grandMean, 2);
       }
     }
-    
+
     // Interaction SS 계산 (올바른 공식)
     let interactionSS = 0;
     for (const part of parts) {
@@ -249,7 +248,7 @@ class ANOVACalculator implements IANOVACalculator {
           const measurements = groupedData.get(part)!.get(operator)!;
           if (measurements.length > 0) {
             const cellMean = measurements.reduce((sum, val) => sum + val, 0) / measurements.length;
-            
+
             // 해당 part의 평균
             let partSum = 0;
             let partCount = 0;
@@ -258,7 +257,7 @@ class ANOVACalculator implements IANOVACalculator {
               partCount += opMeasurements.length;
             }
             const partMean = partCount > 0 ? partSum / partCount : grandMean;
-            
+
             // 해당 operator의 평균
             let operatorSum = 0;
             let operatorCount = 0;
@@ -270,13 +269,13 @@ class ANOVACalculator implements IANOVACalculator {
               }
             }
             const operatorMean = operatorCount > 0 ? operatorSum / operatorCount : grandMean;
-            
+
             interactionSS += measurements.length * Math.pow(cellMean - partMean - operatorMean + grandMean, 2);
           }
         }
       }
     }
-    
+
     // Total SS 계산
     let totalSS = 0;
     for (const [partKey, operatorMap] of groupedData) {
@@ -288,30 +287,30 @@ class ANOVACalculator implements IANOVACalculator {
         }
       }
     }
-    
+
     // Equipment SS (Repeatability) 계산
     const equipmentSS = Math.max(0, totalSS - partSS - operatorSS - interactionSS);
-    
+
     // 자유도 계산 (MSA 표준)
     const partDF = Math.max(1, nParts - 1);
     const operatorDF = Math.max(1, nOperators - 1);
     const interactionDF = Math.max(1, (nParts - 1) * (nOperators - 1));
     const equipmentDF = Math.max(1, nParts * nOperators * (nRepeats - 1));
-    
+
     // 평균제곱 계산
     const partMS = partSS / partDF;
     const operatorMS = operatorSS / operatorDF;
     const interactionMS = interactionSS / interactionDF;
     const equipmentMS = equipmentSS / equipmentDF;
-    
+
     // F 통계량 계산 (올바른 공식)
     const fStatistic = equipmentMS > 0 ? partMS / equipmentMS : 0;
     const fOperator = equipmentMS > 0 ? operatorMS / equipmentMS : 0;
     const fInteraction = equipmentMS > 0 ? interactionMS / equipmentMS : 0;
-    
+
     // p-value 계산 (F 분포 기반)
     const pValue = this.calculatePValue(fStatistic, partDF, equipmentDF);
-    
+
     return {
       partSS,
       operatorSS,
@@ -326,12 +325,12 @@ class ANOVACalculator implements IANOVACalculator {
       pValue
     };
   }
-  
+
   private calculatePValue(fStat: number, df1: number, df2: number): number {
     // F 분포 기반 p-value 개선된 근사 계산
     if (fStat <= 0) return 1.0;
     if (fStat < 0.5) return 0.8;
-    
+
     // df2가 클 때와 작을 때 구분하여 더 정확한 근사
     if (df2 >= 30) {
       if (fStat > 6.63) return 0.001;  // α=0.001
@@ -345,7 +344,7 @@ class ANOVACalculator implements IANOVACalculator {
       if (fStat > 4.0) return 0.05;
       if (fStat > 3.0) return 0.1;
     }
-    
+
     return Math.min(0.5, 0.2 + (2.0 - fStat) * 0.1);
   }
 }
@@ -356,41 +355,41 @@ class ANOVACalculator implements IANOVACalculator {
 class GageRRCalculator implements IGageRRCalculator {
   calculate(anova: ANOVAResult, nParts: number = 5, nOperators: number = 2, nRepeats: number = 5): GageRRMetrics {
     const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
-    
+
     // 표준편차 계산 (올바른 공식)
     const repeatability = Math.sqrt(Math.max(0, varianceComponents.equipment));
     const reproducibility = Math.sqrt(Math.max(0, varianceComponents.operator));
     const partVariation = Math.sqrt(Math.max(0, varianceComponents.part));
     const interactionVariation = Math.sqrt(Math.max(0, varianceComponents.interaction));
-    
+
     // Total Gage R&R 계산
     const gageRR = Math.sqrt(
       Math.pow(repeatability, 2) + 
       Math.pow(reproducibility, 2) + 
       Math.pow(interactionVariation, 2)
     );
-    
+
     // Total Variation 계산
     const totalVariation = Math.sqrt(
       Math.pow(gageRR, 2) + 
       Math.pow(partVariation, 2)
     );
-    
+
     // Gage R&R 백분율 계산
     const gageRRPercent = totalVariation > 0 ? (gageRR / totalVariation) * 100 : 0;
-    
+
     // P/T 비율 계산 (올바른 공식)
     const ptRatio = partVariation > 0 ? gageRR / partVariation : Infinity;
-    
+
     // NDC 계산 (올바른 공식)
     const ndc = gageRR > 0 ? Math.max(0, Math.floor(1.41 * (partVariation / gageRR))) : 0;
-    
+
     // Cpk 계산 (공정 능력 지수)
     const cpk = gageRR > 0 ? (partVariation * Math.sqrt(2)) / (3 * gageRR) : 0;
-    
+
     // 작업시간 분석용 추가 지표 계산
     const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats);
-    
+
     return {
       gageRRPercent: Math.min(100, Math.max(0, gageRRPercent)),
       repeatability,
@@ -409,24 +408,24 @@ class GageRRCalculator implements IGageRRCalculator {
    */
   private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number) {
     const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
-    
+
     // ICC(2,1) 계산 - 측정자간 신뢰성
     const totalVar = varianceComponents.part + varianceComponents.operator + 
                     varianceComponents.interaction + varianceComponents.equipment;
     const icc = totalVar > 0 ? varianceComponents.part / totalVar : 0;
-    
+
     // CV 계산 - 전체 변동계수 (%)
     const meanSquare = (anova.partMS + anova.operatorMS + anova.interactionMS + anova.equipmentMS) / 4;
     const grandMean = Math.sqrt(Math.max(0.01, meanSquare)); // 근사 평균
     const cv = grandMean > 0 ? (Math.sqrt(totalVar) / grandMean) * 100 : 100;
-    
+
     // Q99 계산 - 99% 달성가능 시간 (정규분포 가정)
     const totalStd = Math.sqrt(totalVar);
     const q99 = grandMean + 2.326 * totalStd; // 99% 분위수
-    
+
     // 표준시간 설정 신뢰성 판단
     const isReliableForStandard = (cv <= 5.0) && (icc >= 0.80);
-    
+
     return {
       icc: Math.max(0, Math.min(1, icc)),
       cv: Math.max(0, cv),
@@ -437,27 +436,27 @@ class GageRRCalculator implements IGageRRCalculator {
 
   private calculateVarianceComponents(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number): VarianceComponents {
     // MSA-4 표준에 따른 분산 성분 계산
-    
+
     // Repeatability (Equipment Variance)
-    const var_equipment = anova.equipmentMS;
-    
+    const sigma2_equipment = anova.equipmentMS;
+
     // Interaction Variance
     const var_interaction = Math.max(0, (anova.interactionMS - anova.equipmentMS) / nRepeats);
-    
+
     // Reproducibility (Operator Variance)
     const var_operator = Math.max(0, (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats));
-    
+
     // Part-to-Part Variance
     const var_part = Math.max(0, (anova.partMS - anova.interactionMS) / (nOperators * nRepeats));
-    
+
     // Total Variance
-    const var_total = var_part + var_operator + var_interaction + var_equipment;
-    
+    const var_total = var_part + var_operator + var_interaction + sigma2_equipment;
+
     return {
       part: var_part,
       operator: var_operator,
       interaction: var_interaction,
-      equipment: var_equipment,
+      equipment: sigma2_equipment,
       total: var_total
     };
   }
@@ -524,21 +523,21 @@ export class AnalysisService {
 
       // 데이터 변환
       const transformedTimes = this.dataTransformer.transform(lapTimes, transformType);
-      
+
       // 데이터 그룹화
       const groupedData = DataGrouper.groupSafely(transformedTimes);
-      
+
       // 기본 통계 계산
       const statistics = this.statisticsCalculator.calculateBasicStatistics(groupedData);
-      
+
       // ANOVA 계산
       const anova = this.anovaCalculator.calculate(groupedData, statistics);
-      
+
       // 데이터 구조 분석
       const parts = Array.from(groupedData.keys());
       const operators: string[] = [];
       let maxRepeats = 0;
-      
+
       for (const [partKey, operatorMap] of groupedData) {
         for (const [operatorKey, measurements] of operatorMap) {
           if (!operators.includes(operatorKey)) {
@@ -547,15 +546,15 @@ export class AnalysisService {
           maxRepeats = Math.max(maxRepeats, measurements.length);
         }
       }
-      
+
       // Gage R&R 지표 계산
       const metrics = this.gageRRCalculator.calculate(anova, parts.length, operators.length, maxRepeats);
-      
+
       // 분산 구성요소 계산
       const varianceComponents = this.calculateVarianceComponents(anova);
-      
+
       this.recursionCounter = 0;
-      
+
       return {
         ...metrics,
         status: StatusEvaluator.determineStatus(metrics.gageRRPercent, metrics.ndc),
@@ -570,7 +569,7 @@ export class AnalysisService {
 
   private static calculateVarianceComponents(anova: ANOVAResult): VarianceComponents {
     const total = Math.max(0.0001, anova.partMS + anova.operatorMS + anova.interactionMS + anova.equipmentMS);
-    
+
     return {
       part: anova.partMS / total,
       operator: anova.operatorMS / total,
