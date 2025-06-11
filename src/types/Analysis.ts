@@ -36,3 +36,24 @@ export interface GageRRAnalysis extends StatisticalMetrics {
   anova: ANOVAResult;
   interpretation: AnalysisInterpretation;
 }
+
+// ANOVA 분석 결과 타입
+export interface ANOVAResults {
+  fOperators: number;
+  fParts: number;
+  fInteraction: number;
+  pValueOperators: number;
+  pValueParts: number;
+}
+
+// 분산 성분 타입
+export interface VarianceComponents {
+  repeatability: number;
+  reproducibility: number;
+  partToPart: number;
+  interaction: number;
+  total: number;
+}
+
+// 로그 변환 타입
+export type TransformType = 'none' | 'ln' | 'log10' | 'sqrt';
