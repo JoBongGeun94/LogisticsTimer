@@ -383,7 +383,7 @@ class GageRRCalculator implements IGageRRCalculator {
     // 기존 P/T, NDC, Cpk 제거 - 현재 분석에서 사용하지 않음
 
     // 작업시간 분석용 추가 지표 계산 (작업 유형 고려)
-    const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats, '기타');
+    const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats, '기타', groupedData);
 
     return {
       gageRRPercent: Math.min(100, Math.max(0, gageRRPercent)),
@@ -398,7 +398,7 @@ class GageRRCalculator implements IGageRRCalculator {
   /**
    * 작업시간 분석용 지표 계산 (물류작업 특성 반영)
    */
-  private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number, workType: string = '기타') {
+  private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number, workType: string = '기타', groupedData: Map<string, Map<string, number[]>>) {
     const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
 
     // ICC(2,1) 계산 - 올바른 공식 적용

@@ -126,12 +126,16 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const [deltaPairValue, setDeltaPairValue] = useState(0);
   const [showRetakeModal, setShowRetakeModal] = useState(false);
 
-  // 성능 최적화: 메모이제이션 개선
+  // 성능 최적화: 메모이제이션 개선 및 해시 기반 캐싱
   const analysisCache = useRef<{
-    lapTimesLength: number;
-    lastLapTime: number;
-    result: any;
-  }>({ lapTimesLength: 0, lastLapTime: 0, result: null });
+    dataHash: string;
+    result: GaugeData;
+  }>({ dataHash: '', result: {
+    grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
+    totalVariation: 0, status: 'info', cv: 0, q99: 0, 
+    isReliableForStandard: false, 
+    varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
+  }});
 
   // 게이지 데이터 계산 - AnalysisService 활용으로 중복 제거
   const gaugeData = useMemo((): GaugeData => {
@@ -151,13 +155,10 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
     }
 
-    // 성능 최적화: 캐시 활용
-    const currentLength = lapTimes.length;
-    const lastTime = lapTimes[lapTimes.length - 1]?.time || 0;
-
-    if (analysisCache.current.lapTimesLength === currentLength && 
-        analysisCache.current.lastLapTime === lastTime &&
-        analysisCache.current.result) {
+    // 성능 최적화: 해시 기반 캐시 활용
+    const dataHash = lapTimes.map(lap => `${lap.operator}-${lap.target}-${lap.time}`).join('|');
+    
+    if (analysisCache.current.dataHash === dataHash) {
       return analysisCache.current.result;
     }
 
@@ -180,8 +181,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
       // 캐시 업데이트
       analysisCache.current = {
-        lapTimesLength: currentLength,
-        lastLapTime: lastTime,
+        dataHash: dataHash,
         result: result
       };
 

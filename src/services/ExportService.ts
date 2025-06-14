@@ -69,6 +69,12 @@ class DataFormatter implements IDataFormatter {
       return [['오류', '분석 결과를 불러올 수 없습니다']];
     }
 
+    // 세션 및 lapTimes 검증 추가
+    if (!session || !lapTimes || lapTimes.length === 0) {
+      console.warn('세션 또는 측정 데이터가 유효하지 않습니다');
+      return [['오류', '세션 또는 측정 데이터를 불러올 수 없습니다']];
+    }
+
     // 필수 속성 존재 여부 확인
     const safeAnalysis = {
       status: analysis.status || 'unacceptable',
