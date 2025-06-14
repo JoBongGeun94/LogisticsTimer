@@ -1,22 +1,29 @@
-
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  server: {
-    port: 5000,
-    host: '0.0.0.0'
-  },
-  preview: {
-    port: 4173,
-    host: '0.0.0.0',
-    allowedHosts: 'all',
-    open: false
-  },
+  base: './',
   build: {
     outDir: 'dist',
+    assetsDir: 'assets',
     sourcemap: false,
-    minify: 'terser'
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
+  },
+  server: {
+    host: '0.0.0.0',
+    port: 5000,
+    hmr: {
+      port: 5000
+    }
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 5000
   }
 })
