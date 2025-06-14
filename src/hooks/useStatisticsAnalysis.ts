@@ -1,6 +1,7 @@
+
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { LapTime } from '../types';
-import { LOGISTICS_WORK_THRESHOLDS, NORMAL_DISTRIBUTION } from '../constants/analysis';
+import { LOGISTICS_WORK_THRESHOLDS } from '../constants/analysis';
 import { AnalysisService } from '../services/AnalysisService';
 
 // 통계 계산 인터페이스 (Interface Segregation Principle)
