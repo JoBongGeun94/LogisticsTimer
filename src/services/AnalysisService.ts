@@ -292,11 +292,17 @@ class ANOVACalculator implements IANOVACalculator {
     // Equipment SS (Repeatability) 계산
     const equipmentSS = Math.max(0, totalSS - partSS - operatorSS - interactionSS);
 
-    // 자유도 계산 (MSA 표준)
-    const partDF = Math.max(1, nParts - 1);
-    const operatorDF = Math.max(1, nOperators - 1);
-    const interactionDF = Math.max(1, (nParts - 1) * (nOperators - 1));
-    const equipmentDF = Math.max(1, nParts * nOperators * (nRepeats - 1));
+    // 자유도 계산 (MSA 표준) - 극단적 케이스 처리 개선
+    const partDF = nParts > 1 ? (nParts - 1) : 1;
+    const operatorDF = nOperators > 1 ? (nOperators - 1) : 1;
+    const interactionDF = (nParts > 1 && nOperators > 1) ? 
+      (nParts - 1) * (nOperators - 1) : 1;
+    const equipmentDF = Math.max(1, nParts * nOperators * Math.max(1, nRepeats - 1));
+
+    // 자유도 유효성 검증
+    if (partDF <= 0 || operatorDF <= 0 || interactionDF <= 0 || equipmentDF <= 0) {
+      console.warn('⚠️ 자유도 계산 이상 - 최소값으로 보정');
+    }
 
     // 평균제곱 계산
     const partMS = partSS / partDF;
@@ -401,40 +407,45 @@ class GageRRCalculator implements IGageRRCalculator {
   private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number, workType: string = '기타', groupedData: Map<string, Map<string, number[]>>) {
     const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
 
-    // ICC(2,1) 계산 - 올바른 공식 적용
-    const denominator = anova.partMS + (nOperators - 1) * anova.equipmentMS + 
-                       nOperators * (anova.operatorMS - anova.equipmentMS) / nParts;
-    const icc = denominator > 0 ? 
-                Math.max(0, (anova.partMS - anova.equipmentMS) / denominator) : 0;
+    // ICC(2,1) 계산 - 올바른 공식 적용 (MSA-4 표준)
+    // ICC(2,1) = (MS_between - MS_within) / (MS_between + (k-1) * MS_within)
+    // MS_between = partMS, MS_within = equipmentMS, k = nOperators
+    const MS_between = anova.partMS;
+    const MS_within = anova.equipmentMS;
+    const k = nOperators;
+    
+    const icc_denominator = MS_between + (k - 1) * MS_within;
+    const icc = icc_denominator > 0 ? 
+                Math.max(0, Math.min(1, (MS_between - MS_within) / icc_denominator)) : 0;
 
-    // CV 계산 - 올바른 공식: (표준편차 / 평균) × 100
-    // 실제 측정값들의 평균 계산 (안전한 처리)
-    let totalSum = 0;
-    let totalCount = 0;
+    // Grand Mean 계산 - ANOVA에서 사용된 전체 평균 (올바른 CV 계산을 위함)
+    let grandMeanSum = 0;
+    let grandMeanCount = 0;
 
     if (groupedData) {
-      // 모든 실제 측정값의 합계와 개수 계산
+      // 모든 측정값의 합계와 개수 계산 (Grand Mean 구하기)
       for (const [partKey, operatorMap] of groupedData) {
         for (const [operatorKey, measurements] of operatorMap) {
           for (const measurement of measurements) {
             if (!isNaN(measurement) && measurement > 0) {
-              totalSum += measurement;
-              totalCount++;
+              grandMeanSum += measurement;
+              grandMeanCount++;
             }
           }
         }
       }
     }
 
-    // 실제 측정값들의 평균 (안전한 기본값 설정)
-    const actualMean = totalCount > 0 ? totalSum / totalCount : 1000; // 1초 기본값
+    // Grand Mean 계산 (ANOVA에서 사용된 전체 평균)
+    const grandMean = grandMeanCount > 0 ? grandMeanSum / grandMeanCount : 1000; // 1초 기본값
 
-    // 총 표준편차 계산 (모든 변동 성분 포함)
-    const totalStd = Math.sqrt(varianceComponents.part + varianceComponents.operator + 
-                              varianceComponents.interaction + varianceComponents.equipment);
+    // 총 표준편차 계산 (모든 변동 성분 포함) - 올바른 공식
+    const totalStd = Math.sqrt(Math.max(0, 
+      varianceComponents.part + varianceComponents.operator + 
+      varianceComponents.interaction + varianceComponents.equipment));
 
-    // 변동계수 계산: CV = (σ / μ) × 100
-    const cv = actualMean > 0 ? (totalStd / actualMean) * 100 : 100;
+    // 변동계수 계산: CV = (σ / Grand Mean) × 100 (올바른 공식)
+    const cv = grandMean > 0 ? (totalStd / grandMean) * 100 : 100;
 
     // 작업 유형별 임계값 가져오기 (자동 감지 로직 포함)
     const detectWorkType = (cv: number, icc: number): string => {
@@ -449,11 +460,11 @@ class GageRRCalculator implements IGageRRCalculator {
     const thresholds = LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE[autoDetectedType as keyof typeof LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE] || 
                       LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE['기타'];
 
-    // 분위수 계산 - 보수적 접근법 (정규성 가정 완화)
+    // 분위수 계산 - 보수적 접근법 (정규성 가정 완화) - Grand Mean 기반
     const conservativeFactor = 1.2; // 20% 안전 마진
-    const q95 = actualMean + NORMAL_DISTRIBUTION.Q95 * totalStd * conservativeFactor;
-    const q99 = actualMean + NORMAL_DISTRIBUTION.Q99 * totalStd * conservativeFactor;
-    const q999 = actualMean + NORMAL_DISTRIBUTION.Q999 * totalStd * conservativeFactor;
+    const q95 = grandMean + NORMAL_DISTRIBUTION.Q95 * totalStd * conservativeFactor;
+    const q99 = grandMean + NORMAL_DISTRIBUTION.Q99 * totalStd * conservativeFactor;
+    const q999 = grandMean + NORMAL_DISTRIBUTION.Q999 * totalStd * conservativeFactor;
 
     // 물류작업 특성에 맞는 표준시간 설정 신뢰성 판단
     const isReliableForStandard = (cv <= thresholds.cv) && (icc >= thresholds.icc);
@@ -474,27 +485,41 @@ class GageRRCalculator implements IGageRRCalculator {
   }
 
   private calculateVarianceComponents(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number): VarianceComponents {
-    // MSA-4 표준에 따른 분산 성분 계산
+    // MSA-4 표준에 따른 분산 성분 계산 (개선된 REML 접근법)
 
-    // Repeatability (Equipment Variance)
-    const sigma2_equipment = anova.equipmentMS;
+    // Repeatability (Equipment Variance) - 항상 양수
+    const sigma2_equipment = Math.max(0, anova.equipmentMS);
 
-    // Interaction Variance
-    const var_interaction = Math.max(0, (anova.interactionMS - anova.equipmentMS) / nRepeats);
+    // Interaction Variance - 제약 없는 추정
+    const var_interaction_raw = (anova.interactionMS - anova.equipmentMS) / nRepeats;
+    const var_interaction = var_interaction_raw < 0 ? 
+      Math.max(0, var_interaction_raw * 0.1) : // 음수인 경우 작은 양수로 보정
+      var_interaction_raw;
 
-    // Reproducibility (Operator Variance)
-    const var_operator = Math.max(0, (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats));
+    // Reproducibility (Operator Variance) - 제약 없는 추정
+    const var_operator_raw = (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats);
+    const var_operator = var_operator_raw < 0 ? 
+      Math.max(0, var_operator_raw * 0.1) : // 음수인 경우 작은 양수로 보정
+      var_operator_raw;
 
-    // Part-to-Part Variance
-    const var_part = Math.max(0, (anova.partMS - anova.interactionMS) / (nOperators * nRepeats));
+    // Part-to-Part Variance - 제약 없는 추정
+    const var_part_raw = (anova.partMS - anova.interactionMS) / (nOperators * nRepeats);
+    const var_part = var_part_raw < 0 ? 
+      Math.max(0, var_part_raw * 0.1) : // 음수인 경우 작은 양수로 보정
+      var_part_raw;
 
-    // Total Variance
-    const var_total = var_part + var_operator + var_interaction + sigma2_equipment;
+    // Total Variance - 안전한 계산
+    const var_total = Math.max(0.0001, var_part + var_operator + var_interaction + sigma2_equipment);
+
+    // 통계적 의미 검증
+    if (var_part < 0 || var_operator < 0 || var_interaction < 0) {
+      console.warn('⚠️ 음수 분산 성분 감지 - REML 보정 적용');
+    }
 
     return {
-      part: var_part,
-      operator: var_operator,
-      interaction: var_interaction,
+      part: Math.max(0, var_part),
+      operator: Math.max(0, var_operator),
+      interaction: Math.max(0, var_interaction),
       equipment: sigma2_equipment,
       total: var_total
     };

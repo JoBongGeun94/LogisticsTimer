@@ -66,9 +66,9 @@ class StatisticsCalculator implements IStatisticsCalculator {
         sessionId: 'temp'
       }));
 
-      // AnalysisService를 통한 ICC 계산 (중복 제거)
+      // AnalysisService를 통한 ICC 계산 (개선된 공식 적용)
       const analysis = AnalysisService.calculateGageRR(lapTimes);
-      return analysis.icc;
+      return Number.isNaN(analysis.icc) ? 0 : Math.max(0, Math.min(1, analysis.icc));
     } catch (error) {
       console.warn('ICC 계산 오류:', error);
       return 0;
