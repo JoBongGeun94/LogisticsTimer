@@ -22,43 +22,46 @@ export const STATISTICAL_CONFIDENCE = {
 
 // 임계값 설정 근거: MSA-4 표준 및 물류작업 특성 연구 기반
 export const LOGISTICS_WORK_THRESHOLDS = {
-  // ICC (급내상관계수) 임계값
+  // 기본 임계값
   ICC_EXCELLENT: 0.8,
   ICC_ACCEPTABLE: 0.7,
-
-  // 변동계수 임계값 (물류작업 특성 반영)
   CV_THRESHOLD: 0.12, // 12%
-
-  // ΔPair 임계값 (연속 측정값 차이)
   DELTA_PAIR_THRESHOLD: 0.15, // 15%
-
-  // Gage R&R 임계값 (MSA 표준)
   GRR_EXCELLENT: 10,   // 10% 미만: 우수
   GRR_ACCEPTABLE: 30,  // 30% 미만: 허용 가능
   GRR_MARGINAL: 50,    // 50% 미만: 제한적 사용
 
-  // 물류작업별 특화 임계값
-  WORK_TYPE_MULTIPLIERS: {
+  // 측정자별 보정 계수 (숙련도 반영)
+  OPERATOR_ADJUSTMENT: {
+    '6급': 1.0,
+    '7급': 1.1,
+    '8급': 1.2,
+    '9급': 1.3,
+    '기타': 1.15
+  } as const,
+
+  // 작업별 보정 계수 (복잡도 반영)
+  WORK_COMPLEXITY: {
     '물자검수팀': 1.0,
     '저장관리팀': 1.1,
     '포장관리팀': 1.2
-  } as const,
-
-  // 동적 임계값 계산을 위한 함수
-  getDynamicThreshold: (workType: string, baseCV: number, measurementCount: number) => {
-    const typeThreshold = WORK_TYPE_THRESHOLDS[workType as keyof typeof WORK_TYPE_THRESHOLDS] 
-                         || WORK_TYPE_THRESHOLDS['기타'];
-    
-    // 측정 횟수에 따른 보정 (측정이 많을수록 엄격하게)
-    const countAdjustment = measurementCount >= 20 ? 0.9 : 
-                           measurementCount >= 10 ? 0.95 : 1.0;
-    
-    return {
-      icc: typeThreshold.icc * countAdjustment,
-      cv: typeThreshold.cv * countAdjustment
-    };
-  }
+  } as const
 } as const;
+
+// 동적 임계값 계산 함수 (별도 분리)
+export const getDynamicThreshold = (workType: string, baseCV: number, measurementCount: number) => {
+  const typeThreshold = WORK_TYPE_THRESHOLDS[workType as keyof typeof WORK_TYPE_THRESHOLDS] 
+                       || WORK_TYPE_THRESHOLDS['기타'];
+
+  // 측정 횟수에 따른 보정 (측정이 많을수록 엄격하게)
+  const countAdjustment = measurementCount >= 20 ? 0.9 : 
+                         measurementCount >= 10 ? 0.95 : 1.0;
+
+  return {
+    icc: typeThreshold.icc * countAdjustment,
+    cv: typeThreshold.cv * countAdjustment
+  };
+};
 
 // 정규분포 분위수 상수 (정확한 값으로 수정)
 export const NORMAL_DISTRIBUTION = {
