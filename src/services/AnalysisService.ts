@@ -257,7 +257,7 @@ class ANOVACalculator implements IANOVACalculator {
     const partDF = Math.max(1, nParts - 1);
     const operatorDF = Math.max(1, nOperators - 1);
     const interactionDF = Math.max(1, (nParts - 1) * (nOperators - 1));
-    
+
     // Equipment 자유도: 전체 측정수 - 처리 조합수
     const totalCells = nParts * nOperators;
     const totalMeasurements = totalCells * nRepeats;
@@ -328,13 +328,13 @@ class ANOVACalculator implements IANOVACalculator {
       const ratio = (fStat - criticalF05) / (criticalF01 - criticalF05);
       return Math.max(0.01, 0.05 - 0.04 * ratio);
     }
-    
+
     // p > 0.05 구간
     if (fStat > 1.0) {
       const ratio = (fStat - 1.0) / (criticalF05 - 1.0);
       return Math.max(0.05, Math.min(0.9, 0.9 - 0.85 * ratio));
     }
-    
+
     return Math.max(0.5, Math.min(0.95, 0.95 - fStat * 0.45));
   }
 }
@@ -395,7 +395,7 @@ class GageRRCalculator implements IGageRRCalculator {
     const MS_between = Math.max(0.0001, anova.partMS); // 최소값 보장
     const MS_within = Math.max(0.0001, anova.equipmentMS); // 최소값 보장
     const k = Math.max(2, nOperators); // 최소 2명 보장
-    
+
     // 극단적 케이스 처리: MS_within이 0에 가까운 경우
     let icc: number;
     if (MS_within < 0.001) {
@@ -407,7 +407,7 @@ class GageRRCalculator implements IGageRRCalculator {
     } else {
       const icc_numerator = MS_between - MS_within;
       const icc_denominator = MS_between + (k - 1) * MS_within;
-      
+
       if (icc_denominator > 0) {
         icc = Math.max(0.01, Math.min(0.99, icc_numerator / icc_denominator));
       } else {
@@ -434,7 +434,7 @@ class GageRRCalculator implements IGageRRCalculator {
     }
 
     // Grand Mean 계산 (ANOVA에서 사용된 전체 평균)
-    const grandMean = grandMeanCount > 0 ? grandMeanSum / grandMeanCount : 1000; // 1초 기본값
+    const grandMean = totalCount > 0 ? totalSum / totalCount : 1000; // 1초 기본값
 
     // 총 표준편차 계산 (모든 변동 성분 포함) - 올바른 공식
     const totalStd = Math.sqrt(Math.max(0, 
@@ -484,7 +484,7 @@ class GageRRCalculator implements IGageRRCalculator {
   private calculateVarianceComponents(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number): VarianceComponents {
     // MSA-4 표준에 따른 올바른 분산 성분 계산 (REML 방법론)
     const defaultVariance = { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 };
-    
+
     if (!anova || typeof anova !== 'object') {
       return defaultVariance;
     }
@@ -494,10 +494,10 @@ class GageRRCalculator implements IGageRRCalculator {
 
     // Interaction Variance - 올바른 공식 적용
     const var_interaction_raw = Math.max(0, (anova.interactionMS - anova.equipmentMS) / nRepeats);
-    
+
     // Reproducibility (Operator Variance) - 올바른 공식 적용
     const var_operator_raw = Math.max(0, (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats));
-    
+
     // Part-to-Part Variance - 올바른 공식 적용
     const var_part_raw = Math.max(0, (anova.partMS - anova.interactionMS) / (nOperators * nRepeats));
 
@@ -649,7 +649,7 @@ export class AnalysisService {
 
   private static calculateVarianceComponents(anova: ANOVAResult): VarianceComponents {
     // MSA-4 표준에 따른 분산 성분 계산 (REML 방법론)
-    
+
     // Repeatability (Equipment Variance) - 항상 양수
     const sigma2_equipment = Math.max(0, anova.equipmentMS);
 

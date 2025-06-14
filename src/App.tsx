@@ -592,8 +592,7 @@ const DetailedAnalysisModal = memo<{
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className={theme.textSecondary}>총 변동 (Total Variation)</span>
-                    <span className={theme.text}>
+                    <span className={theme.textSecondary}>총 변동 (Total Variation)</span>                    <span className={theme.text}>
                       {memoizedAnalysis.gaugeData ? 
                         memoizedAnalysis.gaugeData.totalVariation.toFixed(4) : 
                         (memoizedAnalysis.totalVariation?.toFixed(4) || '0.0000')
@@ -769,6 +768,7 @@ const EnhancedLogisticsTimer = () => {
     showToast
   });
 
+  // Applying change: improve the way statistics analysis hook is used to prevent circular dependencies.
   // 통계 분석 훅
   const statisticsAnalysis = useStatisticsAnalysis(lapTimes);
 

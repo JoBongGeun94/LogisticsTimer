@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { LapTime } from '../types';
-import { LOGISTICS_WORK_THRESHOLDS } from '../constants/analysis';
 import { AnalysisService } from '../services/AnalysisService';
+import { ValidationService } from '../services/ValidationService';
+import { WORK_TYPE_THRESHOLDS_MAP } from '../constants/analysis';
 
 // 통계 계산 인터페이스 (Interface Segregation Principle)
 interface IStatisticsCalculator {
@@ -184,6 +185,20 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     }
   }, [lapTimes, generateCacheHash, cache, calculator]);
 
+    // 동적 임계값 계산 함수 (순환 참조 방지를 위해 로컬 정의)
+    const getDynamicThresholdLocal = useCallback((workType: string, baseCV: number, measurementCount: number) => {
+      const defaultThreshold = { icc: 0.8, cv: 15 };
+      const typeThreshold = WORK_TYPE_THRESHOLDS_MAP[workType] || WORK_TYPE_THRESHOLDS_MAP['기타'] || defaultThreshold;
+
+      // 측정 수량에 따른 동적 조정
+      const adjustmentFactor = Math.max(0.8, Math.min(1.2, measurementCount / 30));
+
+      return {
+        icc: (typeThreshold.icc || 0.8) * adjustmentFactor,
+        cv: (typeThreshold.cv || 15) * adjustmentFactor
+      };
+    }, []);
+
   // 통계 업데이트 - AnalysisService 기반으로 통합
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
     let deltaPairValue = 0;
@@ -221,7 +236,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       for (const [partKey, operatorMap] of groupedData) {
         for (const [operatorKey, measurements] of operatorMap) {
           if (!operatorGlobalMeans.has(operatorKey)) {
-            operatorGlobalMeans.set(operatorKey, { sum: 0, count: 0 });
+            operatorGlobalMeans.set(operatorKey, { sum: number, count: number });
           }
           const opData = operatorGlobalMeans.get(operatorKey)!;
           measurements.forEach(measurement => {
@@ -263,7 +278,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
     setDeltaPairValue(deltaPairValue);
     setShowRetakeModal(needsRemeasurement);
-  }, []);
+  }, [getDynamicThresholdLocal]);
 
   // 상태 계산 최적화 - 순환 참조 방지
   const statisticsStatus = useMemo(() => ({
