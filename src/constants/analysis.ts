@@ -1,3 +1,4 @@
+
 // MSA 규격 완전 준수 분석 상수
 export const MSA_REQUIREMENTS = {
   // MSA-4 규격 기준
@@ -105,7 +106,7 @@ export const WORK_TYPE_THRESHOLDS_MAP: Record<string, WorkTypeThreshold> = Objec
   '기타': { icc: 0.7, cv: 12, basis: '일반 물류 작업 기준' }
 });
 
-// 분석 관련 상수들 (GAGE_RR_THRESHOLDS와 통합)
+// 분석 관련 상수들
 export const ANALYSIS_CONSTANTS = {
   // ICC 임계값
   ICC_EXCELLENT: 0.75,
@@ -127,31 +128,31 @@ export const ANALYSIS_CONSTANTS = {
 // 분석 상태 타입
 export type AnalysisStatus = 'excellent' | 'acceptable' | 'marginal' | 'unacceptable' | 'info';
 
-// 분석 결과 평가 함수
+// 분석 결과 평가 함수들 (상수들이 모두 정의된 후에 정의)
 export const evaluateGageRR = (grrPercent: number): AnalysisStatus => {
-  if (grrPercent <= (GAGE_RR_THRESHOLDS.EXCELLENT * 100)) return 'excellent';
-  if (grrPercent <= (GAGE_RR_THRESHOLDS.ACCEPTABLE * 100)) return 'acceptable';
-  if (grrPercent <= (GAGE_RR_THRESHOLDS.MARGINAL * 100)) return 'marginal';
+  if (grrPercent <= 10) return 'excellent';    // 10% 이하
+  if (grrPercent <= 30) return 'acceptable';   // 30% 이하
+  if (grrPercent <= 50) return 'marginal';     // 50% 이하
   return 'unacceptable';
 };
 
 export const evaluateICC = (iccValue: number): AnalysisStatus => {
-  if (iccValue >= ANALYSIS_CONSTANTS.ICC_EXCELLENT) return 'excellent';
-  if (iccValue >= ANALYSIS_CONSTANTS.ICC_ACCEPTABLE) return 'acceptable';
+  if (iccValue >= 0.75) return 'excellent';
+  if (iccValue >= 0.5) return 'acceptable';
   if (iccValue >= 0.25) return 'marginal';
   return 'unacceptable';
 };
 
 export const evaluateCV = (cvPercent: number): AnalysisStatus => {
-  if (cvPercent <= ANALYSIS_CONSTANTS.CV_EXCELLENT) return 'excellent';
-  if (cvPercent <= ANALYSIS_CONSTANTS.CV_ACCEPTABLE) return 'acceptable';
+  if (cvPercent <= 12) return 'excellent';
+  if (cvPercent <= 20) return 'acceptable';
   if (cvPercent <= 30) return 'marginal';
   return 'unacceptable';
 };
 
 export const evaluateDeltaPair = (deltaPair: number): AnalysisStatus => {
   if (deltaPair <= 1.0) return 'excellent';
-  if (deltaPair <= ANALYSIS_CONSTANTS.DELTA_PAIR_THRESHOLD) return 'acceptable';
+  if (deltaPair <= 2.0) return 'acceptable';
   if (deltaPair <= 3.0) return 'marginal';
   return 'unacceptable';
 };
