@@ -50,8 +50,16 @@ export const LOGISTICS_WORK_THRESHOLDS = {
 
 // 동적 임계값 계산 함수 (별도 분리)
 export const getDynamicThreshold = (workType: string, baseCV: number, measurementCount: number) => {
-  const typeThreshold = WORK_TYPE_THRESHOLDS[workType as keyof typeof WORK_TYPE_THRESHOLDS] 
-                       || WORK_TYPE_THRESHOLDS['기타'];
+  // 기본 임계값 직접 정의 (순환 참조 방지)
+  const workTypeMap: Record<string, { icc: number; cv: number }> = {
+    '피킹': { icc: 0.8, cv: 6 },
+    '검수': { icc: 0.78, cv: 7 },
+    '운반': { icc: 0.7, cv: 10 },
+    '적재': { icc: 0.65, cv: 12 },
+    '기타': { icc: 0.7, cv: 12 }
+  };
+  
+  const typeThreshold = workTypeMap[workType] || workTypeMap['기타'];
 
   // 측정 횟수에 따른 보정 (측정이 많을수록 엄격하게)
   const countAdjustment = measurementCount >= 20 ? 0.9 : 
