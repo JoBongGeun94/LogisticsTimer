@@ -23,7 +23,6 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTimerLogic } from './hooks/useTimerLogic';
 import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
 import { useSessionManager } from './hooks/useSessionManager';
-import { NotificationService } from './services/NotificationService';
 
 // ==================== 테마 상수 (Open/Closed Principle) ====================
 const THEME_COLORS = {
@@ -665,39 +664,6 @@ const EnhancedLogisticsTimer = () => {
     isVisible: false
   });
 
-  // NotificationService와 연결
-  useEffect(() => {
-    const notificationService = NotificationService.getInstance();
-    const unsubscribe = notificationService.subscribe((message: string, type: string) => {
-      setToast({ 
-        message, 
-        type: type as 'success' | 'error' | 'warning' | 'info', 
-        isVisible: true 
-      });
-    });
-
-    return unsubscribe;
-  }, []);
-
-  // 토스트 메시지 표시 함수
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info') => {
-    const notificationService = NotificationService.getInstance();
-    switch (type) {
-      case 'success':
-        notificationService.success(message);
-        break;
-      case 'error':
-        notificationService.error(message);
-        break;
-      case 'warning':
-        notificationService.warning(message);
-        break;
-      case 'info':
-        notificationService.info(message);
-        break;
-    }
-  }, []);
-
   // 필터 상태 (요구사항 8번)
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     operator: '',
@@ -714,6 +680,11 @@ const EnhancedLogisticsTimer = () => {
   const { showBackWarning } = useBackButtonPrevention();
 
   const theme = useMemo(() => THEME_COLORS[isDark ? 'dark' : 'light'], [isDark]);
+
+  // 토스트 메시지 표시 함수
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    setToast({ message, type, isVisible: true });
+  }, []);
 
   // 세션 관리 훅
   const {
