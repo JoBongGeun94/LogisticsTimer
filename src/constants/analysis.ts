@@ -90,14 +90,12 @@ export const PERFORMANCE_CONFIG = {
   MAX_MEASUREMENTS_CACHE: 1000, // 최대 측정값 캐시 개수
 } as const;
 
-// 기본 임계값 맵 (순환 참조 방지)
-const WORK_TYPE_THRESHOLDS_MAP: Record<string, { icc: number; cv: number }> = {
-  '피킹': { icc: 0.8, cv: 6 },
-  '검수': { icc: 0.78, cv: 7 },
-  '운반': { icc: 0.7, cv: 10 },
-  '적재': { icc: 0.65, cv: 12 },
-  '기타': { icc: 0.7, cv: 12 }
-};
+// WorkTypeThreshold 타입 정의
+export interface WorkTypeThreshold {
+  icc: number;
+  cv: number;
+  basis?: string;
+}
 
 // 작업 유형별 임계값 맵핑 (확장성을 위한 구조)
 export const WORK_TYPE_THRESHOLDS_MAP: Record<string, WorkTypeThreshold> = Object.freeze({
