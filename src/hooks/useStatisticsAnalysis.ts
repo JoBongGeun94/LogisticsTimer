@@ -103,37 +103,64 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     status: 'info' as 'success' | 'warning' | 'error' | 'info'
   }));
 
-  // 실제 Gage R&R 값 계산 (물류작업 특성 반영) - 먼저 정의
+  // 실제 Gage R&R 값 계산 (MSA 표준 공식 적용) - 먼저 정의
   const actualGRR = useMemo(() => {
     if (lapTimes.length < 6) return 0;
     
     try {
-      // 물류작업 특성에 맞는 간단한 GRR 근사 계산
       const operators = Array.from(new Set(lapTimes.map(lap => lap.operator)));
       const targets = Array.from(new Set(lapTimes.map(lap => lap.target)));
       
       if (operators.length < 2 || targets.length < 2) return 0;
       
-      // 측정자간 변동성 계산
-      let operatorVariance = 0;
-      for (const operator of operators) {
-        const operatorTimes = lapTimes.filter(lap => lap.operator === operator).map(lap => lap.time / 1000);
-        if (operatorTimes.length > 1) {
-          const mean = operatorTimes.reduce((sum, t) => sum + t, 0) / operatorTimes.length;
-          const variance = operatorTimes.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / (operatorTimes.length - 1);
-          operatorVariance += variance;
+      // MSA 표준에 따른 분산 성분 계산
+      const timesInSeconds = lapTimes.map(lap => lap.time / 1000);
+      const grandMean = timesInSeconds.reduce((sum, t) => sum + t, 0) / timesInSeconds.length;
+      
+      // Repeatability 계산
+      let equipmentSS = 0;
+      for (const target of targets) {
+        for (const operator of operators) {
+          const cellTimes = lapTimes
+            .filter(lap => lap.target === target && lap.operator === operator)
+            .map(lap => lap.time / 1000);
+          
+          if (cellTimes.length > 1) {
+            const cellMean = cellTimes.reduce((sum, t) => sum + t, 0) / cellTimes.length;
+            equipmentSS += cellTimes.reduce((sum, t) => sum + Math.pow(t - cellMean, 2), 0);
+          }
         }
       }
+      const repeatability = Math.sqrt(Math.max(0, equipmentSS / Math.max(1, timesInSeconds.length - targets.length * operators.length)));
       
-      // 총 변동성 계산
-      const allTimes = lapTimes.map(lap => lap.time / 1000);
-      const grandMean = allTimes.reduce((sum, t) => sum + t, 0) / allTimes.length;
-      const totalVariance = allTimes.reduce((sum, t) => sum + Math.pow(t - grandMean, 2), 0) / (allTimes.length - 1);
+      // Reproducibility 계산
+      let operatorSS = 0;
+      for (const operator of operators) {
+        const operatorTimes = lapTimes.filter(lap => lap.operator === operator).map(lap => lap.time / 1000);
+        if (operatorTimes.length > 0) {
+          const operatorMean = operatorTimes.reduce((sum, t) => sum + t, 0) / operatorTimes.length;
+          operatorSS += operatorTimes.length * Math.pow(operatorMean - grandMean, 2);
+        }
+      }
+      const reproducibility = Math.sqrt(Math.max(0, operatorSS / Math.max(1, (operators.length - 1) * targets.length)));
       
-      // GRR 백분율 계산 (물류작업 특성 고려)
-      const grrPercent = totalVariance > 0 ? Math.sqrt(operatorVariance / operators.length) / Math.sqrt(totalVariance) * 100 : 0;
+      // Part Variation 계산
+      let partSS = 0;
+      for (const target of targets) {
+        const targetTimes = lapTimes.filter(lap => lap.target === target).map(lap => lap.time / 1000);
+        if (targetTimes.length > 0) {
+          const targetMean = targetTimes.reduce((sum, t) => sum + t, 0) / targetTimes.length;
+          partSS += targetTimes.length * Math.pow(targetMean - grandMean, 2);
+        }
+      }
+      const partVariation = Math.sqrt(Math.max(0, partSS / Math.max(1, (targets.length - 1) * operators.length)));
       
-      return Math.min(100, Math.max(0, grrPercent));
+      // Total Gage R&R 계산 (상세 분석과 동일한 공식)
+      const gageRR = Math.sqrt(Math.pow(repeatability, 2) + Math.pow(reproducibility, 2));
+      const totalVariation = Math.sqrt(Math.pow(gageRR, 2) + Math.pow(partVariation, 2));
+      const gageRRPercent = totalVariation > 0 ? (gageRR / totalVariation) * 100 : 0;
+      
+      return Math.min(100, Math.max(0, gageRRPercent));
     } catch (error) {
       console.warn('GRR 계산 오류:', error);
       return 0;
@@ -168,30 +195,64 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       }
     }
 
-    // gaugeData 업데이트 (안전한 GRR 참조)
+    // gaugeData 업데이트 (MSA 표준 공식 적용)
     if (allLaps.length >= 6) {
-      // 실시간 GRR 계산 (actualGRR 대신 직접 계산)
       const operators = Array.from(new Set(allLaps.map(lap => lap.operator)));
       const targets = Array.from(new Set(allLaps.map(lap => lap.target)));
       
       if (operators.length >= 2 && targets.length >= 2) {
-        let operatorVariance = 0;
-        for (const operator of operators) {
-          const operatorTimes = allLaps.filter(lap => lap.operator === operator).map(lap => lap.time / 1000);
-          if (operatorTimes.length > 1) {
-            const mean = operatorTimes.reduce((sum, t) => sum + t, 0) / operatorTimes.length;
-            const variance = operatorTimes.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / (operatorTimes.length - 1);
-            operatorVariance += variance;
+        // MSA 표준에 따른 분산 성분 계산
+        const timesInSeconds = allLaps.map(lap => lap.time / 1000);
+        const grandMean = timesInSeconds.reduce((sum, t) => sum + t, 0) / timesInSeconds.length;
+        
+        // Repeatability (Equipment Variance) 계산
+        let equipmentSS = 0;
+        for (const target of targets) {
+          for (const operator of operators) {
+            const cellTimes = allLaps
+              .filter(lap => lap.target === target && lap.operator === operator)
+              .map(lap => lap.time / 1000);
+            
+            if (cellTimes.length > 1) {
+              const cellMean = cellTimes.reduce((sum, t) => sum + t, 0) / cellTimes.length;
+              equipmentSS += cellTimes.reduce((sum, t) => sum + Math.pow(t - cellMean, 2), 0);
+            }
           }
         }
+        const repeatability = Math.sqrt(Math.max(0, equipmentSS / Math.max(1, timesInSeconds.length - targets.length * operators.length)));
         
-        const allTimes = allLaps.map(lap => lap.time / 1000);
-        const grandMean = allTimes.reduce((sum, t) => sum + t, 0) / allTimes.length;
-        const totalVariance = allTimes.reduce((sum, t) => sum + Math.pow(t - grandMean, 2), 0) / (allTimes.length - 1);
+        // Reproducibility (Operator Variance) 계산
+        let operatorSS = 0;
+        for (const operator of operators) {
+          const operatorTimes = allLaps.filter(lap => lap.operator === operator).map(lap => lap.time / 1000);
+          if (operatorTimes.length > 0) {
+            const operatorMean = operatorTimes.reduce((sum, t) => sum + t, 0) / operatorTimes.length;
+            operatorSS += operatorTimes.length * Math.pow(operatorMean - grandMean, 2);
+          }
+        }
+        const reproducibility = Math.sqrt(Math.max(0, operatorSS / Math.max(1, (operators.length - 1) * targets.length)));
         
-        const newGRR = totalVariance > 0 ? Math.sqrt(operatorVariance / operators.length) / Math.sqrt(totalVariance) * 100 : 0;
+        // Part Variation 계산
+        let partSS = 0;
+        for (const target of targets) {
+          const targetTimes = allLaps.filter(lap => lap.target === target).map(lap => lap.time / 1000);
+          if (targetTimes.length > 0) {
+            const targetMean = targetTimes.reduce((sum, t) => sum + t, 0) / targetTimes.length;
+            partSS += targetTimes.length * Math.pow(targetMean - grandMean, 2);
+          }
+        }
+        const partVariation = Math.sqrt(Math.max(0, partSS / Math.max(1, (targets.length - 1) * operators.length)));
         
-        gaugeData.grr = Math.min(100, Math.max(0, newGRR));
+        // Total Gage R&R 계산 (MSA 표준 공식)
+        const gageRR = Math.sqrt(Math.pow(repeatability, 2) + Math.pow(reproducibility, 2));
+        
+        // Total Variation 계산
+        const totalVariation = Math.sqrt(Math.pow(gageRR, 2) + Math.pow(partVariation, 2));
+        
+        // GRR 백분율 계산 (상세 분석과 동일한 공식)
+        const gageRRPercent = totalVariation > 0 ? (gageRR / totalVariation) * 100 : 0;
+        
+        gaugeData.grr = Math.min(100, Math.max(0, gageRRPercent));
         gaugeData.status = calculator.statusFromGRR(gaugeData.grr);
       }
     }
