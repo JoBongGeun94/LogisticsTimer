@@ -1,4 +1,5 @@
 import { LapTime, GageRRResult, ANOVAResult, VarianceComponents, TransformType } from '../types';
+import { LOGISTICS_WORK_THRESHOLDS, NORMAL_DISTRIBUTION, F_DISTRIBUTION_CRITICAL } from '../constants/analysis';
 
 /**
  * 변환 인터페이스 (Interface Segregation Principle)
@@ -331,21 +332,19 @@ class ANOVACalculator implements IANOVACalculator {
     if (fStat <= 0) return 1.0;
     if (fStat < 0.5) return 0.8;
 
-    // df2가 클 때와 작을 때 구분하여 더 정확한 근사
-    if (df2 >= 30) {
-      if (fStat > 6.63) return 0.001;  // α=0.001
-      if (fStat > 4.61) return 0.01;   // α=0.01  
-      if (fStat > 3.84) return 0.05;   // α=0.05
-      if (fStat > 2.71) return 0.1;    // α=0.1
-    } else {
-      // 소표본에서는 더 보수적
-      if (fStat > 8.0) return 0.001;
-      if (fStat > 5.5) return 0.01;
-      if (fStat > 4.0) return 0.05;
-      if (fStat > 3.0) return 0.1;
-    }
+    // df2와 표본 크기에 따른 더 정확한 임계값 사용
+    const isLargeSample = df2 >= 30;
+    const criticals = isLargeSample ? 
+      F_DISTRIBUTION_CRITICAL.ALPHA_001.large_df : 
+      F_DISTRIBUTION_CRITICAL.ALPHA_001.small_df;
 
-    return Math.min(0.5, 0.2 + (2.0 - fStat) * 0.1);
+    if (fStat > (isLargeSample ? F_DISTRIBUTION_CRITICAL.ALPHA_001.large_df : F_DISTRIBUTION_CRITICAL.ALPHA_001.small_df)) return 0.001;
+    if (fStat > (isLargeSample ? F_DISTRIBUTION_CRITICAL.ALPHA_01.large_df : F_DISTRIBUTION_CRITICAL.ALPHA_01.small_df)) return 0.01;
+    if (fStat > (isLargeSample ? F_DISTRIBUTION_CRITICAL.ALPHA_05.large_df : F_DISTRIBUTION_CRITICAL.ALPHA_05.small_df)) return 0.05;
+    if (fStat > (isLargeSample ? F_DISTRIBUTION_CRITICAL.ALPHA_10.large_df : F_DISTRIBUTION_CRITICAL.ALPHA_10.small_df)) return 0.1;
+
+    // 더 정교한 보간법 적용
+    return Math.max(0.1, Math.min(0.5, 0.3 - (fStat - 1.0) * 0.05));
   }
 }
 
@@ -380,8 +379,8 @@ class GageRRCalculator implements IGageRRCalculator {
 
     // 기존 P/T, NDC, Cpk 제거 - 현재 분석에서 사용하지 않음
 
-    // 작업시간 분석용 추가 지표 계산
-    const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats);
+    // 작업시간 분석용 추가 지표 계산 (작업 유형 고려)
+    const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats, '기타');
 
     return {
       gageRRPercent: Math.min(100, Math.max(0, gageRRPercent)),
@@ -394,9 +393,9 @@ class GageRRCalculator implements IGageRRCalculator {
   }
 
   /**
-   * 작업시간 분석용 지표 계산
+   * 작업시간 분석용 지표 계산 (물류작업 특성 반영)
    */
-  private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number) {
+  private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number, workType: string = '기타') {
     const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
 
     // ICC(2,1) 계산 - 측정자간 신뢰성
@@ -404,23 +403,32 @@ class GageRRCalculator implements IGageRRCalculator {
                     varianceComponents.interaction + varianceComponents.equipment;
     const icc = totalVar > 0 ? varianceComponents.part / totalVar : 0;
 
-    // CV 계산 - 전체 변동계수 (%)
+    // CV 계산 - 전체 변동계수 (%) - 더 정확한 계산
     const meanSquare = (anova.partMS + anova.operatorMS + anova.interactionMS + anova.equipmentMS) / 4;
     const grandMean = Math.sqrt(Math.max(0.01, meanSquare)); // 근사 평균
     const cv = grandMean > 0 ? (Math.sqrt(totalVar) / grandMean) * 100 : 100;
 
-    // Q99 계산 - 99% 달성가능 시간 (정규분포 가정)
-    const totalStd = Math.sqrt(totalVar);
-    const q99 = grandMean + 2.326 * totalStd; // 99% 분위수
+    // 작업 유형별 임계값 가져오기
+    const thresholds = LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE[workType as keyof typeof LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE] || 
+                      LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE['기타'];
 
-    // 표준시간 설정 신뢰성 판단
-    const isReliableForStandard = (cv <= 5.0) && (icc >= 0.80);
+    // 정규성 검정 없이 보수적 접근: 여러 분위수 제공
+    const totalStd = Math.sqrt(totalVar);
+    const q95 = grandMean + NORMAL_DISTRIBUTION.Q95 * totalStd;   // 95% 분위수
+    const q99 = grandMean + NORMAL_DISTRIBUTION.Q99 * totalStd;   // 99% 분위수
+    const q999 = grandMean + NORMAL_DISTRIBUTION.Q999 * totalStd; // 99.9% 분위수
+
+    // 물류작업 특성에 맞는 표준시간 설정 신뢰성 판단
+    const isReliableForStandard = (cv <= thresholds.cv) && (icc >= thresholds.icc);
 
     return {
       icc: Math.max(0, Math.min(1, icc)),
       cv: Math.max(0, cv),
+      q95: Math.max(0, q95),
       q99: Math.max(0, q99),
-      isReliableForStandard
+      q999: Math.max(0, q999),
+      isReliableForStandard,
+      thresholds // 사용된 임계값 정보 포함
     };
   }
 

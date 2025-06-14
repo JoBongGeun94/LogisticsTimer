@@ -56,6 +56,17 @@ export interface GageRRResult {
   reproducibility: number;
   partVariation: number;
   totalVariation: number;
+  // 물류작업 특성에 맞는 추가 지표
+  icc: number;
+  cv: number;
+  q95: number;
+  q99: number;
+  q999: number;
+  isReliableForStandard: boolean;
+  thresholds?: {
+    cv: number;
+    icc: number;
+  };
   status: 'excellent' | 'acceptable' | 'marginal' | 'unacceptable';
   anova?: ANOVAResult;
   varianceComponents?: VarianceComponents;
