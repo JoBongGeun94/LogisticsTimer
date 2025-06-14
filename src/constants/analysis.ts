@@ -78,61 +78,49 @@ export const F_DISTRIBUTION_CRITICAL = {
   }
 } as const;
 
-// 물류작업별 특화 임계값 (작업 유형별 세분화)
-const LOGISTICS_WORK_THRESHOLDS = {
-  // 기본 임계값
-  ICC_EXCELLENT: 0.8,
-  ICC_ACCEPTABLE: 0.7,
-  CV_THRESHOLD: 0.12, // 12%
-  DELTA_PAIR_THRESHOLD: 0.15, // 15%
-  GRR_EXCELLENT: 10,   // 10% 미만: 우수
-  GRR_ACCEPTABLE: 30,  // 30% 미만: 허용 가능
-  GRR_MARGINAL: 50,    // 50% 미만: 제한적 사용
-
-  // 작업 유형별 세부 임계값 (연구 기반)
-  BY_WORK_TYPE: {
-    '피킹': { 
-      icc: 0.8, 
-      cv: 6, 
-      description: '정밀한 선별 작업' 
-    },
-    '검수': { 
-      icc: 0.78, 
-      cv: 7, 
-      description: '품질 검증 작업' 
-    },
-    '운반': { 
-      icc: 0.7, 
-      cv: 10, 
-      description: '물리적 이동 작업' 
-    },
-    '적재': { 
-      icc: 0.65, 
-      cv: 12, 
-      description: '적재 및 보관 작업' 
-    },
-    '기타': { 
-      icc: 0.7, 
-      cv: 12, 
-      description: '일반 물류 작업' 
-    }
+// 작업 유형별 세부 임계값 (연구 기반)
+export const WORK_TYPE_THRESHOLDS = {
+  '피킹': { 
+    icc: 0.8, 
+    cv: 6, 
+    description: '정밀한 선별 작업' 
   },
-
-  // 동적 임계값 계산을 위한 함수
-  getDynamicThreshold: (workType: string, baseCV: number, measurementCount: number) => {
-    const typeThreshold = LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE[workType as keyof typeof LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE] 
-                         || LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE['기타'];
-    
-    // 측정 횟수에 따른 보정 (측정이 많을수록 엄격하게)
-    const countAdjustment = measurementCount >= 20 ? 0.9 : 
-                           measurementCount >= 10 ? 0.95 : 1.0;
-    
-    return {
-      icc: typeThreshold.icc * countAdjustment,
-      cv: typeThreshold.cv * countAdjustment
-    };
+  '검수': { 
+    icc: 0.78, 
+    cv: 7, 
+    description: '품질 검증 작업' 
+  },
+  '운반': { 
+    icc: 0.7, 
+    cv: 10, 
+    description: '물리적 이동 작업' 
+  },
+  '적재': { 
+    icc: 0.65, 
+    cv: 12, 
+    description: '적재 및 보관 작업' 
+  },
+  '기타': { 
+    icc: 0.7, 
+    cv: 12, 
+    description: '일반 물류 작업' 
   }
 } as const;
+
+// 동적 임계값 계산 함수
+export const getDynamicThreshold = (workType: string, baseCV: number, measurementCount: number) => {
+  const typeThreshold = WORK_TYPE_THRESHOLDS[workType as keyof typeof WORK_TYPE_THRESHOLDS] 
+                       || WORK_TYPE_THRESHOLDS['기타'];
+  
+  // 측정 횟수에 따른 보정 (측정이 많을수록 엄격하게)
+  const countAdjustment = measurementCount >= 20 ? 0.9 : 
+                         measurementCount >= 10 ? 0.95 : 1.0;
+  
+  return {
+    icc: typeThreshold.icc * countAdjustment,
+    cv: typeThreshold.cv * countAdjustment
+  };
+};
 
 // 로그 변환 옵션
 export const LOG_TRANSFORM_OPTIONS = {
