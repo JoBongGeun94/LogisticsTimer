@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useCallback } from 'react';
 import { LapTime } from '../types';
 import { LOGISTICS_WORK_THRESHOLDS, NORMAL_DISTRIBUTION } from '../constants/analysis';
@@ -41,12 +40,12 @@ class StatisticsCalculator implements IStatisticsCalculator {
   // ICC 계산 - 상세 분석과 완전 동일한 공식 적용
   calcICC(values: { worker: string; observer: string; time: number }[]): number {
     if (values.length < 6) return 0;
-    
+
     const workers = Array.from(new Set(values.map(v => v.worker)));
     const observers = Array.from(new Set(values.map(v => v.observer)));
-    
+
     if (workers.length < 2 || observers.length < 2) return 0;
-    
+
     try {
       // 데이터 그룹화 (상세 분석과 동일)
       const groupedData = new Map<string, Map<string, number[]>>();
@@ -59,22 +58,22 @@ class StatisticsCalculator implements IStatisticsCalculator {
         }
         groupedData.get(value.observer)!.get(value.worker)!.push(value.time);
       }
-      
+
       // ANOVA 계산 (상세 분석과 완전 동일)
       const anova = this.calculateANOVA(groupedData);
-      
+
       // ICC(2,1) 계산 - MSA 표준 공식
       const nOperators = workers.length;
       const nParts = observers.length;
-      
+
       // ICC 분모 계산 (상세 분석과 동일)
       const denominator = anova.partMS + (nOperators - 1) * anova.equipmentMS + 
                          nOperators * (anova.operatorMS - anova.equipmentMS) / nParts;
-      
+
       // ICC 계산
       const icc = denominator > 0 ? 
                   Math.max(0, (anova.partMS - anova.equipmentMS) / denominator) : 0;
-      
+
       return Math.min(1, Math.max(0, icc));
     } catch (error) {
       console.warn('ICC 계산 오류:', error);
@@ -86,7 +85,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
   private calculateANOVA(groupedData: Map<string, Map<string, number[]>>): ANOVAResult {
     const parts = Array.from(groupedData.keys());
     const operators: string[] = [];
-    
+
     // 모든 측정자 수집
     for (const [partKey, operatorMap] of groupedData) {
       for (const operatorKey of operatorMap.keys()) {
@@ -95,7 +94,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
         }
       }
     }
-    
+
     // 기본 통계 계산
     let totalSum = 0;
     let totalCount = 0;
@@ -106,7 +105,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
       }
     }
     const grandMean = totalCount > 0 ? totalSum / totalCount : 0;
-    
+
     const nParts = parts.length;
     const nOperators = operators.length;
     let nRepeats = 0;
@@ -115,7 +114,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
         nRepeats = Math.max(nRepeats, measurements.length);
       }
     }
-    
+
     // Part SS 계산
     let partSS = 0;
     for (const part of parts) {
@@ -132,7 +131,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
         partSS += partCount * Math.pow(partMean - grandMean, 2);
       }
     }
-    
+
     // Operator SS 계산
     let operatorSS = 0;
     for (const operator of operators) {
@@ -150,7 +149,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
         operatorSS += operatorCount * Math.pow(operatorMean - grandMean, 2);
       }
     }
-    
+
     // Interaction SS 계산
     let interactionSS = 0;
     for (const part of parts) {
@@ -159,7 +158,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
           const measurements = groupedData.get(part)!.get(operator)!;
           if (measurements.length > 0) {
             const cellMean = measurements.reduce((sum, val) => sum + val, 0) / measurements.length;
-            
+
             // Part 평균
             let partSum = 0, partCount = 0;
             for (const [opKey, opMeasurements] of groupedData.get(part)!) {
@@ -167,7 +166,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
               partCount += opMeasurements.length;
             }
             const partMean = partCount > 0 ? partSum / partCount : grandMean;
-            
+
             // Operator 평균
             let operatorSum = 0, operatorCount = 0;
             for (const [partKey, operatorMap] of groupedData) {
@@ -178,13 +177,13 @@ class StatisticsCalculator implements IStatisticsCalculator {
               }
             }
             const operatorMean = operatorCount > 0 ? operatorSum / operatorCount : grandMean;
-            
+
             interactionSS += measurements.length * Math.pow(cellMean - partMean - operatorMean + grandMean, 2);
           }
         }
       }
     }
-    
+
     // Total SS 계산
     let totalSS = 0;
     for (const [partKey, operatorMap] of groupedData) {
@@ -194,25 +193,25 @@ class StatisticsCalculator implements IStatisticsCalculator {
         }
       }
     }
-    
+
     // Equipment SS 계산
     const equipmentSS = Math.max(0, totalSS - partSS - operatorSS - interactionSS);
-    
+
     // 자유도 및 평균제곱 계산
     const partDF = Math.max(1, nParts - 1);
     const operatorDF = Math.max(1, nOperators - 1);
     const interactionDF = Math.max(1, (nParts - 1) * (nOperators - 1));
     const equipmentDF = Math.max(1, nParts * nOperators * (nRepeats - 1));
-    
+
     const partMS = partSS / partDF;
     const operatorMS = operatorSS / operatorDF;
     const interactionMS = interactionSS / interactionDF;
     const equipmentMS = equipmentSS / equipmentDF;
-    
+
     // F 통계량 계산
     const fStatistic = equipmentMS > 0 ? partMS / equipmentMS : 0;
     const pValue = 0.05; // 간단한 근사값
-    
+
     return {
       partSS, operatorSS, interactionSS, equipmentSS, totalSS,
       partMS, operatorMS, interactionMS, equipmentMS,
@@ -251,7 +250,7 @@ type WindowBuffer<T> = {
 
 function createWindowBuffer<T>(size: number): WindowBuffer<T> {
   const buffer: T[] = [];
-  
+
   return {
     size,
     push: (value: T) => {
@@ -307,7 +306,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       // 상세분석과 동일한 데이터 검증
       const operators = Array.from(new Set(lapTimes.map(lap => lap.operator)));
       const targets = Array.from(new Set(lapTimes.map(lap => lap.target)));
-      
+
       if (operators.length < 2 || targets.length < 2) {
         return {
           grr: 0,
@@ -348,7 +347,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
       // 🔧 상세분석과 완전 동일한 ANOVA 계산
       const anova = (calculator as any).calculateANOVA(groupedData);
-      
+
       // 🔧 상세분석과 완전 동일한 데이터 구조 분석
       const parts = Array.from(groupedData.keys());
       const allOperators: string[] = [];
@@ -406,13 +405,41 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         }
       }
       observedMean = totalObservations > 0 ? observedMean / totalObservations : 0;
-      
+
       // 총 표준편차 계산 (MSA 표준)
       const totalStd = Math.sqrt(var_part + var_operator + var_interaction + var_equipment);
-      
+
       // CV 계산 - 실제 관측 평균 사용
       const cv = observedMean > 0 ? (totalStd / observedMean) * 100 : 100;
-      
+
+      // ICC(2,1) 계산 - 정확한 공식 적용
+    const denominator = anova.partMS + (nOperators - 1) * anova.equipmentMS + 
+                       nOperators * (anova.operatorMS - anova.equipmentMS) / nParts;
+    const iccValue = denominator > 0 ? 
+                    Math.max(0, (anova.partMS - anova.equipmentMS) / denominator) : 0;
+
+    // CV 계산 수정 - 실제 측정값들의 평균과 표준편차 사용
+    let totalSum = 0;
+    let totalCount = 0;
+    for (const [partKey, operatorMap] of groupedData) {
+      for (const [operatorKey, measurements] of operatorMap) {
+        totalSum += measurements.reduce((sum, val) => sum + val, 0);
+        totalCount += measurements.length;
+      }
+    }
+    const actualMean = totalCount > 0 ? totalSum / totalCount : 0;
+
+    let sumSquaredDeviations = 0;
+    for (const [partKey, operatorMap] of groupedData) {
+      for (const [operatorKey, measurements] of operatorMap) {
+        for (const measurement of measurements) {
+          sumSquaredDeviations += Math.pow(measurement - actualMean, 2);
+        }
+      }
+    }
+    const totalStd = totalCount > 1 ? Math.sqrt(sumSquaredDeviations / (totalCount - 1)) : 0;
+    const cv = actualMean > 0 ? (totalStd / actualMean) * 100 : 100;
+
       // 디버깅 로그 (개발용)
       console.log('🔍 CV 계산 정보:', {
         observedMean: observedMean.toFixed(3),

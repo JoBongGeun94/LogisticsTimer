@@ -56,39 +56,39 @@ class DataFormatter implements IDataFormatter {
   }
 
   formatAnalysisData(session: SessionData, lapTimes: LapTime[], analysis: GageRRResult): string[][] {
-    // 상세분석 모달과 완전 동기화된 Excel 보고서 생성 (특수문자 제거)
+    // 상세분석 모달과 완전 동기화된 Excel 보고서 생성
     const statusText = analysis.status === 'excellent' ? '우수' :
                       analysis.status === 'acceptable' ? '양호' :
                       analysis.status === 'marginal' ? '보통' : '불량';
 
     const analysisSection = [
-      ['=== 상세분석 결과 ===', '', '', ''],
+      ['=== 📊 상세분석 결과 ===', '', '', ''],
       ['', '', '', ''],
-      ['종합 평가', statusText, '', ''],
+      ['🏆 종합 평가', statusText, '', ''],
       ['', '', '', ''],
-      ['핵심 지표', '', '', ''],
-      ['분석 항목', '값', '단위', '비고'],
-      ['Gage R&R', (analysis.gageRRPercent || 0).toFixed(1), '%', '측정 시스템 변동'],
-      ['ICC (2,1)', (analysis.icc || 0).toFixed(3), '', '급내상관계수'],
-      ['Delta Pair', (analysis.deltaPair || 0).toFixed(3), 's', '쌍별 차이'],
-      ['변동계수 (CV)', (analysis.cv || 0).toFixed(1), '%', '일관성 지표'],
+      ['📈 핵심 지표', '', '', ''],
+      ['분석 항목', '값', '단위', '평가 기준'],
+      ['Gage R&R', (analysis.gageRRPercent || 0).toFixed(1), '%', '< 10% 우수, 10-30% 양호'],
+      ['ICC (2,1)', (analysis.icc || 0).toFixed(3), '', '>= 0.75 신뢰 가능'],
+      ['ΔPair', (analysis.deltaPair || 0).toFixed(3), 's', '측정자간 차이'],
+      ['변동계수 (CV)', (analysis.cv || 0).toFixed(1), '%', '<= 8% 일관성 우수'],
       ['', '', '', ''],
-      ['분산 구성요소', '', '', ''],
+      ['🔬 분산 구성요소', '', '', ''],
       ['구성요소', '값', '단위', '설명'],
-      ['반복성 (Repeatability)', (analysis.repeatability || 0).toFixed(4), 'ms', '같은 조건 측정 변동'],
+      ['반복성 (Repeatability)', (analysis.repeatability || 0).toFixed(4), 'ms', '동일 조건 반복 측정 변동'],
       ['재현성 (Reproducibility)', (analysis.reproducibility || 0).toFixed(4), 'ms', '측정자간 변동'],
-      ['대상자 변동 (Part Variation)', (analysis.partVariation || 0).toFixed(4), 'ms', '대상자간 차이'],
-      ['총 변동 (Total Variation)', (analysis.totalVariation || 0).toFixed(4), 'ms', '전체 측정 변동'],
+      ['대상자 변동 (Part Variation)', (analysis.partVariation || 0).toFixed(4), 'ms', '대상자간 실제 차이'],
+      ['총 변동 (Total Variation)', (analysis.totalVariation || 0).toFixed(4), 'ms', '전체 측정 시스템 변동'],
       ['', '', '', ''],
-      ['작업시간 분석', '', '', ''],
+      ['⏱️ 작업시간 분석', '', '', ''],
       ['지표명', '값', '단위', '평가'],
       ['급내상관계수 (ICC)', (analysis.icc || 0).toFixed(3), '', '측정자간 신뢰성'],
       ['변동계수 (CV)', (analysis.cv || 0).toFixed(1), '%', '작업 일관성'],
-      ['99% 달성시간 (Q99)', ((analysis.q99 || 0) / 1000).toFixed(2), '초', '99% 완료 시간'],
-      ['표준시간 설정 가능', analysis.isReliableForStandard ? '가능' : '불가', '', '신뢰성 기준'],
+      ['99% 달성시간 (Q99)', ((analysis.q99 || 0) / 1000).toFixed(2), '초', '99% 완료 예상시간'],
+      ['표준시간 설정 가능', analysis.isReliableForStandard ? 'O (가능)' : 'X (불가)', '', 'ICC >= 0.75 & CV <= 8%'],
       ['', '', '', ''],
-      ['해석 및 권장사항', '', '', ''],
-      ['평가', '권장사항', '', '']
+      ['📋 해석 및 권장사항', '', '', ''],
+      ['평가 결과', '권장사항', '근거', '']
     ];
 
     // 상태별 권장사항 추가 (상세분석 모달과 동일)
@@ -151,17 +151,27 @@ class CSVFileExporter implements IFileExporter {
       // 데이터 유효성 검증 및 정리
       const validData = data.filter(row => Array.isArray(row) && row.length > 0);
       
-      // CSV 형식으로 변환 (특수문자 이스케이프 처리)
+      if (validData.length === 0) {
+        console.warn('내보낼 데이터가 없습니다.');
+        return false;
+      }
+
+      // CSV 형식으로 변환 (안전한 이스케이프 처리)
       const csvContent = validData.map(row => 
         row.map(cell => {
-          const cellStr = String(cell || '');
-          // 쉼표, 줄바꿈, 따옴표가 포함된 경우 따옴표로 감싸기
-          if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
+          // null, undefined 안전 처리
+          let cellStr = '';
+          if (cell !== null && cell !== undefined) {
+            cellStr = String(cell).trim();
+          }
+          
+          // 특수문자 처리 개선
+          if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('\r') || cellStr.includes('"')) {
             return `"${cellStr.replace(/"/g, '""')}"`;
           }
           return cellStr;
         }).join(',')
-      ).join('\n');
+      ).join('\r\n'); // Windows 호환성을 위해 \r\n 사용
       
       // UTF-8 BOM 추가로 Excel에서 한글 깨짐 방지
       const BOM = '\uFEFF';
@@ -169,18 +179,27 @@ class CSVFileExporter implements IFileExporter {
         type: 'text/csv;charset=utf-8;' 
       });
       
+      // 파일명 안전성 검증
+      const safeFilename = filename.replace(/[<>:"/\\|?*]/g, '_');
+      
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       
       link.setAttribute('href', url);
-      link.setAttribute('download', filename);
+      link.setAttribute('download', safeFilename);
       link.style.visibility = 'hidden';
       
       document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
       
-      URL.revokeObjectURL(url);
+      // 클릭 이벤트 처리 개선
+      setTimeout(() => {
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 100);
+      }, 100);
+      
       return true;
     } catch (error) {
       console.error('CSV 내보내기 오류:', error);
