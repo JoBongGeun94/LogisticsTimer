@@ -288,6 +288,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   // 완전한 게이지 데이터 계산 (상세 분석과 동일)
   const gaugeData = useMemo((): GaugeData => {
     if (lapTimes.length < 6) {
+      console.info(`실시간 분석: 데이터 부족 (${lapTimes.length}/6개). 최소 6개 측정값 필요.`);
       return {
         grr: 0,
         repeatability: 0,
@@ -443,8 +444,9 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       });
       setDeltaPairValue(deltaPair);
 
-      // 임계값 비교
-      const threshold = LOGISTICS_WORK_THRESHOLDS.CV_THRESHOLD * 10;
+      // 임계값 비교 - 실제 작업시간 기반으로 계산
+      const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
+      const threshold = workTimeMean * 0.15; // 15% 변동 허용
       if (deltaPair > threshold) {
         setShowRetakeModal(true);
       }
