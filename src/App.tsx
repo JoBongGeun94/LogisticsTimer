@@ -428,7 +428,7 @@ const AnalysisUnavailableMessage = memo<{
   );
 });
 
-// 🔧 상세분석 모달 컴포넌트 (현재 분석 방식에 맞게 수정)
+// 🔧 상세분석 모달 컴포넌트 (성능 최적화 적용)
 const DetailedAnalysisModal = memo<{
   isVisible: boolean;
   onClose: () => void;
@@ -438,6 +438,17 @@ const DetailedAnalysisModal = memo<{
   lapTimes: LapTime[];
   statisticsAnalysis: any;
 }>(({ isVisible, onClose, analysis, theme, isDark, lapTimes, statisticsAnalysis }) => {
+  // 성능 최적화: 분석 데이터 메모이제이션
+  const memoizedAnalysis = useMemo(() => {
+    if (!analysis || !statisticsAnalysis) return null;
+    return {
+      ...analysis,
+      iccValue: statisticsAnalysis.iccValue,
+      deltaPairValue: statisticsAnalysis.deltaPairValue,
+      gaugeData: statisticsAnalysis.gaugeData
+    };
+  }, [analysis, statisticsAnalysis.iccValue, statisticsAnalysis.deltaPairValue, statisticsAnalysis.gaugeData]);
+
   if (!isVisible) return null;
 
   return (
@@ -465,73 +476,73 @@ const DetailedAnalysisModal = memo<{
               </div>
             )}
 
-            {/* 🔧 핵심 지표 - 실시간 분석과 완전 동일한 계산 공식 적용 */}
+            {/* 🔧 핵심 지표 - 메모이제이션된 분석 데이터 사용 */}
             <div className="grid grid-cols-2 gap-4">
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h5 className={`font-medium ${theme.textSecondary} mb-2`}>Gage R&R</h5>
                 <div className={`text-2xl font-bold ${theme.text}`}>
-                  {statisticsAnalysis.gaugeData ? 
-                    `${statisticsAnalysis.gaugeData.grr.toFixed(1)}%` : 
-                    (analysis ? `${analysis.gageRRPercent.toFixed(1)}%` : '0.0%')
+                  {memoizedAnalysis?.gaugeData ? 
+                    `${memoizedAnalysis.gaugeData.grr.toFixed(1)}%` : 
+                    (memoizedAnalysis ? `${memoizedAnalysis.gageRRPercent.toFixed(1)}%` : '0.0%')
                   }
                 </div>
               </div>
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h5 className={`font-medium ${theme.textSecondary} mb-2`}>ICC (2,1)</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>{statisticsAnalysis.iccValue.toFixed(3)}</div>
+                <div className={`text-2xl font-bold ${theme.text}`}>{memoizedAnalysis?.iccValue.toFixed(3) || '0.000'}</div>
               </div>
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h5 className={`font-medium ${theme.textSecondary} mb-2`}>ΔPair</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>{statisticsAnalysis.deltaPairValue.toFixed(3)}s</div>
+                <div className={`text-2xl font-bold ${theme.text}`}>{memoizedAnalysis?.deltaPairValue.toFixed(3) || '0.000'}s</div>
               </div>
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h5 className={`font-medium ${theme.textSecondary} mb-2`}>변동계수</h5>
                 <div className={`text-2xl font-bold ${theme.text}`}>
-                  {statisticsAnalysis.gaugeData ? 
-                    `${statisticsAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
+                  {memoizedAnalysis?.gaugeData ? 
+                    `${memoizedAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
                   }
                 </div>
               </div>
             </div>
 
-            {/* 🔧 분산 구성요소 - 실시간 분석과 완전 동일한 데이터 소스 */}
-            {(statisticsAnalysis.gaugeData || analysis) && (
+            {/* 🔧 분산 구성요소 - 메모이제이션된 데이터 사용 */}
+            {memoizedAnalysis && (
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h4 className={`font-semibold ${theme.text} mb-3`}>🔬 분산 구성요소</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>반복성 (Repeatability)</span>
                     <span className={theme.text}>
-                      {statisticsAnalysis.gaugeData ? 
-                        statisticsAnalysis.gaugeData.repeatability.toFixed(4) : 
-                        (analysis ? analysis.repeatability.toFixed(4) : '0.0000')
+                      {memoizedAnalysis.gaugeData ? 
+                        memoizedAnalysis.gaugeData.repeatability.toFixed(4) : 
+                        (memoizedAnalysis.repeatability?.toFixed(4) || '0.0000')
                       }
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>재현성 (Reproducibility)</span>
                     <span className={theme.text}>
-                      {statisticsAnalysis.gaugeData ? 
-                        statisticsAnalysis.gaugeData.reproducibility.toFixed(4) : 
-                        (analysis ? analysis.reproducibility.toFixed(4) : '0.0000')
+                      {memoizedAnalysis.gaugeData ? 
+                        memoizedAnalysis.gaugeData.reproducibility.toFixed(4) : 
+                        (memoizedAnalysis.reproducibility?.toFixed(4) || '0.0000')
                       }
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>대상자 변동 (Part Variation)</span>
                     <span className={theme.text}>
-                      {statisticsAnalysis.gaugeData ? 
-                        statisticsAnalysis.gaugeData.partVariation.toFixed(4) : 
-                        (analysis ? analysis.partVariation.toFixed(4) : '0.0000')
+                      {memoizedAnalysis.gaugeData ? 
+                        memoizedAnalysis.gaugeData.partVariation.toFixed(4) : 
+                        (memoizedAnalysis.partVariation?.toFixed(4) || '0.0000')
                       }
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>총 변동 (Total Variation)</span>
                     <span className={theme.text}>
-                      {statisticsAnalysis.gaugeData ? 
-                        statisticsAnalysis.gaugeData.totalVariation.toFixed(4) : 
-                        (analysis ? analysis.totalVariation.toFixed(4) : '0.0000')
+                      {memoizedAnalysis.gaugeData ? 
+                        memoizedAnalysis.gaugeData.totalVariation.toFixed(4) : 
+                        (memoizedAnalysis.totalVariation?.toFixed(4) || '0.0000')
                       }
                     </span>
                   </div>
@@ -539,31 +550,31 @@ const DetailedAnalysisModal = memo<{
               </div>
             )}
 
-            {/* 작업시간 분석 지표 - 실시간 분석과 동일한 데이터 소스 사용 */}
-            {statisticsAnalysis && statisticsAnalysis.gaugeData && (
+            {/* 작업시간 분석 지표 - 메모이제이션된 데이터 사용 */}
+            {memoizedAnalysis && memoizedAnalysis.gaugeData && (
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h4 className={`font-semibold ${theme.text} mb-3`}>⏱️ 작업시간 분석</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>급내상관계수 (ICC)</span>
-                    <span className={theme.text}>{statisticsAnalysis.iccValue.toFixed(3)}</span>
+                    <span className={theme.text}>{memoizedAnalysis.iccValue.toFixed(3)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>변동계수 (CV)</span>
                     <span className={theme.text}>
-                      {statisticsAnalysis.gaugeData ? 
-                        `${statisticsAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
+                      {memoizedAnalysis.gaugeData ? 
+                        `${memoizedAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
                       }
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>99% 달성시간 (Q99)</span>
-                    <span className={theme.text}>{(statisticsAnalysis.gaugeData.q99 / 1000).toFixed(2)}초</span>
+                    <span className={theme.text}>{(memoizedAnalysis.gaugeData.q99 / 1000).toFixed(2)}초</span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>표준시간 설정 가능</span>
-                    <span className={`font-medium ${statisticsAnalysis.gaugeData.isReliableForStandard ? 'text-green-600' : 'text-red-600'}`}>
-                      {statisticsAnalysis.gaugeData.isReliableForStandard ? '✅ 가능' : '❌ 불가'}
+                    <span className={`font-medium ${memoizedAnalysis.gaugeData.isReliableForStandard ? 'text-green-600' : 'text-red-600'}`}>
+                      {memoizedAnalysis.gaugeData.isReliableForStandard ? '✅ 가능' : '❌ 불가'}
                     </span>
                   </div>
                 </div>
