@@ -1,27 +1,27 @@
 
+
 // MSA 규격 완전 준수 분석 상수
 export const MSA_REQUIREMENTS = {
-  // MSA-4 규격 기준
-  MIN_MEASUREMENTS: 10, // 최소 측정 횟수 (기존 6회 → 10회)
-  MIN_OPERATORS: 2,     // 최소 측정자 수
-  MIN_PARTS: 5,         // 최소 대상자 수
-  TRIALS_PER_PART: 2,   // 대상자당 반복 횟수
+  MIN_MEASUREMENTS: 10,
+  MIN_OPERATORS: 2,
+  MIN_PARTS: 5,
+  TRIALS_PER_PART: 2
 } as const;
 
 export const GAGE_RR_THRESHOLDS = {
-  EXCELLENT: 0.1,   // < 10%: 우수
-  ACCEPTABLE: 0.3,  // 10-30%: 허용 가능
-  MARGINAL: 0.5,    // 30-50%: 제한적 사용
-  UNACCEPTABLE: 1.0 // > 50%: 사용 불가
+  EXCELLENT: 0.1,
+  ACCEPTABLE: 0.3,
+  MARGINAL: 0.5,
+  UNACCEPTABLE: 1.0
 } as const;
 
 export const STATISTICAL_CONFIDENCE = {
-  LEVEL: 0.95,      // 95% 신뢰도
-  ALPHA: 0.05,      // 유의수준 5%
-  POWER: 0.8        // 검정력 80%
+  LEVEL: 0.95,
+  ALPHA: 0.05,
+  POWER: 0.8
 } as const;
 
-// 임계값 설정 (단순 구조로 변경)
+// 단순 임계값 설정
 export const LOGISTICS_WORK_THRESHOLDS = {
   ICC_EXCELLENT: 0.8,
   ICC_ACCEPTABLE: 0.7,
@@ -29,7 +29,17 @@ export const LOGISTICS_WORK_THRESHOLDS = {
   DELTA_PAIR_THRESHOLD: 0.15,
   GRR_EXCELLENT: 10,
   GRR_ACCEPTABLE: 30,
-  GRR_MARGINAL: 50
+  GRR_MARGINAL: 50,
+  BY_WORK_TYPE: {
+    '피킹': { icc: 0.8, cv: 6 },
+    '검수': { icc: 0.78, cv: 7 },
+    '운반': { icc: 0.7, cv: 10 },
+    '적재': { icc: 0.65, cv: 12 },
+    '기타': { icc: 0.7, cv: 12 },
+    '물자검수팀': { icc: 0.8, cv: 6 },
+    '저장관리팀': { icc: 0.78, cv: 7 },
+    '포장관리팀': { icc: 0.7, cv: 10 }
+  }
 } as const;
 
 // 측정자별 보정 계수
@@ -57,31 +67,35 @@ export const NORMAL_DISTRIBUTION = {
   Q9999: 3.719
 } as const;
 
-// F-분포 임계값
+// F-분포 임계값 (단순 구조)
 export const F_DISTRIBUTION_CRITICAL = {
   ALPHA_001: { 
-    base: 6.63, 
+    base: 6.63,
+    small_df: 8.85,
     adjustment_factor: 1.2,
     min_df_threshold: 10
   },
   ALPHA_01: { 
-    base: 4.61, 
+    base: 4.61,
+    small_df: 6.12,
     adjustment_factor: 1.15,
     min_df_threshold: 10
   },
   ALPHA_05: { 
-    base: 3.84, 
+    base: 3.84,
+    small_df: 4.96,
     adjustment_factor: 1.1,
     min_df_threshold: 10
   },
   ALPHA_10: { 
-    base: 2.71, 
+    base: 2.71,
+    small_df: 3.46,
     adjustment_factor: 1.05,
     min_df_threshold: 10
   }
 } as const;
 
-// 작업 유형별 세부 임계값 (단순 구조)
+// 작업 유형별 세부 임계값
 export const WORK_TYPE_THRESHOLDS = {
   '피킹': { 
     icc: 0.8, 
@@ -120,9 +134,9 @@ export const LOG_TRANSFORM_OPTIONS = {
 
 export type LogTransformType = typeof LOG_TRANSFORM_OPTIONS[keyof typeof LOG_TRANSFORM_OPTIONS];
 
-// 동적 임계값 계산 함수 (완전 분리)
-export const getDynamicThreshold = (workType: string, baseCV: number, measurementCount: number) => {
-  // 하드코딩된 매핑으로 순환 참조 방지
+// 동적 임계값 계산 함수 (완전 독립)
+export function getDynamicThreshold(workType: string, baseCV: number, measurementCount: number) {
+  // 하드코딩된 매핑 (외부 상수 참조 없음)
   const workTypeMap: Record<string, { icc: number; cv: number }> = {
     '피킹': { icc: 0.8, cv: 6 },
     '검수': { icc: 0.78, cv: 7 },
@@ -144,4 +158,4 @@ export const getDynamicThreshold = (workType: string, baseCV: number, measuremen
     icc: typeThreshold.icc * countAdjustment,
     cv: typeThreshold.cv * countAdjustment
   };
-};
+}
