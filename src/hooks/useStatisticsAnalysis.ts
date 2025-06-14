@@ -113,7 +113,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       
       if (operators.length < 2 || targets.length < 2) return 0;
       
-      // 데이터 그룹화 (밀리초 -> 초 변환)
+      // 데이터 그룹화 (밀리초 단위 그대로 사용 - 상세 분석과 일치)
       const groupedData = new Map<string, Map<string, number[]>>();
       for (const lap of lapTimes) {
         if (!groupedData.has(lap.target)) {
@@ -122,7 +122,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         if (!groupedData.get(lap.target)!.has(lap.operator)) {
           groupedData.get(lap.target)!.set(lap.operator, []);
         }
-        groupedData.get(lap.target)!.get(lap.operator)!.push(lap.time / 1000);
+        groupedData.get(lap.target)!.get(lap.operator)!.push(lap.time);
       }
       
       // 기본 통계
@@ -275,28 +275,28 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   }, [lapTimes]);
 
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
-    // 윈도우 버퍼에 데이터 추가
+    // 윈도우 버퍼에 데이터 추가 (밀리초 단위 유지)
     windowBuffer.push({
       worker: newLap.operator,
       observer: newLap.target,
-      time: newLap.time / 1000
+      time: newLap.time
     });
 
     // ICC 재계산
     const newICC = calculator.calcICC(windowBuffer.values());
     setIccValue(newICC);
 
-    // ΔPair 계산
+    // ΔPair 계산 (밀리초 단위 유지)
     if (allLaps.length >= 2) {
       const lastTwo = allLaps.slice(-2);
       const deltaPair = calculator.calcDeltaPair({
-        tA: lastTwo[0].time / 1000,
-        tB: lastTwo[1].time / 1000
+        tA: lastTwo[0].time,
+        tB: lastTwo[1].time
       });
       setDeltaPairValue(deltaPair);
 
-      // 물류작업 특성에 맞는 임계값 사용
-      const threshold = LOGISTICS_WORK_THRESHOLDS.CV_THRESHOLD * 0.01;
+      // 물류작업 특성에 맞는 임계값 사용 (밀리초 단위로 변환)
+      const threshold = LOGISTICS_WORK_THRESHOLDS.CV_THRESHOLD * 10; // 밀리초 기준으로 조정
       if (deltaPair > threshold) {
         setShowRetakeModal(true);
       }
