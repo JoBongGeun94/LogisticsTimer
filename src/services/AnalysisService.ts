@@ -378,14 +378,7 @@ class GageRRCalculator implements IGageRRCalculator {
     // Gage R&R 백분율 계산
     const gageRRPercent = totalVariation > 0 ? (gageRR / totalVariation) * 100 : 0;
 
-    // P/T 비율 계산 (올바른 공식)
-    const ptRatio = partVariation > 0 ? gageRR / partVariation : Infinity;
-
-    // NDC 계산 (올바른 공식)
-    const ndc = gageRR > 0 ? Math.max(0, Math.floor(1.41 * (partVariation / gageRR))) : 0;
-
-    // Cpk 계산 (공정 능력 지수)
-    const cpk = gageRR > 0 ? (partVariation * Math.sqrt(2)) / (3 * gageRR) : 0;
+    // 기존 P/T, NDC, Cpk 제거 - 현재 분석에서 사용하지 않음
 
     // 작업시간 분석용 추가 지표 계산
     const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats);
@@ -396,9 +389,6 @@ class GageRRCalculator implements IGageRRCalculator {
       reproducibility,
       partVariation,
       totalVariation,
-      ndc,
-      ptRatio,
-      cpk: Math.max(0, cpk),
       ...workTimeMetrics
     };
   }
@@ -466,9 +456,9 @@ class GageRRCalculator implements IGageRRCalculator {
  * 상태 평가기 (Single Responsibility Principle)
  */
 class StatusEvaluator {
-  static determineStatus(gageRRPercent: number, ndc: number): 'excellent' | 'acceptable' | 'marginal' | 'unacceptable' {
-    if (gageRRPercent < 10 && ndc >= 5) return 'excellent';
-    if (gageRRPercent < 30 && ndc >= 5) return 'acceptable';
+  static determineStatus(gageRRPercent: number): 'excellent' | 'acceptable' | 'marginal' | 'unacceptable' {
+    if (gageRRPercent < 10) return 'excellent';
+    if (gageRRPercent < 30) return 'acceptable';
     if (gageRRPercent < 50) return 'marginal';
     return 'unacceptable';
   }
@@ -557,7 +547,7 @@ export class AnalysisService {
 
       return {
         ...metrics,
-        status: StatusEvaluator.determineStatus(metrics.gageRRPercent, metrics.ndc),
+        status: StatusEvaluator.determineStatus(metrics.gageRRPercent),
         anova,
         varianceComponents
       };

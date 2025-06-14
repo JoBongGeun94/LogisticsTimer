@@ -428,15 +428,17 @@ const AnalysisUnavailableMessage = memo<{
   );
 });
 
-// 🔧 상세분석 모달 컴포넌트 (최소 변경 - 새로 추가)
+// 🔧 상세분석 모달 컴포넌트 (현재 분석 방식에 맞게 수정)
 const DetailedAnalysisModal = memo<{
   isVisible: boolean;
   onClose: () => void;
   analysis: any;
   theme: Theme;
   isDark: boolean;
-}>(({ isVisible, onClose, analysis, theme, isDark }) => {
-  if (!isVisible || !analysis) return null;
+  lapTimes: LapTime[];
+  statisticsAnalysis: any;
+}>(({ isVisible, onClose, analysis, theme, isDark, lapTimes, statisticsAnalysis }) => {
+  if (!isVisible) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -454,87 +456,134 @@ const DetailedAnalysisModal = memo<{
 
           <div className="space-y-6">
             {/* 종합 평가 */}
-            <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-              <h4 className={`font-semibold ${theme.text} mb-3`}>📊 종합 평가</h4>
-              <div className="flex items-center justify-center">
-                <StatusBadge status={analysis.status} size="lg" isDark={isDark} />
+            {analysis && (
+              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+                <h4 className={`font-semibold ${theme.text} mb-3`}>📊 종합 평가</h4>
+                <div className="flex items-center justify-center">
+                  <StatusBadge status={analysis.status} size="lg" isDark={isDark} />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* 핵심 지표 */}
             <div className="grid grid-cols-2 gap-4">
+              {analysis && (
+                <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+                  <h5 className={`font-medium ${theme.textSecondary} mb-2`}>Gage R&R</h5>
+                  <div className={`text-2xl font-bold ${theme.text}`}>{analysis.gageRRPercent.toFixed(1)}%</div>
+                </div>
+              )}
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>Gage R&R</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>{analysis.gageRRPercent.toFixed(1)}%</div>
+                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>ICC (2,1)</h5>
+                <div className={`text-2xl font-bold ${theme.text}`}>{statisticsAnalysis.iccValue.toFixed(2)}</div>
               </div>
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>NDC</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>{analysis.ndc}</div>
+                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>ΔPair</h5>
+                <div className={`text-2xl font-bold ${theme.text}`}>{statisticsAnalysis.deltaPairValue.toFixed(3)}s</div>
               </div>
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>Cpk</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>{analysis.cpk.toFixed(2)}</div>
-              </div>
-              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>P/T 비율</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>{analysis.ptRatio.toFixed(3)}</div>
+                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>변동계수</h5>
+                <div className={`text-2xl font-bold ${theme.text}`}>
+                  {lapTimes.length > 1 ?
+                    `${((Math.sqrt(lapTimes.reduce((acc, lap) => {
+                      const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
+                      return acc + Math.pow(lap.time - mean, 2);
+                    }, 0) / lapTimes.length) / (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)) * 100).toFixed(1)}%`
+                    : '0%'
+                  }
+                </div>
               </div>
             </div>
 
             {/* 분산 구성요소 */}
-            <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-              <h4 className={`font-semibold ${theme.text} mb-3`}>🔬 분산 구성요소</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className={theme.textSecondary}>반복성 (Repeatability)</span>
-                  <span className={theme.text}>{analysis.repeatability.toFixed(4)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className={theme.textSecondary}>재현성 (Reproducibility)</span>
-                  <span className={theme.text}>{analysis.reproducibility.toFixed(4)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className={theme.textSecondary}>대상자 변동 (Part Variation)</span>
-                  <span className={theme.text}>{analysis.partVariation.toFixed(4)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className={theme.textSecondary}>총 변동 (Total Variation)</span>
-                  <span className={theme.text}>{analysis.totalVariation.toFixed(4)}</span>
+            {analysis && (
+              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+                <h4 className={`font-semibold ${theme.text} mb-3`}>🔬 분산 구성요소</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className={theme.textSecondary}>반복성 (Repeatability)</span>
+                    <span className={theme.text}>{analysis.repeatability.toFixed(4)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={theme.textSecondary}>재현성 (Reproducibility)</span>
+                    <span className={theme.text}>{analysis.reproducibility.toFixed(4)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={theme.textSecondary}>대상자 변동 (Part Variation)</span>
+                    <span className={theme.text}>{analysis.partVariation.toFixed(4)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={theme.textSecondary}>총 변동 (Total Variation)</span>
+                    <span className={theme.text}>{analysis.totalVariation.toFixed(4)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* 작업시간 분석 지표 */}
+            {analysis && analysis.icc !== undefined && (
+              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+                <h4 className={`font-semibold ${theme.text} mb-3`}>⏱️ 작업시간 분석</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className={theme.textSecondary}>급내상관계수 (ICC)</span>
+                    <span className={theme.text}>{analysis.icc.toFixed(3)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={theme.textSecondary}>변동계수 (CV)</span>
+                    <span className={theme.text}>{analysis.cv.toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={theme.textSecondary}>99% 달성시간 (Q99)</span>
+                    <span className={theme.text}>{analysis.q99.toFixed(2)}초</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={theme.textSecondary}>표준시간 설정 가능</span>
+                    <span className={`font-medium ${analysis.isReliableForStandard ? 'text-green-600' : 'text-red-600'}`}>
+                      {analysis.isReliableForStandard ? '✅ 가능' : '❌ 불가'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* 해석 및 권장사항 */}
             <div className={`${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'} p-4 rounded-lg border`}>
               <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2">💡 해석 및 권장사항</h4>
               <div className={`${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 text-sm`}>
-                {analysis.status === 'excellent' && (
+                {analysis ? (
                   <>
-                    <div>✅ 우수한 측정 시스템입니다</div>
-                    <div>• 모든 측정에 신뢰할 수 있습니다</div>
-                    <div>• 현재 측정 절차를 유지하세요</div>
+                    {analysis.status === 'excellent' && (
+                      <>
+                        <div>✅ 우수한 측정 시스템입니다</div>
+                        <div>• 모든 측정에 신뢰할 수 있습니다</div>
+                        <div>• 현재 측정 절차를 유지하세요</div>
+                      </>
+                    )}
+                    {analysis.status === 'acceptable' && (
+                      <>
+                        <div>👍 양호한 측정 시스템입니다</div>
+                        <div>• 대부분의 용도로 사용 가능합니다</div>
+                        <div>• 정기적인 교정을 권장합니다</div>
+                      </>
+                    )}
+                    {analysis.status === 'marginal' && (
+                      <>
+                        <div>⚠️ 제한적 사용을 권장합니다</div>
+                        <div>• 측정 절차 개선이 필요합니다</div>
+                        <div>• 교육 및 장비 점검을 고려하세요</div>
+                      </>
+                    )}
+                    {analysis.status === 'unacceptable' && (
+                      <>
+                        <div>❌ 측정 시스템 개선이 필요합니다</div>
+                        <div>• 즉시 개선 조치가 필요합니다</div>
+                        <div>• 장비 교체나 절차 전면 개선을 고려하세요</div>
+                      </>
+                    )}
                   </>
-                )}
-                {analysis.status === 'acceptable' && (
-                  <>
-                    <div>👍 양호한 측정 시스템입니다</div>
-                    <div>• 대부분의 용도로 사용 가능합니다</div>
-                    <div>• 정기적인 교정을 권장합니다</div>
-                  </>
-                )}
-                {analysis.status === 'marginal' && (
-                  <>
-                    <div>⚠️ 제한적 사용을 권장합니다</div>
-                    <div>• 측정 절차 개선이 필요합니다</div>
-                    <div>• 교육 및 장비 점검을 고려하세요</div>
-                  </>
-                )}
-                {analysis.status === 'unacceptable' && (
-                  <>
-                    <div>❌ 측정 시스템 개선이 필요합니다</div>
-                    <div>• 즉시 개선 조치가 필요합니다</div>
-                    <div>• 장비 교체나 절차 전면 개선을 고려하세요</div>
-                  </>
+                ) : (
+                  <div>기본 통계 분석을 통해 측정 시스템의 일관성을 평가하고 있습니다.</div>
                 )}
               </div>
             </div>
@@ -877,13 +926,15 @@ const EnhancedLogisticsTimer = () => {
       {/* 뒤로가기 경고 */}
       <BackWarning isVisible={showBackWarning} />
 
-      {/* 🔧 상세분석 모달 (최소 변경 - 새로 추가) */}
+      {/* 🔧 상세분석 모달 (현재 분석 방식에 맞게 수정) */}
       <DetailedAnalysisModal
         isVisible={showDetailedAnalysis}
         onClose={() => setShowDetailedAnalysis(false)}
         analysis={analysis}
         theme={theme}
         isDark={isDark}
+        lapTimes={lapTimes}
+        statisticsAnalysis={statisticsAnalysis}
       />
 
       {/* 헤더 */}
@@ -1163,7 +1214,7 @@ const EnhancedLogisticsTimer = () => {
           {/* 🔧 상세분석 모달 버튼 (새로 추가) */}
           <button
             onClick={() => setShowDetailedAnalysis(true)}
-            disabled={!analysis || !canAnalyze.canAnalyze || lapTimes.length < 6}
+            disabled={lapTimes.length === 0}
             className="bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
           >
             <Info className="w-4 h-4" />

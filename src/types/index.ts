@@ -56,9 +56,6 @@ export interface GageRRResult {
   reproducibility: number;
   partVariation: number;
   totalVariation: number;
-  ndc: number;
-  ptRatio: number;
-  cpk: number;
   status: 'excellent' | 'acceptable' | 'marginal' | 'unacceptable';
   anova?: ANOVAResult;
   varianceComponents?: VarianceComponents;
