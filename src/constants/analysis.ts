@@ -97,24 +97,16 @@ export interface WorkTypeThreshold {
   basis?: string;
 }
 
-// 기본 임계값 상수 정의
-const DEFAULT_ICC_THRESHOLD = 0.7;
-const DEFAULT_CV_THRESHOLD = 12;
-
 // 작업 유형별 임계값 맵핑 (확장성을 위한 구조)
 export const WORK_TYPE_THRESHOLDS_MAP: Record<string, WorkTypeThreshold> = Object.freeze({
-  '물자검수팀': { icc: DEFAULT_ICC_THRESHOLD, cv: 6, basis: '검수 작업의 정밀성 요구' },
+  '물자검수팀': { icc: 0.7, cv: 6, basis: '검수 작업의 정밀성 요구' },
   '저장관리팀': { icc: 0.78, cv: 7, basis: '저장 작업의 일관성 중시' },
   '포장관리팀': { icc: 0.7, cv: 10, basis: '포장 작업의 효율성 중시' },
-  '기타': { icc: 0.7, cv: DEFAULT_CV_THRESHOLD, basis: '일반 물류 작업 기준' }
+  '기타': { icc: 0.7, cv: 12, basis: '일반 물류 작업 기준' }
 });
 
-// 분석 관련 상수들
+// 분석 관련 상수들 (GAGE_RR_THRESHOLDS와 통합)
 export const ANALYSIS_CONSTANTS = {
-  // Gage R&R 임계값
-  GAGE_RR_EXCELLENT: 10,
-  GAGE_RR_ACCEPTABLE: 30,
-
   // ICC 임계값
   ICC_EXCELLENT: 0.75,
   ICC_ACCEPTABLE: 0.5,
@@ -137,9 +129,9 @@ export type AnalysisStatus = 'excellent' | 'acceptable' | 'marginal' | 'unaccept
 
 // 분석 결과 평가 함수
 export const evaluateGageRR = (grrPercent: number): AnalysisStatus => {
-  if (grrPercent <= ANALYSIS_CONSTANTS.GAGE_RR_EXCELLENT) return 'excellent';
-  if (grrPercent <= ANALYSIS_CONSTANTS.GAGE_RR_ACCEPTABLE) return 'acceptable';
-  if (grrPercent <= 50) return 'marginal';
+  if (grrPercent <= (GAGE_RR_THRESHOLDS.EXCELLENT * 100)) return 'excellent';
+  if (grrPercent <= (GAGE_RR_THRESHOLDS.ACCEPTABLE * 100)) return 'acceptable';
+  if (grrPercent <= (GAGE_RR_THRESHOLDS.MARGINAL * 100)) return 'marginal';
   return 'unacceptable';
 };
 
