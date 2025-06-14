@@ -79,7 +79,7 @@ export const F_DISTRIBUTION_CRITICAL = {
 } as const;
 
 // 물류작업별 특화 임계값 (작업 유형별 세분화)
-export const LOGISTICS_WORK_THRESHOLDS = {
+const LOGISTICS_WORK_THRESHOLDS = {
   // 기본 임계값
   ICC_EXCELLENT: 0.8,
   ICC_ACCEPTABLE: 0.7,
