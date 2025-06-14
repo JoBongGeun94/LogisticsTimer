@@ -520,27 +520,27 @@ const DetailedAnalysisModal = memo<{
               </div>
             )}
 
-            {/* 작업시간 분석 지표 */}
-            {analysis && analysis.icc !== undefined && (
+            {/* 작업시간 분석 지표 - 실시간 분석과 동일한 데이터 소스 사용 */}
+            {statisticsAnalysis && statisticsAnalysis.gaugeData && (
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h4 className={`font-semibold ${theme.text} mb-3`}>⏱️ 작업시간 분석</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>급내상관계수 (ICC)</span>
-                    <span className={theme.text}>{analysis.icc.toFixed(3)}</span>
+                    <span className={theme.text}>{statisticsAnalysis.iccValue.toFixed(3)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>변동계수 (CV)</span>
-                    <span className={theme.text}>{analysis.cv.toFixed(1)}%</span>
+                    <span className={theme.text}>{statisticsAnalysis.gaugeData.cv.toFixed(1)}%</span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>99% 달성시간 (Q99)</span>
-                    <span className={theme.text}>{analysis.q99.toFixed(2)}초</span>
+                    <span className={theme.text}>{(statisticsAnalysis.gaugeData.q99 / 1000).toFixed(2)}초</span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>표준시간 설정 가능</span>
-                    <span className={`font-medium ${analysis.isReliableForStandard ? 'text-green-600' : 'text-red-600'}`}>
-                      {analysis.isReliableForStandard ? '✅ 가능' : '❌ 불가'}
+                    <span className={`font-medium ${statisticsAnalysis.gaugeData.isReliableForStandard ? 'text-green-600' : 'text-red-600'}`}>
+                      {statisticsAnalysis.gaugeData.isReliableForStandard ? '✅ 가능' : '❌ 불가'}
                     </span>
                   </div>
                 </div>
