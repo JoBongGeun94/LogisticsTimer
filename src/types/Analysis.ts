@@ -4,12 +4,13 @@ import { QualityStatus, RiskLevel } from './Common';
 export interface StatisticalMetrics {
   readonly repeatability: number;
   readonly reproducibility: number;
-  readonly gageRR: number;
   readonly partVariation: number;
   readonly totalVariation: number;
   readonly gageRRPercent: number;
-  readonly ndc: number;
-  readonly cpk: number;
+  readonly icc: number;
+  readonly cv: number;
+  readonly q99: number;
+  readonly isReliableForStandard: boolean;
 }
 
 export interface ANOVAResult {

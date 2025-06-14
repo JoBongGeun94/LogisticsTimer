@@ -67,10 +67,9 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
   }});
 
-  // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거)
+  // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
   const gaugeData = useMemo((): GaugeData => {
     if (lapTimes.length < 6) {
-      console.info(`실시간 분석: 데이터 부족 (${lapTimes.length}/6개). 최소 6개 측정값 필요.`);
       return {
         grr: 0,
         repeatability: 0,
@@ -86,7 +85,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     }
 
     // 성능 최적화: 해시 기반 캐시 활용
-    const dataHash = lapTimes.map(lap => `${lap.operator}-${lap.target}-${lap.time}`).join('|');
+    const dataHash = `${lapTimes.length}-${lapTimes[lapTimes.length - 1]?.time}-${lapTimes[lapTimes.length - 1]?.operator}-${lapTimes[lapTimes.length - 1]?.target}`;
 
     if (analysisCache.current.dataHash === dataHash) {
       return analysisCache.current.result;
@@ -96,7 +95,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       // AnalysisService를 통한 통합 계산 (중복 제거)
       const analysis = AnalysisService.calculateGageRR(lapTimes);
 
-      const result = {
+      const result: GaugeData = {
         grr: Math.min(100, Math.max(0, analysis.gageRRPercent)),
         repeatability: analysis.repeatability,
         reproducibility: analysis.reproducibility,
@@ -110,10 +109,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
 
       // 캐시 업데이트
-      analysisCache.current = {
-        dataHash: dataHash,
-        result: result
-      };
+      analysisCache.current = { dataHash, result };
 
       return result;
     } catch (error) {

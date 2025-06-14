@@ -295,26 +295,32 @@ class ANOVACalculator implements IANOVACalculator {
   }
 
   private calculatePValue(fStat: number, df1: number, df2: number): number {
-    // 간단하고 직관적인 p-value 근사 계산
+    // 개선된 F-분포 p-value 계산
     if (fStat <= 0) return 1.0;
-    if (fStat < 0.5) return 0.9;
+    if (fStat < 0.1) return 0.95;
 
-    // 자유도 고려한 개선된 임계값
-    const smallSampleAdjustment = df2 < 15 ? 1.2 : 1.0;
-    const adjustedThresholds = {
-      alpha001: F_DISTRIBUTION_CRITICAL.ALPHA_001.small_df * smallSampleAdjustment,
-      alpha01: F_DISTRIBUTION_CRITICAL.ALPHA_01.small_df * smallSampleAdjustment,
-      alpha05: F_DISTRIBUTION_CRITICAL.ALPHA_05.small_df * smallSampleAdjustment,
-      alpha10: F_DISTRIBUTION_CRITICAL.ALPHA_10.small_df * smallSampleAdjustment
+    // 자유도 고려한 적응적 임계값 계산
+    const dfAdjustment = Math.min(1.5, Math.max(0.8, 1.0 + (15 - df2) * 0.05));
+    
+    const criticalValues = {
+      p001: F_DISTRIBUTION_CRITICAL.ALPHA_001.small_df * dfAdjustment,
+      p01: F_DISTRIBUTION_CRITICAL.ALPHA_01.small_df * dfAdjustment,
+      p05: F_DISTRIBUTION_CRITICAL.ALPHA_05.small_df * dfAdjustment,
+      p10: F_DISTRIBUTION_CRITICAL.ALPHA_10.small_df * dfAdjustment
     };
 
-    if (fStat > adjustedThresholds.alpha001) return 0.001;
-    if (fStat > adjustedThresholds.alpha01) return 0.01;
-    if (fStat > adjustedThresholds.alpha05) return 0.05;
-    if (fStat > adjustedThresholds.alpha10) return 0.1;
-
-    // 선형 보간으로 중간값 계산
-    return Math.max(0.1, Math.min(0.5, 0.4 - (fStat - 1.0) * 0.1));
+    // 정확한 p-value 범위 반환
+    if (fStat > criticalValues.p001) return 0.001;
+    if (fStat > criticalValues.p01) return 0.01;
+    if (fStat > criticalValues.p05) return 0.05;
+    if (fStat > criticalValues.p10) return 0.1;
+    
+    // 보간을 통한 중간값 계산 (개선된 공식)
+    if (fStat > 1.0) {
+      return Math.max(0.1, Math.min(0.9, 0.5 - (fStat - 1.0) * 0.15));
+    }
+    
+    return Math.max(0.5, Math.min(0.9, 0.9 - fStat * 0.4));
   }
 }
 
@@ -446,43 +452,34 @@ class GageRRCalculator implements IGageRRCalculator {
   }
 
   private calculateVarianceComponents(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number): VarianceComponents {
-    // MSA-4 표준에 따른 분산 성분 계산 (개선된 REML 접근법)
+    // MSA-4 표준에 따른 올바른 분산 성분 계산 (REML 방법론)
 
     // Repeatability (Equipment Variance) - 항상 양수
     const sigma2_equipment = Math.max(0, anova.equipmentMS);
 
-    // Interaction Variance - 제약 없는 추정
-    const var_interaction_raw = (anova.interactionMS - anova.equipmentMS) / nRepeats;
-    const var_interaction = var_interaction_raw < 0 ? 
-      Math.max(0, var_interaction_raw * 0.1) : // 음수인 경우 작은 양수로 보정
-      var_interaction_raw;
+    // Interaction Variance - 올바른 공식 적용
+    const var_interaction_raw = Math.max(0, (anova.interactionMS - anova.equipmentMS) / nRepeats);
+    
+    // Reproducibility (Operator Variance) - 올바른 공식 적용
+    const var_operator_raw = Math.max(0, (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats));
+    
+    // Part-to-Part Variance - 올바른 공식 적용
+    const var_part_raw = Math.max(0, (anova.partMS - anova.interactionMS) / (nOperators * nRepeats));
 
-    // Reproducibility (Operator Variance) - 제약 없는 추정
-    const var_operator_raw = (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats);
-    const var_operator = var_operator_raw < 0 ? 
-      Math.max(0, var_operator_raw * 0.1) : // 음수인 경우 작은 양수로 보정
-      var_operator_raw;
+    // Total Variance - 모든 성분의 합
+    const var_total = var_part_raw + var_operator_raw + var_interaction_raw + sigma2_equipment;
 
-    // Part-to-Part Variance - 제약 없는 추정
-    const var_part_raw = (anova.partMS - anova.interactionMS) / (nOperators * nRepeats);
-    const var_part = var_part_raw < 0 ? 
-      Math.max(0, var_part_raw * 0.1) : // 음수인 경우 작은 양수로 보정
-      var_part_raw;
-
-    // Total Variance - 안전한 계산
-    const var_total = Math.max(0.0001, var_part + var_operator + var_interaction + sigma2_equipment);
-
-    // 통계적 의미 검증
-    if (var_part < 0 || var_operator < 0 || var_interaction < 0) {
-      console.warn('⚠️ 음수 분산 성분 감지 - REML 보정 적용');
+    // 유효성 검증
+    if (var_total <= 0) {
+      console.warn('⚠️ 총 분산이 0 이하 - 최소값으로 보정');
     }
 
     return {
-      part: Math.max(0, var_part),
-      operator: Math.max(0, var_operator),
-      interaction: Math.max(0, var_interaction),
+      part: var_part_raw,
+      operator: var_operator_raw,
+      interaction: var_interaction_raw,
       equipment: sigma2_equipment,
-      total: var_total
+      total: Math.max(0.0001, var_total)
     };
   }
 }
@@ -537,12 +534,43 @@ export class AnalysisService {
     this.recursionCounter++;
 
     try {
-      if (lapTimes.length < 6) {
+      // 엣지 케이스 처리 강화
+      if (!lapTimes || lapTimes.length < 6) {
         throw new Error('Gage R&R 분석을 위해서는 최소 6개의 측정값이 필요합니다.');
       }
 
+      // 데이터 유효성 검증 강화
+      const validLapTimes = lapTimes.filter(lap => 
+        lap && 
+        typeof lap.time === 'number' && 
+        lap.time > 0 && 
+        lap.operator && 
+        lap.target
+      );
+
+      if (validLapTimes.length < 6) {
+        throw new Error('유효한 측정값이 부족합니다. 최소 6개의 유효한 측정값이 필요합니다.');
+      }
+
       // 데이터 그룹화
-      const groupedData = DataGrouper.groupSafely(lapTimes);
+      const groupedData = DataGrouper.groupSafely(validLapTimes);
+
+      // 그룹화된 데이터 유효성 검증
+      if (groupedData.size < 2) {
+        throw new Error('분석을 위해서는 최소 2개 이상의 대상자가 필요합니다.');
+      }
+
+      // 측정자 수 검증
+      const operatorSet = new Set();
+      for (const [partKey, operatorMap] of groupedData) {
+        for (const operatorKey of operatorMap.keys()) {
+          operatorSet.add(operatorKey);
+        }
+      }
+
+      if (operatorSet.size < 2) {
+        throw new Error('분석을 위해서는 최소 2명 이상의 측정자가 필요합니다.');
+      }
 
       // 기본 통계 계산
       const statistics = this.statisticsCalculator.calculateBasicStatistics(groupedData);
@@ -585,14 +613,32 @@ export class AnalysisService {
   }
 
   private static calculateVarianceComponents(anova: ANOVAResult): VarianceComponents {
-    const total = Math.max(0.0001, anova.partMS + anova.operatorMS + anova.interactionMS + anova.equipmentMS);
+    // MSA-4 표준에 따른 분산 성분 계산 (REML 방법론)
+    
+    // Repeatability (Equipment Variance) - 항상 양수
+    const sigma2_equipment = Math.max(0, anova.equipmentMS);
+
+    // Interaction Variance - 제약 없는 추정
+    const var_interaction_raw = (anova.interactionMS - anova.equipmentMS) / 2; // nRepeats = 2 가정
+    const var_interaction = Math.max(0, var_interaction_raw);
+
+    // Reproducibility (Operator Variance) - 제약 없는 추정  
+    const var_operator_raw = (anova.operatorMS - anova.interactionMS) / (5 * 2); // nParts=5, nRepeats=2 가정
+    const var_operator = Math.max(0, var_operator_raw);
+
+    // Part-to-Part Variance - 제약 없는 추정
+    const var_part_raw = (anova.partMS - anova.interactionMS) / (2 * 2); // nOperators=2, nRepeats=2 가정  
+    const var_part = Math.max(0, var_part_raw);
+
+    // Total Variance - 모든 성분의 합
+    const var_total = var_part + var_operator + var_interaction + sigma2_equipment;
 
     return {
-      part: anova.partMS / total,
-      operator: anova.operatorMS / total,
-      interaction: anova.interactionMS / total,
-      equipment: anova.equipmentMS / total,
-      total: total
+      part: var_part,
+      operator: var_operator,
+      interaction: var_interaction,
+      equipment: sigma2_equipment,
+      total: Math.max(0.0001, var_total)
     };
   }
 }

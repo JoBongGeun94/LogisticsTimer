@@ -10,6 +10,7 @@ export class CleanupService {
     if (window.gc) {
       try {
         window.gc();
+        console.debug('가비지 컬렉션 실행 완료');
       } catch (error) {
         console.debug('가비지 컬렉션 실행 불가');
       }
@@ -29,4 +30,39 @@ export class CleanupService {
       });
     }
   }
+
+  /**
+   * 로컬 스토리지 정리
+   */
+  static cleanupLocalStorage(keepSessionData: boolean = true): void {
+    try {
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (!keepSessionData || !key.startsWith('logisticsTimer_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      console.debug('로컬 스토리지 정리 완료');
+    } catch (error) {
+      console.warn('로컬 스토리지 정리 실패:', error);
+    }
+  }
+
+  /**
+   * 이벤트 리스너 정리
+   */
+  static cleanupEventListeners(): void {
+    // 정리할 수 있는 전역 이벤트 리스너들 정리
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
+    window.removeEventListener('unload', this.handleUnload);
+    console.debug('이벤트 리스너 정리 완료');
+  }
+
+  private static handleBeforeUnload = () => {
+    // 페이지 떠나기 전 정리 작업
+  };
+
+  private static handleUnload = () => {
+    // 페이지 언로드 시 정리 작업
+  };
 }
