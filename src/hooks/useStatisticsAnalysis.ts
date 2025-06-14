@@ -421,9 +421,9 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         dataPoints: totalObservations
       });
 
-      // 🔧 상세분석과 완전 동일한 Q99 계산
+      // 🔧 상세분석과 완전 동일한 Q99 계산 - observedMean 사용
       const conservativeFactor = 1.2; // 20% 안전 마진
-      const q99 = actualMean + NORMAL_DISTRIBUTION.Q99 * totalStd * conservativeFactor;
+      const q99 = observedMean + NORMAL_DISTRIBUTION.Q99 * totalStd * conservativeFactor;
 
       // 🔧 상세분석과 완전 동일한 표준시간 설정 신뢰성 판단
       const thresholds = LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE['기타'];
