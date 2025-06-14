@@ -412,8 +412,20 @@ class GageRRCalculator implements IGageRRCalculator {
     let totalSum = 0;
     let totalCount = 0;
     
-    // 모든 측정값의 실제 평균 계산
-    const actualMean = Math.sqrt(Math.max(0.01, anova.partMS + anova.operatorMS + anova.equipmentMS));
+    // 모든 실제 측정값의 합계와 개수 계산
+    for (const [partKey, operatorMap] of groupedData) {
+      for (const [operatorKey, measurements] of operatorMap) {
+        for (const measurement of measurements) {
+          if (!isNaN(measurement)) {
+            totalSum += measurement;
+            totalCount++;
+          }
+        }
+      }
+    }
+    
+    // 실제 측정값들의 평균
+    const actualMean = totalCount > 0 ? totalSum / totalCount : 0.01;
     
     // 총 표준편차 계산 (모든 변동 성분 포함)
     const totalStd = Math.sqrt(varianceComponents.part + varianceComponents.operator + 
