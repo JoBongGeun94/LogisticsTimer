@@ -465,7 +465,11 @@ class GageRRCalculator implements IGageRRCalculator {
       q99: Math.max(0, q99),
       q999: Math.max(0, q999),
       isReliableForStandard,
-      thresholds // 사용된 임계값 정보 포함
+      thresholds, // 사용된 임계값 정보 포함
+      // Gage R&R 표준 지표 (NDC, P/T 등은 현재 분석에서 사용하지 않음)
+      ndc: 0,
+      ptRatio: 0,
+      cpk: 0
     };
   }
 

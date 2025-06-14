@@ -75,19 +75,25 @@ class DataFormatter implements IDataFormatter {
       return [['오류', '세션 또는 측정 데이터를 불러올 수 없습니다']];
     }
 
-    // 필수 속성 존재 여부 확인
+    // 필수 속성 존재 여부 확인 및 안전한 기본값 설정
     const safeAnalysis = {
       status: analysis.status || 'unacceptable',
-      gageRRPercent: analysis.gageRRPercent || 0,
-      icc: analysis.icc || 0,
-      deltaPair: analysis.deltaPair || 0,
-      cv: analysis.cv || 0,
-      repeatability: analysis.repeatability || 0,
-      reproducibility: analysis.reproducibility || 0,
-      partVariation: analysis.partVariation || 0,
-      totalVariation: analysis.totalVariation || 0,
-      q99: analysis.q99 || 0,
-      isReliableForStandard: analysis.isReliableForStandard || false
+      gageRRPercent: Number(analysis.gageRRPercent) || 0,
+      icc: Number(analysis.icc) || 0,
+      deltaPair: Number(analysis.deltaPair) || 0,
+      cv: Number(analysis.cv) || 0,
+      repeatability: Number(analysis.repeatability) || 0,
+      reproducibility: Number(analysis.reproducibility) || 0,
+      partVariation: Number(analysis.partVariation) || 0,
+      totalVariation: Number(analysis.totalVariation) || 0,
+      q95: Number(analysis.q95) || 0,
+      q99: Number(analysis.q99) || 0,
+      q999: Number(analysis.q999) || 0,
+      isReliableForStandard: Boolean(analysis.isReliableForStandard),
+      // 추가 안전성 확보
+      ndc: Number(analysis.ndc) || 0,
+      ptRatio: Number(analysis.ptRatio) || 0,
+      cpk: Number(analysis.cpk) || 0
     };
 
     // 상세분석 모달과 완전 동기화된 Excel 보고서 생성
@@ -193,14 +199,16 @@ class CSVFileExporter implements IFileExporter {
       // CSV 형식으로 변환 (개선된 안전한 이스케이프 처리)
       const csvContent = validData.map(row => 
         row.map(cell => {
-          // null, undefined, NaN 안전 처리
+          // null, undefined, NaN, Infinity 안전 처리
           let cellStr = '';
-          if (cell !== null && cell !== undefined && !Number.isNaN(cell)) {
+          if (cell !== null && cell !== undefined && 
+              !Number.isNaN(cell) && !Number.isNaN(Number(cell)) && 
+              Number.isFinite(Number(cell))) {
             cellStr = String(cell).trim();
           }
           
-          // 빈 문자열 처리
-          if (cellStr === '') {
+          // 빈 문자열이나 잘못된 값 처리
+          if (cellStr === '' || cellStr === 'undefined' || cellStr === 'null') {
             return '""';
           }
           
