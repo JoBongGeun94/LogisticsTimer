@@ -769,8 +769,28 @@ const EnhancedLogisticsTimer = () => {
   });
 
   // Applying change: improve the way statistics analysis hook is used to prevent circular dependencies.
-  // 통계 분석 훅
-  const statisticsAnalysis = useStatisticsAnalysis(lapTimes);
+  // 통계 분석 훅 - 안전한 초기화
+  const statisticsAnalysis = useMemo(() => {
+    try {
+      return useStatisticsAnalysis(lapTimes);
+    } catch (error) {
+      console.error('통계 분석 훅 초기화 오류:', error);
+      return {
+        iccValue: 0,
+        deltaPairValue: 0,
+        showRetakeModal: false,
+        setShowRetakeModal: () => {},
+        updateStatistics: () => {},
+        statisticsStatus: { grr: 'info', icc: 'info', deltaPair: 'info' },
+        gaugeData: {
+          grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0,
+          totalVariation: 0, status: 'info', cv: 0, q99: 0,
+          isReliableForStandard: false,
+          varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
+        }
+      };
+    }
+  }, [lapTimes]);
 
   // 통계 업데이트 함수 별도 정의 (순환 참조 방지) - 안전한 참조
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {

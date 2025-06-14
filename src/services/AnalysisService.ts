@@ -370,8 +370,20 @@ class GageRRCalculator implements IGageRRCalculator {
 
     // 기존 P/T, NDC, Cpk 제거 - 현재 분석에서 사용하지 않음
 
-    // 작업시간 분석용 추가 지표 계산 (작업 유형 고려)
-    const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats, '기타', groupedData);
+    // 작업시간 분석용 추가 지표 계산 (작업 유형 고려) - 안전한 초기화
+    let workTimeMetrics;
+    try {
+      workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats, '기타', groupedData);
+    } catch (error) {
+      console.warn('작업시간 지표 계산 오류, 기본값 사용:', error);
+      workTimeMetrics = {
+        icc: 0,
+        cv: 0,
+        q99: 0,
+        isReliableForStandard: false,
+        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
+      };
+    }
 
     return {
       gageRRPercent: Math.min(100, Math.max(0, gageRRPercent)),
@@ -387,12 +399,19 @@ class GageRRCalculator implements IGageRRCalculator {
    * 작업시간 분석용 지표 계산 (물류작업 특성 반영)
    */
   private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number, workType: string = '기타', groupedData: Map<string, Map<string, number[]>>) {
-    const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
+    // 안전한 변수 초기화
+    let varianceComponents;
+    try {
+      varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
+    } catch (error) {
+      console.warn('분산 성분 계산 오류:', error);
+      varianceComponents = { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 };
+    }
 
     // ICC(2,1) 계산 - 극단적 케이스 처리 개선 (MSA-4 표준)
     // ICC(2,1) = (MS_between - MS_within) / (MS_between + (k-1) * MS_within)
     // MS_between = partMS, MS_within = equipmentMS, k = nOperators
-    const MS_between = Math.max(0.0001, anova.partMS); // 최소값 보장
+    const MS_between = anova?.partMS || 0;th.max(0.0001, anova.partMS); // 최소값 보장
     const MS_within = Math.max(0.0001, anova.equipmentMS); // 최소값 보장
     const k = Math.max(2, nOperators); // 최소 2명 보장
 

@@ -2,7 +2,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { LapTime } from '../types';
 import { AnalysisService } from '../services/AnalysisService';
-import { WORK_TYPE_THRESHOLDS_MAP } from '../constants/analysis';
+import { WORK_TYPE_THRESHOLDS_MAP, WorkTypeThreshold } from '../constants/analysis';
 
 // 통계 계산 인터페이스 (Interface Segregation Principle)
 interface IStatisticsCalculator {
@@ -185,8 +185,16 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
   // 동적 임계값 계산 함수 (순환 참조 방지를 위해 로컬 정의)
   const getDynamicThresholdLocal = useCallback((workType: string, measurementCount: number) => {
-    const defaultThreshold = { icc: 0.8, cv: 15 };
-    const typeThreshold = WORK_TYPE_THRESHOLDS_MAP[workType] || WORK_TYPE_THRESHOLDS_MAP['기타'] || defaultThreshold;
+    const defaultThreshold: WorkTypeThreshold = { icc: 0.8, cv: 15 };
+    
+    // 안전한 참조를 위해 try-catch로 감싸기
+    let typeThreshold: WorkTypeThreshold;
+    try {
+      typeThreshold = WORK_TYPE_THRESHOLDS_MAP[workType] || WORK_TYPE_THRESHOLDS_MAP['기타'] || defaultThreshold;
+    } catch (error) {
+      console.warn('임계값 참조 오류, 기본값 사용:', error);
+      typeThreshold = defaultThreshold;
+    }
 
     // 측정 수량에 따른 동적 조정
     const adjustmentFactor = Math.max(0.8, Math.min(1.2, measurementCount / 30));

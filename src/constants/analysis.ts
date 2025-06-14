@@ -97,11 +97,14 @@ export interface WorkTypeThreshold {
   basis?: string;
 }
 
+// 기본 임계값 상수 정의
+const DEFAULT_ICC_THRESHOLD = 0.7;
+const DEFAULT_CV_THRESHOLD = 12;
+
 // 작업 유형별 임계값 맵핑 (확장성을 위한 구조)
 export const WORK_TYPE_THRESHOLDS_MAP: Record<string, WorkTypeThreshold> = Object.freeze({
-  '물자검수팀': { cv: 7.0, icc: 0.78, basis: 'MSA-4 정확성 중시 작업 기준' },
-  '저장관리팀': { cv: 10.0, icc: 0.70, basis: '물류작업 표준시간 연구 기준' },
-  '포장관리팀': { cv: 12.0, icc: 0.65, basis: '산업공학 표준시간 연구 기준' },
-  '기타': { cv: 15.0, icc: 0.60, basis: 'MSA-4 최소 허용 기준' }
+  '물자검수팀': { icc: DEFAULT_ICC_THRESHOLD, cv: 6, basis: '검수 작업의 정밀성 요구' },
+  '저장관리팀': { icc: 0.78, cv: 7, basis: '저장 작업의 일관성 중시' },
+  '포장관리팀': { icc: 0.7, cv: 10, basis: '포장 작업의 효율성 중시' },
+  '기타': { icc: 0.7, cv: DEFAULT_CV_THRESHOLD, basis: '일반 물류 작업 기준' }
 });
-

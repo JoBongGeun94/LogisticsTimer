@@ -4,7 +4,7 @@ import './index.css';
 import App from './App.tsx';
 
 // 캐시 무효화: 2025-06-04 07:13 KST
-// 빌드 ID: CACHE_CLEAR_V2_0_2
+// 빌드 ID: CACHE_CLEAR_V2_0_3
 
 // 에러 경계 컴포넌트
 class ErrorBoundary extends React.Component<
@@ -22,6 +22,59 @@ class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('애플리케이션 오류:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <h1>애플리케이션 로딩 오류</h1>
+          <p>페이지 로딩 중 문제가 발생했습니다.</p>
+          <p>페이지를 새로고침하거나 잠시 후 다시 시도해주세요.</p>
+          <button onClick={() => window.location.reload()}>새로고침</button>
+          <details style={{ marginTop: '20px', textAlign: 'left' }}>
+            <summary>기술 정보 보기</summary>
+            <pre style={{ background: '#f5f5f5', padding: '10px', overflow: 'auto' }}>
+              {this.state.error?.toString()}
+            </pre>
+          </details>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// 안전한 초기화를 위한 함수
+const initializeApp = () => {
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    throw new Error('Root element not found');
+  }
+
+  const root = ReactDOM.createRoot(rootElement);
+
+  root.render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+};
+
+// 앱 초기화 실행
+try {
+  initializeApp();
+} catch (error) {
+  console.error('앱 초기화 실패:', error);
+  document.body.innerHTML = `
+    <div style="padding: 20px; text-align: center;">
+      <h1>초기화 오류</h1>
+      <p>애플리케이션을 시작할 수 없습니다.</p>
+      <button onclick="window.location.reload()">새로고침</button>
+    </div>
+  `;
+}플리케이션 오류:', error, errorInfo);
   }
 
   render() {
