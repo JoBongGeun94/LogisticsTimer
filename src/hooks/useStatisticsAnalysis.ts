@@ -103,43 +103,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     status: 'info' as 'success' | 'warning' | 'error' | 'info'
   }));
 
-  const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
-    // 윈도우 버퍼에 데이터 추가
-    windowBuffer.push({
-      worker: newLap.operator,
-      observer: newLap.target,
-      time: newLap.time / 1000
-    });
-
-    // ICC 재계산
-    const newICC = calculator.calcICC(windowBuffer.values());
-    setIccValue(newICC);
-
-    // ΔPair 계산
-    if (allLaps.length >= 2) {
-      const lastTwo = allLaps.slice(-2);
-      const deltaPair = calculator.calcDeltaPair({
-        tA: lastTwo[0].time / 1000,
-        tB: lastTwo[1].time / 1000
-      });
-      setDeltaPairValue(deltaPair);
-
-      // 물류작업 특성에 맞는 임계값 사용
-      const threshold = LOGISTICS_WORK_THRESHOLDS.CV_THRESHOLD * 0.01;
-      if (deltaPair > threshold) {
-        setShowRetakeModal(true);
-      }
-    }
-
-    // gaugeData 업데이트 (실시간 반영)
-    if (allLaps.length >= 6) {
-      const newGRR = actualGRR;
-      gaugeData.grr = newGRR;
-      gaugeData.status = calculator.statusFromGRR(newGRR);
-    }
-  }, [calculator, windowBuffer, actualGRR, gaugeData]);
-
-  // 실제 Gage R&R 값 계산 (물류작업 특성 반영)
+  // 실제 Gage R&R 값 계산 (물류작업 특성 반영) - 먼저 정의
   const actualGRR = useMemo(() => {
     if (lapTimes.length < 6) return 0;
     
@@ -175,6 +139,63 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       return 0;
     }
   }, [lapTimes]);
+
+  const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
+    // 윈도우 버퍼에 데이터 추가
+    windowBuffer.push({
+      worker: newLap.operator,
+      observer: newLap.target,
+      time: newLap.time / 1000
+    });
+
+    // ICC 재계산
+    const newICC = calculator.calcICC(windowBuffer.values());
+    setIccValue(newICC);
+
+    // ΔPair 계산
+    if (allLaps.length >= 2) {
+      const lastTwo = allLaps.slice(-2);
+      const deltaPair = calculator.calcDeltaPair({
+        tA: lastTwo[0].time / 1000,
+        tB: lastTwo[1].time / 1000
+      });
+      setDeltaPairValue(deltaPair);
+
+      // 물류작업 특성에 맞는 임계값 사용
+      const threshold = LOGISTICS_WORK_THRESHOLDS.CV_THRESHOLD * 0.01;
+      if (deltaPair > threshold) {
+        setShowRetakeModal(true);
+      }
+    }
+
+    // gaugeData 업데이트 (안전한 GRR 참조)
+    if (allLaps.length >= 6) {
+      // 실시간 GRR 계산 (actualGRR 대신 직접 계산)
+      const operators = Array.from(new Set(allLaps.map(lap => lap.operator)));
+      const targets = Array.from(new Set(allLaps.map(lap => lap.target)));
+      
+      if (operators.length >= 2 && targets.length >= 2) {
+        let operatorVariance = 0;
+        for (const operator of operators) {
+          const operatorTimes = allLaps.filter(lap => lap.operator === operator).map(lap => lap.time / 1000);
+          if (operatorTimes.length > 1) {
+            const mean = operatorTimes.reduce((sum, t) => sum + t, 0) / operatorTimes.length;
+            const variance = operatorTimes.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / (operatorTimes.length - 1);
+            operatorVariance += variance;
+          }
+        }
+        
+        const allTimes = allLaps.map(lap => lap.time / 1000);
+        const grandMean = allTimes.reduce((sum, t) => sum + t, 0) / allTimes.length;
+        const totalVariance = allTimes.reduce((sum, t) => sum + Math.pow(t - grandMean, 2), 0) / (allTimes.length - 1);
+        
+        const newGRR = totalVariance > 0 ? Math.sqrt(operatorVariance / operators.length) / Math.sqrt(totalVariance) * 100 : 0;
+        
+        gaugeData.grr = Math.min(100, Math.max(0, newGRR));
+        gaugeData.status = calculator.statusFromGRR(gaugeData.grr);
+      }
+    }
+  }, [calculator, windowBuffer, gaugeData]);
 
   const statisticsStatus = useMemo(() => ({
     grr: calculator.statusFromGRR(actualGRR),
