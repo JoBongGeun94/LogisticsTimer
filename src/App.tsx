@@ -749,9 +749,9 @@ const EnhancedLogisticsTimer = () => {
     setAllLapTimes(prev => [...prev, newLap]);
     updateSessionLapTimes(updatedLaps);
 
-    // 통계 업데이트
-    statisticsAnalysis.updateStatistics(newLap, updatedLaps);
-  }, [lapTimes, setAllLapTimes, updateSessionLapTimes, statisticsAnalysis]);
+    // 통계 업데이트 (순환 참조 방지)
+    updateStatistics(newLap, updatedLaps);
+  }, [lapTimes, setAllLapTimes, updateSessionLapTimes, updateStatistics]);
 
   // 타이머 로직 훅
   const {
@@ -771,6 +771,13 @@ const EnhancedLogisticsTimer = () => {
 
   // 통계 분석 훅
   const statisticsAnalysis = useStatisticsAnalysis(lapTimes);
+
+  // 통계 업데이트 함수 별도 정의 (순환 참조 방지)
+  const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
+    if (statisticsAnalysis?.updateStatistics) {
+      statisticsAnalysis.updateStatistics(newLap, allLaps);
+    }
+  }, [statisticsAnalysis]);
 
   // 다크모드 적용
   useEffect(() => {

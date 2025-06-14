@@ -215,7 +215,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       });
 
       // ΔPair 계산 개선 (측정자간 평균 차이 - 정확한 공식)
-      const operatorGlobalMeans = new Map<string, { sum: number; count: number }>();
+      const operatorGlobalMeans = new Map<string, { sum: number, count: number }>();
 
       // 각 측정자의 전체 측정값 수집
       for (const [partKey, operatorMap] of groupedData) {
@@ -263,7 +263,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
     setDeltaPairValue(deltaPairValue);
     setShowRetakeModal(needsRemeasurement);
-  }, [generateCacheHash]);
+  }, []);
 
   // 상태 계산 최적화
   const statisticsStatus = useMemo(() => ({
