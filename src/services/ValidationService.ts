@@ -1,5 +1,12 @@
-
 import { LapTime, SessionData } from '../types';
+
+// 분석 상수들을 직접 정의하여 TDZ 오류 방지
+const ANALYSIS_CONSTANTS = {
+  MIN_OPERATORS: 2,
+  MIN_TARGETS: 5,
+  MIN_MEASUREMENTS: 6,
+  DELTA_PAIR_THRESHOLD: 2.0
+} as const;
 
 // 검증 결과 인터페이스
 export interface ValidationResult {
@@ -82,11 +89,11 @@ class SessionValidator implements ISessionValidator {
     let canAnalyze = true;
     let analysisMessage = '';
 
-    if (validOperators.length < 2 || validTargets.length < 5) {
+    if (validOperators.length < ANALYSIS_CONSTANTS.MIN_OPERATORS || validTargets.length < ANALYSIS_CONSTANTS.MIN_TARGETS) {
       canAnalyze = false;
-      if (validOperators.length < 2 && validTargets.length < 5) {
+      if (validOperators.length < ANALYSIS_CONSTANTS.MIN_OPERATORS && validTargets.length < ANALYSIS_CONSTANTS.MIN_TARGETS) {
         analysisMessage = 'Gage R&R 분석을 위해서는 측정자 2명 이상, 대상자 5개 이상이 필요합니다.';
-      } else if (validOperators.length < 2) {
+      } else if (validOperators.length < ANALYSIS_CONSTANTS.MIN_OPERATORS) {
         analysisMessage = 'Gage R&R 분석을 위해서는 측정자 2명 이상이 필요합니다.';
       } else {
         analysisMessage = 'Gage R&R 분석을 위해서는 대상자 5개 이상이 필요합니다.';

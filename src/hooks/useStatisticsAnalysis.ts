@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { LapTime } from '../types';
 import { AnalysisService } from '../services/AnalysisService';
@@ -186,7 +185,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   // 동적 임계값 계산 함수 (순환 참조 방지를 위해 로컬 정의)
   const getDynamicThresholdLocal = useCallback((workType: string, measurementCount: number) => {
     const defaultThreshold: WorkTypeThreshold = { icc: 0.8, cv: 15 };
-    
+
     // 안전한 참조를 위해 try-catch로 감싸기
     let typeThreshold: WorkTypeThreshold;
     try {

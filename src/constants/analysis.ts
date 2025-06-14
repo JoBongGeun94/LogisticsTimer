@@ -108,3 +108,91 @@ export const WORK_TYPE_THRESHOLDS_MAP: Record<string, WorkTypeThreshold> = Objec
   '포장관리팀': { icc: 0.7, cv: 10, basis: '포장 작업의 효율성 중시' },
   '기타': { icc: 0.7, cv: DEFAULT_CV_THRESHOLD, basis: '일반 물류 작업 기준' }
 });
+
+// 분석 관련 상수들
+export const ANALYSIS_CONSTANTS = {
+  // Gage R&R 임계값
+  GAGE_RR_EXCELLENT: 10,
+  GAGE_RR_ACCEPTABLE: 30,
+
+  // ICC 임계값
+  ICC_EXCELLENT: 0.75,
+  ICC_ACCEPTABLE: 0.5,
+
+  // 변동계수 임계값
+  CV_EXCELLENT: 12,
+  CV_ACCEPTABLE: 20,
+
+  // 최소 요구사항
+  MIN_OPERATORS: 2,
+  MIN_TARGETS: 5,
+  MIN_MEASUREMENTS: 6,
+
+  // 델타 페어 임계값 (초)
+  DELTA_PAIR_THRESHOLD: 2.0
+} as const;
+
+// 분석 상태 타입
+export type AnalysisStatus = 'excellent' | 'acceptable' | 'marginal' | 'unacceptable' | 'info';
+
+// 분석 결과 평가 함수
+export const evaluateGageRR = (grrPercent: number): AnalysisStatus => {
+  if (grrPercent <= ANALYSIS_CONSTANTS.GAGE_RR_EXCELLENT) return 'excellent';
+  if (grrPercent <= ANALYSIS_CONSTANTS.GAGE_RR_ACCEPTABLE) return 'acceptable';
+  if (grrPercent <= 50) return 'marginal';
+  return 'unacceptable';
+};
+
+export const evaluateICC = (iccValue: number): AnalysisStatus => {
+  if (iccValue >= ANALYSIS_CONSTANTS.ICC_EXCELLENT) return 'excellent';
+  if (iccValue >= ANALYSIS_CONSTANTS.ICC_ACCEPTABLE) return 'acceptable';
+  if (iccValue >= 0.25) return 'marginal';
+  return 'unacceptable';
+};
+
+export const evaluateCV = (cvPercent: number): AnalysisStatus => {
+  if (cvPercent <= ANALYSIS_CONSTANTS.CV_EXCELLENT) return 'excellent';
+  if (cvPercent <= ANALYSIS_CONSTANTS.CV_ACCEPTABLE) return 'acceptable';
+  if (cvPercent <= 30) return 'marginal';
+  return 'unacceptable';
+};
+
+export const evaluateDeltaPair = (deltaPair: number): AnalysisStatus => {
+  if (deltaPair <= 1.0) return 'excellent';
+  if (deltaPair <= ANALYSIS_CONSTANTS.DELTA_PAIR_THRESHOLD) return 'acceptable';
+  if (deltaPair <= 3.0) return 'marginal';
+  return 'unacceptable';
+};
+
+// 분석 메시지
+export const ANALYSIS_MESSAGES = {
+  excellent: '우수한 측정 시스템입니다',
+  acceptable: '양호한 측정 시스템입니다',
+  marginal: '제한적 사용을 권장합니다',
+  unacceptable: '측정 시스템 개선이 필요합니다',
+  info: '분석 진행 중입니다'
+} as const;
+
+// 분석 권장사항
+export const ANALYSIS_RECOMMENDATIONS = {
+  excellent: [
+    '모든 측정에 신뢰할 수 있습니다',
+    '현재 측정 절차를 유지하세요',
+    '정기적인 모니터링을 계속하세요'
+  ],
+  acceptable: [
+    '대부분의 용도로 사용 가능합니다',
+    '정기적인 교정을 권장합니다',
+    '측정 절차 개선을 고려하세요'
+  ],
+  marginal: [
+    '측정 절차 개선이 필요합니다',
+    '교육 및 장비 점검을 고려하세요',
+    '중요한 측정에서는 신중하게 사용하세요'
+  ],
+  unacceptable: [
+    '즉시 개선 조치가 필요합니다',
+    '장비 교체나 절차 전면 개선을 고려하세요',
+    '현재 상태로는 신뢰할 수 없습니다'
+  ]
+} as const;
