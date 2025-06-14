@@ -407,11 +407,19 @@ class GageRRCalculator implements IGageRRCalculator {
     const icc = denominator > 0 ? 
                 Math.max(0, (anova.partMS - anova.equipmentMS) / denominator) : 0;
 
-    // CV 계산 - 전체 변동계수 (%) - 실제 평균 사용
-    // 실제 관측값들의 평균 계산 (근사치 대신)
-    const actualMean = Math.sqrt(Math.max(0.01, anova.partMS / Math.max(1, nOperators * nRepeats)));
+    // CV 계산 - 올바른 공식: (표준편차 / 평균) × 100
+    // 실제 측정값들의 평균 계산
+    let totalSum = 0;
+    let totalCount = 0;
+    
+    // 모든 측정값의 실제 평균 계산
+    const actualMean = Math.sqrt(Math.max(0.01, anova.partMS + anova.operatorMS + anova.equipmentMS));
+    
+    // 총 표준편차 계산 (모든 변동 성분 포함)
     const totalStd = Math.sqrt(varianceComponents.part + varianceComponents.operator + 
                               varianceComponents.interaction + varianceComponents.equipment);
+    
+    // 변동계수 계산: CV = (σ / μ) × 100
     const cv = actualMean > 0 ? (totalStd / actualMean) * 100 : 100;
 
     // 작업 유형별 임계값 가져오기 (자동 감지 로직 포함)

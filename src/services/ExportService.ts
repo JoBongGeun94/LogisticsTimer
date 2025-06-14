@@ -41,6 +41,13 @@ class TimeFormatter implements ITimeFormatter {
 class DataFormatter implements IDataFormatter {
   constructor(private timeFormatter: ITimeFormatter) {}
 
+  private safeFormat(value: number | undefined | null, decimals: number): string {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return '0.' + '0'.repeat(decimals);
+    }
+    return Number(value).toFixed(decimals);
+  }
+
   formatMeasurementData(session: SessionData, lapTimes: LapTime[]): string[][] {
     const headers = ['세션명', '작업유형', '측정자', '대상자', '측정시간', '타임스탬프'];
     const rows = lapTimes.map(lap => [
@@ -56,6 +63,12 @@ class DataFormatter implements IDataFormatter {
   }
 
   formatAnalysisData(session: SessionData, lapTimes: LapTime[], analysis: GageRRResult): string[][] {
+    // 데이터 유효성 검증
+    if (!analysis || typeof analysis !== 'object') {
+      console.warn('분석 결과가 유효하지 않습니다');
+      return [['오류', '분석 결과를 불러올 수 없습니다']];
+    }
+
     // 상세분석 모달과 완전 동기화된 Excel 보고서 생성
     const statusText = analysis.status === 'excellent' ? '우수' :
                       analysis.status === 'acceptable' ? '양호' :
@@ -68,23 +81,23 @@ class DataFormatter implements IDataFormatter {
       ['', '', '', ''],
       ['📈 핵심 지표', '', '', ''],
       ['분석 항목', '값', '단위', '평가 기준'],
-      ['Gage R&R', (analysis.gageRRPercent || 0).toFixed(1), '%', '< 10% 우수, 10-30% 양호'],
-      ['ICC (2,1)', (analysis.icc || 0).toFixed(3), '', '>= 0.75 신뢰 가능'],
-      ['ΔPair', (analysis.deltaPair || 0).toFixed(3), 's', '측정자간 차이'],
-      ['변동계수 (CV)', (analysis.cv || 0).toFixed(1), '%', '<= 8% 일관성 우수'],
+      ['Gage R&R', this.safeFormat(analysis.gageRRPercent, 1), '%', '< 10% 우수, 10-30% 양호'],
+      ['ICC (2,1)', this.safeFormat(analysis.icc, 3), '', '>= 0.75 신뢰 가능'],
+      ['ΔPair', this.safeFormat(analysis.deltaPair, 3), 's', '측정자간 차이'],
+      ['변동계수 (CV)', this.safeFormat(analysis.cv, 1), '%', '<= 8% 일관성 우수'],
       ['', '', '', ''],
       ['🔬 분산 구성요소', '', '', ''],
       ['구성요소', '값', '단위', '설명'],
-      ['반복성 (Repeatability)', (analysis.repeatability || 0).toFixed(4), 'ms', '동일 조건 반복 측정 변동'],
-      ['재현성 (Reproducibility)', (analysis.reproducibility || 0).toFixed(4), 'ms', '측정자간 변동'],
-      ['대상자 변동 (Part Variation)', (analysis.partVariation || 0).toFixed(4), 'ms', '대상자간 실제 차이'],
-      ['총 변동 (Total Variation)', (analysis.totalVariation || 0).toFixed(4), 'ms', '전체 측정 시스템 변동'],
+      ['반복성 (Repeatability)', this.safeFormat(analysis.repeatability, 4), 'ms', '동일 조건 반복 측정 변동'],
+      ['재현성 (Reproducibility)', this.safeFormat(analysis.reproducibility, 4), 'ms', '측정자간 변동'],
+      ['대상자 변동 (Part Variation)', this.safeFormat(analysis.partVariation, 4), 'ms', '대상자간 실제 차이'],
+      ['총 변동 (Total Variation)', this.safeFormat(analysis.totalVariation, 4), 'ms', '전체 측정 시스템 변동'],
       ['', '', '', ''],
       ['⏱️ 작업시간 분석', '', '', ''],
       ['지표명', '값', '단위', '평가'],
-      ['급내상관계수 (ICC)', (analysis.icc || 0).toFixed(3), '', '측정자간 신뢰성'],
-      ['변동계수 (CV)', (analysis.cv || 0).toFixed(1), '%', '작업 일관성'],
-      ['99% 달성시간 (Q99)', ((analysis.q99 || 0) / 1000).toFixed(2), '초', '99% 완료 예상시간'],
+      ['급내상관계수 (ICC)', this.safeFormat(analysis.icc, 3), '', '측정자간 신뢰성'],
+      ['변동계수 (CV)', this.safeFormat(analysis.cv, 1), '%', '작업 일관성'],
+      ['99% 달성시간 (Q99)', this.safeFormat((analysis.q99 || 0) / 1000, 2), '초', '99% 완료 예상시간'],
       ['표준시간 설정 가능', analysis.isReliableForStandard ? 'O (가능)' : 'X (불가)', '', 'ICC >= 0.75 & CV <= 8%'],
       ['', '', '', ''],
       ['📋 해석 및 권장사항', '', '', ''],
@@ -156,24 +169,31 @@ class CSVFileExporter implements IFileExporter {
         return false;
       }
 
-      // CSV 형식으로 변환 (안전한 이스케이프 처리)
+      // CSV 형식으로 변환 (개선된 안전한 이스케이프 처리)
       const csvContent = validData.map(row => 
         row.map(cell => {
-          // null, undefined 안전 처리
+          // null, undefined, NaN 안전 처리
           let cellStr = '';
-          if (cell !== null && cell !== undefined) {
+          if (cell !== null && cell !== undefined && !Number.isNaN(cell)) {
             cellStr = String(cell).trim();
           }
           
-          // 특수문자 처리 개선
-          if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('\r') || cellStr.includes('"')) {
-            return `"${cellStr.replace(/"/g, '""')}"`;
+          // 빈 문자열 처리
+          if (cellStr === '') {
+            return '""';
           }
+          
+          // 특수문자 및 한글 처리 개선
+          if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('\r') || 
+              cellStr.includes('"') || cellStr.includes(';') || /[가-힣]/.test(cellStr)) {
+            return `"${cellStr.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
+          }
+          
           return cellStr;
         }).join(',')
-      ).join('\r\n'); // Windows 호환성을 위해 \r\n 사용
+      ).join('\r\n');
       
-      // UTF-8 BOM 추가로 Excel에서 한글 깨짐 방지
+      // UTF-8 BOM 추가 + 강화된 인코딩
       const BOM = '\uFEFF';
       const blob = new Blob([BOM + csvContent], { 
         type: 'text/csv;charset=utf-8;' 
