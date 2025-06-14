@@ -371,19 +371,22 @@ class GageRRCalculator implements IGageRRCalculator {
   /**
    * 작업시간 분석용 지표 계산 (물류작업 특성 반영)
    */
-  private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number, workType: string = '기타', groupedData: Map<string, Map<string, number[]>>) {
+  private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number, workType: string = '기타', groupedData?: Map<string, Map<string, number[]>>) {
     const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
 
-    // ICC(2,1) 계산 - 올바른 공식 적용 (MSA-4 표준)
-    // ICC(2,1) = (MS_between - MS_within) / (MS_between + (k-1) * MS_within)
-    // MS_between = partMS, MS_within = equipmentMS, k = nOperators
-    const MS_between = anova.partMS;
-    const MS_within = anova.equipmentMS;
-    const k = nOperators;
+    // ICC(2,1) 계산 수정 - 올바른 공식 적용 (MSA-4 표준)
+    // ICC(2,1) = (MS_part - MS_equipment) / (MS_part + (nOperators-1) * MS_equipment + nOperators * (MS_operator - MS_equipment) / nParts)
+    const MS_part = anova.partMS;
+    const MS_operator = anova.operatorMS;
+    const MS_equipment = anova.equipmentMS;
     
-    const icc_denominator = MS_between + (k - 1) * MS_within;
-    const icc = icc_denominator > 0 ? 
-                Math.max(0, Math.min(1, (MS_between - MS_within) / icc_denominator)) : 0;
+    // 분모 계산 (올바른 공식)
+    const denominator = MS_part + (nOperators - 1) * MS_equipment + 
+                       nOperators * Math.max(0, (MS_operator - MS_equipment)) / nParts;
+    
+    // ICC 계산 (0과 1 사이로 제한)
+    const icc = denominator > 0 ? 
+                Math.max(0, Math.min(1, (MS_part - MS_equipment) / denominator)) : 0;
 
     // Grand Mean 계산 - ANOVA에서 사용된 전체 평균 (올바른 CV 계산을 위함)
     let grandMeanSum = 0;
@@ -452,34 +455,37 @@ class GageRRCalculator implements IGageRRCalculator {
   }
 
   private calculateVarianceComponents(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number): VarianceComponents {
-    // MSA-4 표준에 따른 올바른 분산 성분 계산 (REML 방법론)
+    // MSA-4 표준에 따른 올바른 분산 성분 계산 (REML 방법론) - 수정된 공식
 
-    // Repeatability (Equipment Variance) - 항상 양수
+    // Repeatability (Equipment Variance) - 측정 장비의 반복성
     const sigma2_equipment = Math.max(0, anova.equipmentMS);
 
-    // Interaction Variance - 올바른 공식 적용
-    const var_interaction_raw = Math.max(0, (anova.interactionMS - anova.equipmentMS) / nRepeats);
+    // Interaction Variance - 측정자×대상자 상호작용 (수정된 공식)
+    const var_interaction_numerator = Math.max(0, anova.interactionMS - anova.equipmentMS);
+    const var_interaction = var_interaction_numerator / Math.max(1, nRepeats);
     
-    // Reproducibility (Operator Variance) - 올바른 공식 적용
-    const var_operator_raw = Math.max(0, (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats));
+    // Reproducibility (Operator Variance) - 측정자간 재현성 (수정된 공식)
+    const var_operator_numerator = Math.max(0, anova.operatorMS - anova.interactionMS);
+    const var_operator = var_operator_numerator / Math.max(1, nParts * nRepeats);
     
-    // Part-to-Part Variance - 올바른 공식 적용
-    const var_part_raw = Math.max(0, (anova.partMS - anova.interactionMS) / (nOperators * nRepeats));
+    // Part-to-Part Variance - 대상자간 변동 (수정된 공식)
+    const var_part_numerator = Math.max(0, anova.partMS - anova.interactionMS);
+    const var_part = var_part_numerator / Math.max(1, nOperators * nRepeats);
 
-    // Total Variance - 모든 성분의 합
-    const var_total = var_part_raw + var_operator_raw + var_interaction_raw + sigma2_equipment;
+    // Total Variance - 모든 성분의 합 (음수 방지)
+    const var_total = Math.max(0.0001, var_part + var_operator + var_interaction + sigma2_equipment);
 
-    // 유효성 검증
-    if (var_total <= 0) {
-      console.warn('⚠️ 총 분산이 0 이하 - 최소값으로 보정');
+    // 유효성 검증 및 로깅
+    if (var_total <= 0.0001) {
+      console.warn('⚠️ 총 분산이 최소값으로 보정됨 - 데이터 품질 확인 필요');
     }
 
     return {
-      part: var_part_raw,
-      operator: var_operator_raw,
-      interaction: var_interaction_raw,
-      equipment: sigma2_equipment,
-      total: Math.max(0.0001, var_total)
+      part: Math.max(0, var_part),
+      operator: Math.max(0, var_operator),
+      interaction: Math.max(0, var_interaction),
+      equipment: Math.max(0, sigma2_equipment),
+      total: var_total
     };
   }
 }
