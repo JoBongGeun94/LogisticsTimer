@@ -22,28 +22,28 @@ export const STATISTICAL_CONFIDENCE = {
 
 // 임계값 설정 근거: MSA-4 표준 및 물류작업 특성 연구 기반
 export const LOGISTICS_WORK_THRESHOLDS = {
-  BY_WORK_TYPE: {
-    // 고정밀 작업 (ISO 5725-2 기준: CV ≤ 6%, ICC ≥ 0.80)
-    '피킹': { cv: 6.0, icc: 0.80, basis: 'ISO 5725-2 고정밀 작업 기준' },
-    // 정확성 중시 작업 (MSA-4 기준: CV ≤ 7%, ICC ≥ 0.78)
-    '검수': { cv: 7.0, icc: 0.78, basis: 'MSA-4 정확성 중시 작업 기준' },
-    // 환경 변수 고려 작업 (물류작업 연구: CV ≤ 10%, ICC ≥ 0.70)
-    '운반': { cv: 10.0, icc: 0.70, basis: '물류작업 표준시간 연구 기준' },
-    // 물리적 변동 허용 작업 (산업공학 표준: CV ≤ 12%, ICC ≥ 0.65)
-    '적재': { cv: 12.0, icc: 0.65, basis: '산업공학 표준시간 연구 기준' },
-    // 일반 작업 (MSA-4 최소 기준: CV ≤ 15%, ICC ≥ 0.60)
-    '기타': { cv: 15.0, icc: 0.60, basis: 'MSA-4 최소 허용 기준' }
-  },
-  // MSA-4 표준에 따른 일반적 임계값
-  CV_THRESHOLD: 15.0, // 변동계수 15% 이하 (MSA-4 권장)
-  ICC_THRESHOLD: 0.60, // 급내상관계수 0.60 이상 (MSA-4 최소 기준)
-  // 통계적 근거
-  STATISTICAL_BASIS: {
-    reference: 'MSA-4 (AIAG/ASQ), ISO 5725-2, 물류작업 표준시간 연구',
-    last_updated: '2024-06-14',
-    validation_study: '국방부 물류창 작업시간 측정 연구 (2024)'
-  }
-};
+  // ICC (급내상관계수) 임계값
+  ICC_EXCELLENT: 0.8,
+  ICC_ACCEPTABLE: 0.7,
+
+  // 변동계수 임계값 (물류작업 특성 반영)
+  CV_THRESHOLD: 0.12, // 12%
+
+  // ΔPair 임계값 (연속 측정값 차이)
+  DELTA_PAIR_THRESHOLD: 0.15, // 15%
+
+  // Gage R&R 임계값 (MSA 표준)
+  GRR_EXCELLENT: 10,   // 10% 미만: 우수
+  GRR_ACCEPTABLE: 30,  // 30% 미만: 허용 가능
+  GRR_MARGINAL: 50,    // 50% 미만: 제한적 사용
+
+  // 물류작업별 특화 임계값
+  WORK_TYPE_MULTIPLIERS: {
+    '물자검수팀': 1.0,
+    '저장관리팀': 1.1,
+    '포장관리팀': 1.2
+  } as const
+} as const;
 
 // 정규분포 분위수 상수
 export const NORMAL_DISTRIBUTION = {

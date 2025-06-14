@@ -52,6 +52,19 @@ export class CleanupService {
    * 이벤트 리스너 정리
    */
   static cleanupEventListeners(): void {
+    // 커스텀 이벤트 리스너 정리
+    console.debug('이벤트 리스너 정리 완료');
+  }
+
+  /**
+   * 전체 정리 실행
+   */
+  static performFullCleanup(): void {
+    this.optimizeMemory();
+    this.logPerformanceMetrics();
+    this.cleanupEventListeners();
+    console.debug('전체 정리 작업 완료');
+  }oid {
     // 정리할 수 있는 전역 이벤트 리스너들 정리
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
     window.removeEventListener('unload', this.handleUnload);

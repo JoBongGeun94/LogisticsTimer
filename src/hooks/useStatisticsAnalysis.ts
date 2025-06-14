@@ -141,13 +141,15 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       // ΔPair 계산 (최적화: 마지막 2개만 계산)
       if (allLaps.length >= 2) {
         const lastTwo = allLaps.slice(-2);
-        const deltaPair = Math.abs(lastTwo[0].time - lastTwo[1].time);
+        const deltaPair = Math.abs(lastTwo[1].time - lastTwo[0].time);
         setDeltaPairValue(deltaPair);
 
-        // 임계값 비교 최적화
+        // 임계값 비교 최적화 - 물류작업 특성 반영
         const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
-        const threshold = workTimeMean * 0.15;
-        if (deltaPair > threshold) {
+        const threshold = workTimeMean * LOGISTICS_WORK_THRESHOLDS.DELTA_PAIR_THRESHOLD;
+        
+        // 연속 측정값 차이가 15% 초과 시 재측정 권고
+        if (deltaPair > threshold && allLaps.length > 2) {
           setShowRetakeModal(true);
         }
       }
