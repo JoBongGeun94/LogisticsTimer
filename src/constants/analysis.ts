@@ -1,3 +1,4 @@
+
 // MSA 규격 완전 준수 분석 상수
 export const MSA_REQUIREMENTS = {
   // MSA-4 규격 기준
@@ -20,67 +21,43 @@ export const STATISTICAL_CONFIDENCE = {
   POWER: 0.8        // 검정력 80%
 } as const;
 
-// 임계값 설정 근거: MSA-4 표준 및 물류작업 특성 연구 기반
+// 임계값 설정 (단순 구조로 변경)
 export const LOGISTICS_WORK_THRESHOLDS = {
-  // 기본 임계값
   ICC_EXCELLENT: 0.8,
   ICC_ACCEPTABLE: 0.7,
-  CV_THRESHOLD: 0.12, // 12%
-  DELTA_PAIR_THRESHOLD: 0.15, // 15%
-  GRR_EXCELLENT: 10,   // 10% 미만: 우수
-  GRR_ACCEPTABLE: 30,  // 30% 미만: 허용 가능
-  GRR_MARGINAL: 50,    // 50% 미만: 제한적 사용
-
-  // 측정자별 보정 계수 (숙련도 반영)
-  OPERATOR_ADJUSTMENT: {
-    '6급': 1.0,
-    '7급': 1.1,
-    '8급': 1.2,
-    '9급': 1.3,
-    '기타': 1.15
-  } as const,
-
-  // 작업별 보정 계수 (복잡도 반영)
-  WORK_COMPLEXITY: {
-    '물자검수팀': 1.0,
-    '저장관리팀': 1.1,
-    '포장관리팀': 1.2
-  } as const
+  CV_THRESHOLD: 0.12,
+  DELTA_PAIR_THRESHOLD: 0.15,
+  GRR_EXCELLENT: 10,
+  GRR_ACCEPTABLE: 30,
+  GRR_MARGINAL: 50
 } as const;
 
-// 동적 임계값 계산 함수 (별도 분리)
-export const getDynamicThreshold = (workType: string, baseCV: number, measurementCount: number) => {
-  // 기본 임계값 직접 정의 (순환 참조 방지)
-  const workTypeMap: Record<string, { icc: number; cv: number }> = {
-    '피킹': { icc: 0.8, cv: 6 },
-    '검수': { icc: 0.78, cv: 7 },
-    '운반': { icc: 0.7, cv: 10 },
-    '적재': { icc: 0.65, cv: 12 },
-    '기타': { icc: 0.7, cv: 12 }
-  };
-  
-  const typeThreshold = workTypeMap[workType] || workTypeMap['기타'];
+// 측정자별 보정 계수
+export const OPERATOR_ADJUSTMENT = {
+  '6급': 1.0,
+  '7급': 1.1,
+  '8급': 1.2,
+  '9급': 1.3,
+  '기타': 1.15
+} as const;
 
-  // 측정 횟수에 따른 보정 (측정이 많을수록 엄격하게)
-  const countAdjustment = measurementCount >= 20 ? 0.9 : 
-                         measurementCount >= 10 ? 0.95 : 1.0;
+// 작업별 보정 계수
+export const WORK_COMPLEXITY = {
+  '물자검수팀': 1.0,
+  '저장관리팀': 1.1,
+  '포장관리팀': 1.2
+} as const;
 
-  return {
-    icc: typeThreshold.icc * countAdjustment,
-    cv: typeThreshold.cv * countAdjustment
-  };
-};
-
-// 정규분포 분위수 상수 (정확한 값으로 수정)
+// 정규분포 분위수 상수
 export const NORMAL_DISTRIBUTION = {
-  Q90: 1.282,   // 90% 분위수
-  Q95: 1.645,   // 95% 분위수  
-  Q99: 2.326,   // 99% 분위수
-  Q999: 3.090,  // 99.9% 분위수
-  Q9999: 3.719  // 99.99% 분위수
+  Q90: 1.282,
+  Q95: 1.645,
+  Q99: 2.326,
+  Q999: 3.090,
+  Q9999: 3.719
 } as const;
 
-// F-분포 임계값 (자유도별 동적 계산을 위한 기본값)
+// F-분포 임계값
 export const F_DISTRIBUTION_CRITICAL = {
   ALPHA_001: { 
     base: 6.63, 
@@ -104,7 +81,7 @@ export const F_DISTRIBUTION_CRITICAL = {
   }
 } as const;
 
-// 작업 유형별 세부 임계값 (연구 기반)
+// 작업 유형별 세부 임계값 (단순 구조)
 export const WORK_TYPE_THRESHOLDS = {
   '피킹': { 
     icc: 0.8, 
@@ -133,8 +110,6 @@ export const WORK_TYPE_THRESHOLDS = {
   }
 } as const;
 
-
-
 // 로그 변환 옵션
 export const LOG_TRANSFORM_OPTIONS = {
   NONE: 'none',
@@ -144,3 +119,29 @@ export const LOG_TRANSFORM_OPTIONS = {
 } as const;
 
 export type LogTransformType = typeof LOG_TRANSFORM_OPTIONS[keyof typeof LOG_TRANSFORM_OPTIONS];
+
+// 동적 임계값 계산 함수 (완전 분리)
+export const getDynamicThreshold = (workType: string, baseCV: number, measurementCount: number) => {
+  // 하드코딩된 매핑으로 순환 참조 방지
+  const workTypeMap: Record<string, { icc: number; cv: number }> = {
+    '피킹': { icc: 0.8, cv: 6 },
+    '검수': { icc: 0.78, cv: 7 },
+    '운반': { icc: 0.7, cv: 10 },
+    '적재': { icc: 0.65, cv: 12 },
+    '기타': { icc: 0.7, cv: 12 },
+    '물자검수팀': { icc: 0.8, cv: 6 },
+    '저장관리팀': { icc: 0.78, cv: 7 },
+    '포장관리팀': { icc: 0.7, cv: 10 }
+  };
+  
+  const typeThreshold = workTypeMap[workType] || workTypeMap['기타'];
+
+  // 측정 횟수에 따른 보정
+  const countAdjustment = measurementCount >= 20 ? 0.9 : 
+                         measurementCount >= 10 ? 0.95 : 1.0;
+
+  return {
+    icc: typeThreshold.icc * countAdjustment,
+    cv: typeThreshold.cv * countAdjustment
+  };
+};
