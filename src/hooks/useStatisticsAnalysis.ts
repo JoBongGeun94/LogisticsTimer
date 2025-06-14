@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { LapTime } from '../types';
 import { LOGISTICS_WORK_THRESHOLDS } from '../constants/analysis';
 import { AnalysisService } from '../services/AnalysisService';
@@ -50,22 +50,72 @@ class StatisticsCalculator implements IStatisticsCalculator {
   }
 }
 
+interface AnalysisCache {
+  timestamp: number;
+  result: GaugeData;
+}
+
 export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const [calculator] = useState<IStatisticsCalculator>(() => new StatisticsCalculator());
   const [iccValue, setIccValue] = useState(0);
   const [deltaPairValue, setDeltaPairValue] = useState(0);
   const [showRetakeModal, setShowRetakeModal] = useState(false);
+  const [cache, setCache] = useState<Record<string, AnalysisCache>>({});
+  const [lastCalculationTime, setLastCalculationTime] = useState<number>(0);
 
-  // 성능 최적화: 메모이제이션 개선 및 해시 기반 캐싱
-  const analysisCache = useRef<{
-    dataHash: string;
-    result: GaugeData;
-  }>({ dataHash: '', result: {
-    grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
-    totalVariation: 0, status: 'info', cv: 0, q99: 0, 
-    isReliableForStandard: false, 
-    varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
-  }});
+  // 캐시 정리 함수 (메모리 누수 방지)
+  const cleanupCache = useCallback(() => {
+    const now = Date.now();
+    setCache(prev => {
+      const cleaned: Record<string, AnalysisCache> = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        // 5분 이상 된 캐시는 삭제
+        if (now - value.timestamp < 5 * 60 * 1000) {
+          cleaned[key] = value;
+        }
+      });
+      return cleaned;
+    });
+  }, []);
+
+  // 주기적 캐시 정리 (컴포넌트 마운트 시)
+  useEffect(() => {
+    const cleanup = setInterval(cleanupCache, 60000); // 1분마다 정리
+    return () => clearInterval(cleanup);
+  }, [cleanupCache]);
+
+  // 캐시 해시 생성 (개선된 해시 함수 - 충돌 방지)
+  const generateCacheHash = useCallback((lapTimes: LapTime[]): string => {
+    if (!lapTimes || lapTimes.length === 0) return 'empty';
+
+    // 더 정확한 데이터 식별을 위한 복합 해시
+    const sortedData = lapTimes
+      .map(lap => ({
+        op: lap.operator || '',
+        tg: lap.target || '',
+        tm: Math.round((lap.time || 0) * 1000) / 1000, // 소수점 3자리까지
+        ts: lap.timestamp || '',
+        id: lap.id || 0
+      }))
+      .sort((a, b) => {
+        // 다중 기준 정렬로 순서 일관성 보장
+        if (a.op !== b.op) return a.op.localeCompare(b.op);
+        if (a.tg !== b.tg) return a.tg.localeCompare(b.tg);
+        if (a.tm !== b.tm) return a.tm - b.tm;
+        return a.id - b.id;
+      });
+
+    const dataStr = JSON.stringify(sortedData);
+
+    // FNV-1a 해시 알고리즘 (충돌 확률 낮음)
+    let hash = 2166136261;
+    for (let i = 0; i < dataStr.length; i++) {
+      hash ^= dataStr.charCodeAt(i);
+      hash = (hash * 16777619) >>> 0; // 32비트 unsigned
+    }
+
+    return `${hash}_${lapTimes.length}_${Date.now() % 10000}`;
+  }, []);
 
   // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
   const gaugeData = useMemo((): GaugeData => {
@@ -85,10 +135,11 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     }
 
     // 성능 최적화: 해시 기반 캐시 활용
-    const dataHash = `${lapTimes.length}-${lapTimes[lapTimes.length - 1]?.time}-${lapTimes[lapTimes.length - 1]?.operator}-${lapTimes[lapTimes.length - 1]?.target}`;
+    const dataHash = generateCacheHash(lapTimes);
+    const cachedAnalysis = cache[dataHash];
 
-    if (analysisCache.current.dataHash === dataHash) {
-      return analysisCache.current.result;
+    if (cachedAnalysis && Date.now() - cachedAnalysis.timestamp < 30000) {
+      return cachedAnalysis.result;
     }
 
     try {
@@ -109,7 +160,11 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
 
       // 캐시 업데이트
-      analysisCache.current = { dataHash, result };
+      setCache(prevCache => ({
+        ...prevCache,
+        [dataHash]: { timestamp: Date.now(), result }
+      }));
+      setLastCalculationTime(Date.now());
 
       return result;
     } catch (error) {
@@ -127,10 +182,13 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
       };
     }
-  }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, calculator]);
+  }, [lapTimes, generateCacheHash, cache, calculator]);
 
   // 통계 업데이트 - AnalysisService 기반으로 통합
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
+    let deltaPairValue = 0;
+    let needsRemeasurement = false;
+
     try {
       // ICC 재계산 - AnalysisService 활용
       if (allLaps.length >= 6) {
@@ -138,23 +196,74 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         setIccValue(analysis.icc);
       }
 
-      // ΔPair 계산 (최적화: 마지막 2개만 계산)
-      if (allLaps.length >= 2) {
-        const lastTwo = allLaps.slice(-2);
-        const deltaPair = Math.abs(lastTwo[0].time - lastTwo[1].time);
-        setDeltaPairValue(deltaPair);
+      // 데이터 그룹화 (partKey -> operatorKey -> measurements[])
+      const groupedData = new Map<string, Map<string, number[]>>();
+      allLaps.forEach(lap => {
+        const partKey = `${lap.target}-${lap.taskType}`;
+        const operatorKey = lap.operator;
 
-        // 임계값 비교 최적화
-        const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
-        const threshold = workTimeMean * 0.15;
-        if (deltaPair > threshold) {
-          setShowRetakeModal(true);
+        if (!groupedData.has(partKey)) {
+          groupedData.set(partKey, new Map<string, number[]>());
+        }
+
+        const operatorMap = groupedData.get(partKey)!;
+        if (!operatorMap.has(operatorKey)) {
+          operatorMap.set(operatorKey, []);
+        }
+
+        operatorMap.get(operatorKey)!.push(lap.time);
+      });
+
+      // ΔPair 계산 개선 (측정자간 평균 차이 - 정확한 공식)
+      const operatorGlobalMeans = new Map<string, { sum: number; count: number }>();
+
+      // 각 측정자의 전체 측정값 수집
+      for (const [partKey, operatorMap] of groupedData) {
+        for (const [operatorKey, measurements] of operatorMap) {
+          if (!operatorGlobalMeans.has(operatorKey)) {
+            operatorGlobalMeans.set(operatorKey, { sum: 0, count: 0 });
+          }
+          const opData = operatorGlobalMeans.get(operatorKey)!;
+          measurements.forEach(measurement => {
+            opData.sum += measurement;
+            opData.count += 1;
+          });
+        }
+      }
+
+      // 측정자별 전체 평균 계산
+      const operatorMeans = Array.from(operatorGlobalMeans.entries()).map(([operator, data]) => ({
+        operator,
+        mean: data.count > 0 ? data.sum / data.count : 0
+      }));
+
+      if (operatorMeans.length >= 2) {
+        // 가장 많이 측정한 두 측정자 선택
+        const sortedOperators = operatorMeans
+          .map(op => ({
+            ...op,
+            count: operatorGlobalMeans.get(op.operator)?.count || 0
+          }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 2);
+
+        if (sortedOperators.length === 2) {
+          const deltaPair = Math.abs(sortedOperators[0].mean - sortedOperators[1].mean) / 1000; // 초 단위
+
+          deltaPairValue = deltaPair;
+
+          // 작업 유형별 임계값 적용
+          const threshold = LOGISTICS_WORK_THRESHOLDS.DELTA_PAIR_THRESHOLD;
+          needsRemeasurement = deltaPair > threshold;
         }
       }
     } catch (error) {
       console.warn('통계 업데이트 오류:', error);
     }
-  }, []);
+
+    setDeltaPairValue(deltaPairValue);
+    setShowRetakeModal(needsRemeasurement);
+  }, [generateCacheHash]);
 
   // 상태 계산 최적화
   const statisticsStatus = useMemo(() => ({

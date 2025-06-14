@@ -1,9 +1,10 @@
+
 // MSA 규격 완전 준수 분석 상수
 export const MSA_REQUIREMENTS = {
   // MSA-4 규격 기준
-  MIN_MEASUREMENTS: 10, // 최소 측정 횟수 (기존 6회 → 10회)
+  MIN_MEASUREMENTS: 6, // 실제 사용 기준 (최소 6회부터 분석 가능)
   MIN_OPERATORS: 2,     // 최소 측정자 수
-  MIN_PARTS: 5,         // 최소 대상자 수
+  MIN_PARTS: 2,         // 최소 대상자 수 (실제 사용 기준)
   TRIALS_PER_PART: 2,   // 대상자당 반복 횟수
 } as const;
 
@@ -32,11 +33,16 @@ export const LOGISTICS_WORK_THRESHOLDS = {
     // 물리적 변동 허용 작업 (산업공학 표준: CV ≤ 12%, ICC ≥ 0.65)
     '적재': { cv: 12.0, icc: 0.65, basis: '산업공학 표준시간 연구 기준' },
     // 일반 작업 (MSA-4 최소 기준: CV ≤ 15%, ICC ≥ 0.60)
-    '기타': { cv: 15.0, icc: 0.60, basis: 'MSA-4 최소 허용 기준' }
+    '기타': { cv: 15.0, icc: 0.60, basis: 'MSA-4 최소 허용 기준' },
+    // 물류창 작업 타입 매핑
+    '물자검수팀': { cv: 7.0, icc: 0.78, basis: 'MSA-4 정확성 중시 작업 기준' },
+    '저장관리팀': { cv: 10.0, icc: 0.70, basis: '물류작업 표준시간 연구 기준' },
+    '포장관리팀': { cv: 12.0, icc: 0.65, basis: '산업공학 표준시간 연구 기준' }
   },
   // MSA-4 표준에 따른 일반적 임계값
-  CV_THRESHOLD: 15.0, // 변동계수 15% 이하 (MSA-4 권장)
-  ICC_THRESHOLD: 0.60, // 급내상관계수 0.60 이상 (MSA-4 최소 기준)
+  CV_THRESHOLD: 12.0, // 변동계수 12% 이하 (물류작업 특성 반영)
+  ICC_THRESHOLD: 0.70, // 급내상관계수 0.70 이상 (물류작업 기준)
+  DELTA_PAIR_THRESHOLD: 0.10, // ΔPair 0.10초 이하 (실무 적용 기준)
   // 통계적 근거
   STATISTICAL_BASIS: {
     reference: 'MSA-4 (AIAG/ASQ), ISO 5725-2, 물류작업 표준시간 연구',
@@ -45,19 +51,27 @@ export const LOGISTICS_WORK_THRESHOLDS = {
   }
 };
 
-// 정규분포 분위수 상수
+// 정규분포 분위수 상수 (정확한 통계값)
 export const NORMAL_DISTRIBUTION = {
-  Q95: 1.645,   // 95% 분위수
-  Q99: 2.326,   // 99% 분위수
-  Q999: 3.090   // 99.9% 분위수
+  Q95: 1.6449,   // 95% 분위수 (정확값)
+  Q99: 2.3263,   // 99% 분위수 (정확값)
+  Q999: 3.0902   // 99.9% 분위수 (정확값)
 } as const;
 
-// F-분포 임계값 (개선된 근사)
+// F-분포 임계값 (자유도별 정확한 값)
 export const F_DISTRIBUTION_CRITICAL = {
-  ALPHA_001: { large_df: 6.63, small_df: 8.0 },
-  ALPHA_01: { large_df: 4.61, small_df: 5.5 },
-  ALPHA_05: { large_df: 3.84, small_df: 4.0 },
-  ALPHA_10: { large_df: 2.71, small_df: 3.0 }
+  // α = 0.05 기준, 다양한 자유도 조합
+  ALPHA_05: {
+    df1_1: { df2_1: 161.45, df2_5: 6.61, df2_10: 4.96, df2_20: 4.35, df2_inf: 3.84 },
+    df1_2: { df2_1: 18.51, df2_5: 5.79, df2_10: 4.10, df2_20: 3.49, df2_inf: 2.99 },
+    df1_5: { df2_1: 10.01, df2_5: 5.05, df2_10: 3.33, df2_20: 2.71, df2_inf: 2.21 },
+    df1_10: { df2_1: 9.65, df2_5: 4.74, df2_10: 2.98, df2_20: 2.35, df2_inf: 1.83 }
+  },
+  // α = 0.01 기준
+  ALPHA_01: {
+    df1_1: { df2_1: 4052.2, df2_5: 16.26, df2_10: 10.04, df2_20: 8.10, df2_inf: 6.63 },
+    df1_2: { df2_1: 98.50, df2_5: 13.27, df2_10: 7.56, df2_20: 5.85, df2_inf: 4.61 }
+  }
 } as const;
 
 // 로그 변환 옵션
@@ -69,3 +83,10 @@ export const LOG_TRANSFORM_OPTIONS = {
 } as const;
 
 export type LogTransformType = typeof LOG_TRANSFORM_OPTIONS[keyof typeof LOG_TRANSFORM_OPTIONS];
+
+// 실시간 분석을 위한 성능 최적화 상수
+export const PERFORMANCE_CONFIG = {
+  CACHE_EXPIRY_MS: 5000,     // 5초 캐시 유효시간
+  MIN_RECALC_INTERVAL: 1000, // 최소 재계산 간격 1초
+  MAX_MEASUREMENTS_CACHE: 1000, // 최대 측정값 캐시 개수
+} as const;

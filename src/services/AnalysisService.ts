@@ -253,17 +253,20 @@ class ANOVACalculator implements IANOVACalculator {
     // Equipment SS (Repeatability) 계산
     const equipmentSS = Math.max(0, totalSS - partSS - operatorSS - interactionSS);
 
-    // 자유도 계산 (MSA 표준) - 극단적 케이스 처리 개선
-    const partDF = nParts > 1 ? (nParts - 1) : 1;
-    const operatorDF = nOperators > 1 ? (nOperators - 1) : 1;
-    const interactionDF = (nParts > 1 && nOperators > 1) ? 
-      (nParts - 1) * (nOperators - 1) : 1;
-    const equipmentDF = Math.max(1, nParts * nOperators * Math.max(1, nRepeats - 1));
+    // 자유도 계산 (MSA 표준) - 극단적 케이스 처리 강화
+    const partDF = Math.max(1, nParts - 1);
+    const operatorDF = Math.max(1, nOperators - 1);
+    const interactionDF = Math.max(1, (nParts - 1) * (nOperators - 1));
+    
+    // Equipment 자유도: 전체 측정수 - 처리 조합수
+    const totalCells = nParts * nOperators;
+    const totalMeasurements = totalCells * nRepeats;
+    const equipmentDF = Math.max(1, totalMeasurements - totalCells);
 
-    // 자유도 유효성 검증
-    if (partDF <= 0 || operatorDF <= 0 || interactionDF <= 0 || equipmentDF <= 0) {
-      console.warn('⚠️ 자유도 계산 이상 - 최소값으로 보정');
-    }
+    // 자유도 유효성 검증 및 경고
+    if (partDF === 1) console.warn('⚠️ 대상자 수 부족: 최소 3개 권장');
+    if (operatorDF === 1) console.warn('⚠️ 측정자 수 부족: 최소 3명 권장');
+    if (equipmentDF < 5) console.warn('⚠️ 반복 측정 부족: 신뢰성 저하 위험');
 
     // 평균제곱 계산
     const partMS = partSS / partDF;
@@ -295,32 +298,44 @@ class ANOVACalculator implements IANOVACalculator {
   }
 
   private calculatePValue(fStat: number, df1: number, df2: number): number {
-    // 개선된 F-분포 p-value 계산
+    // F-분포 p-value 계산 개선 - 정확한 임계값 사용
     if (fStat <= 0) return 1.0;
-    if (fStat < 0.1) return 0.95;
+    if (!isFinite(fStat)) return 0.001;
 
-    // 자유도 고려한 적응적 임계값 계산
-    const dfAdjustment = Math.min(1.5, Math.max(0.8, 1.0 + (15 - df2) * 0.05));
-    
-    const criticalValues = {
-      p001: F_DISTRIBUTION_CRITICAL.ALPHA_001.small_df * dfAdjustment,
-      p01: F_DISTRIBUTION_CRITICAL.ALPHA_01.small_df * dfAdjustment,
-      p05: F_DISTRIBUTION_CRITICAL.ALPHA_05.small_df * dfAdjustment,
-      p10: F_DISTRIBUTION_CRITICAL.ALPHA_10.small_df * dfAdjustment
-    };
+    // 자유도에 따른 정확한 F-임계값 선택
+    let criticalF05: number;
+    let criticalF01: number;
+
+    // df1에 따른 임계값 선택
+    if (df1 <= 1) {
+      criticalF05 = df2 <= 5 ? 6.61 : df2 <= 10 ? 4.96 : df2 <= 20 ? 4.35 : 3.84;
+      criticalF01 = df2 <= 5 ? 16.26 : df2 <= 10 ? 10.04 : df2 <= 20 ? 8.10 : 6.63;
+    } else if (df1 <= 2) {
+      criticalF05 = df2 <= 5 ? 5.79 : df2 <= 10 ? 4.10 : df2 <= 20 ? 3.49 : 2.99;
+      criticalF01 = df2 <= 5 ? 13.27 : df2 <= 10 ? 7.56 : df2 <= 20 ? 5.85 : 4.61;
+    } else if (df1 <= 5) {
+      criticalF05 = df2 <= 5 ? 5.05 : df2 <= 10 ? 3.33 : df2 <= 20 ? 2.71 : 2.21;
+      criticalF01 = df2 <= 5 ? 11.39 : df2 <= 10 ? 6.55 : df2 <= 20 ? 4.94 : 3.69;
+    } else {
+      criticalF05 = df2 <= 5 ? 4.74 : df2 <= 10 ? 2.98 : df2 <= 20 ? 2.35 : 1.83;
+      criticalF01 = df2 <= 5 ? 10.67 : df2 <= 10 ? 5.64 : df2 <= 20 ? 4.10 : 2.99;
+    }
 
     // 정확한 p-value 범위 반환
-    if (fStat > criticalValues.p001) return 0.001;
-    if (fStat > criticalValues.p01) return 0.01;
-    if (fStat > criticalValues.p05) return 0.05;
-    if (fStat > criticalValues.p10) return 0.1;
-    
-    // 보간을 통한 중간값 계산 (개선된 공식)
-    if (fStat > 1.0) {
-      return Math.max(0.1, Math.min(0.9, 0.5 - (fStat - 1.0) * 0.15));
+    if (fStat > criticalF01) return Math.min(0.01, 0.01 * Math.exp(-(fStat - criticalF01) * 0.5));
+    if (fStat > criticalF05) {
+      // 0.01 < p < 0.05 구간에서 보간
+      const ratio = (fStat - criticalF05) / (criticalF01 - criticalF05);
+      return Math.max(0.01, 0.05 - 0.04 * ratio);
     }
     
-    return Math.max(0.5, Math.min(0.9, 0.9 - fStat * 0.4));
+    // p > 0.05 구간
+    if (fStat > 1.0) {
+      const ratio = (fStat - 1.0) / (criticalF05 - 1.0);
+      return Math.max(0.05, Math.min(0.9, 0.9 - 0.85 * ratio));
+    }
+    
+    return Math.max(0.5, Math.min(0.95, 0.95 - fStat * 0.45));
   }
 }
 
@@ -374,16 +389,31 @@ class GageRRCalculator implements IGageRRCalculator {
   private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number, workType: string = '기타', groupedData: Map<string, Map<string, number[]>>) {
     const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
 
-    // ICC(2,1) 계산 - 올바른 공식 적용 (MSA-4 표준)
+    // ICC(2,1) 계산 - 극단적 케이스 처리 개선 (MSA-4 표준)
     // ICC(2,1) = (MS_between - MS_within) / (MS_between + (k-1) * MS_within)
     // MS_between = partMS, MS_within = equipmentMS, k = nOperators
-    const MS_between = anova.partMS;
-    const MS_within = anova.equipmentMS;
-    const k = nOperators;
+    const MS_between = Math.max(0.0001, anova.partMS); // 최소값 보장
+    const MS_within = Math.max(0.0001, anova.equipmentMS); // 최소값 보장
+    const k = Math.max(2, nOperators); // 최소 2명 보장
     
-    const icc_denominator = MS_between + (k - 1) * MS_within;
-    const icc = icc_denominator > 0 ? 
-                Math.max(0, Math.min(1, (MS_between - MS_within) / icc_denominator)) : 0;
+    // 극단적 케이스 처리: MS_within이 0에 가까운 경우
+    let icc: number;
+    if (MS_within < 0.001) {
+      // 측정 오차가 거의 없는 경우 (이상적 상황)
+      icc = 0.99; // 매우 높은 신뢰성으로 설정
+    } else if (MS_between < MS_within) {
+      // 대상자간 차이가 측정 오차보다 작은 경우
+      icc = 0.01; // 매우 낮은 신뢰성
+    } else {
+      const icc_numerator = MS_between - MS_within;
+      const icc_denominator = MS_between + (k - 1) * MS_within;
+      
+      if (icc_denominator > 0) {
+        icc = Math.max(0.01, Math.min(0.99, icc_numerator / icc_denominator));
+      } else {
+        icc = 0.01; // 안전한 기본값
+      }
+    }
 
     // Grand Mean 계산 - ANOVA에서 사용된 전체 평균 (올바른 CV 계산을 위함)
     let grandMeanSum = 0;

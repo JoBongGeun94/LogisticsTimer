@@ -23,6 +23,50 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTimerLogic } from './hooks/useTimerLogic';
 import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
 import { useSessionManager } from './hooks/useSessionManager';
+import { NotificationService } from './services';
+
+// NotificationService와 연결된 Toast 시스템
+const useNotificationService = () => {
+  const [toasts, setToasts] = useState<Array<{
+    id: number;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    timestamp: number;
+  }>>([]);
+
+  useEffect(() => {
+    const unsubscribe = NotificationService.subscribe((notification) => {
+      const newToast = {
+        id: Date.now(),
+        message: notification.message,
+        type: notification.type,
+        timestamp: Date.now()
+      };
+
+      setToasts(prev => [...prev, newToast]);
+
+      // 자동 제거 (3초 후)
+      setTimeout(() => {
+        setToasts(prev => prev.filter(toast => toast.id !== newToast.id));
+      }, 3000);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    NotificationService.show(message, type);
+  }, []);
+
+  const removeToast = useCallback((id: number) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  }, []);
+
+  return { toasts, showToast, removeToast };
+};
+
+// 테마 타입 정의
+type ThemeType = 'light' | 'dark';
 
 // ==================== 테마 상수 (Open/Closed Principle) ====================
 const THEME_COLORS = {
@@ -653,16 +697,8 @@ const EnhancedLogisticsTimer = () => {
   // 🔧 상세분석 모달 상태 (최소 변경 - 새로 추가)
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
 
-  // 토스트 상태
-  const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'error' | 'warning' | 'info';
-    isVisible: boolean;
-  }>({
-    message: '',
-    type: 'info',
-    isVisible: false
-  });
+  // NotificationService 연결
+  const { toasts, showToast, removeToast } = useNotificationService();
 
   // 필터 상태 (요구사항 8번)
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
@@ -680,11 +716,6 @@ const EnhancedLogisticsTimer = () => {
   const { showBackWarning } = useBackButtonPrevention();
 
   const theme = useMemo(() => THEME_COLORS[isDark ? 'dark' : 'light'], [isDark]);
-
-  // 토스트 메시지 표시 함수
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info') => {
-    setToast({ message, type, isVisible: true });
-  }, []);
 
   // 세션 관리 훅
   const {
@@ -710,7 +741,7 @@ const EnhancedLogisticsTimer = () => {
 
     // 통계 업데이트
     statisticsAnalysis.updateStatistics(newLap, updatedLaps);
-  }, [lapTimes, setAllLapTimes, updateSessionLapTimes]);
+  }, [lapTimes, setAllLapTimes, updateSessionLapTimes, statisticsAnalysis]);
 
   // 타이머 로직 훅
   const {
@@ -740,11 +771,16 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [isDark]);
 
-  // 키보드 이벤트
+  // 키보드 단축키 설정 - 모달 상태 고려 및 메모리 누수 방지
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      // 모달이 열려있으면 단축키 비활성화
+      if (showNewSessionModal || showDetailedAnalysis) {
+        return;
+      }
+
+      // 입력 필드에서는 단축키 비활성화
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (showNewSessionModal || selectedSessionHistory || showLanding || showDetailedAnalysis) return;
 
       switch (e.code) {
         case 'Space':
@@ -768,7 +804,7 @@ const EnhancedLogisticsTimer = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
+  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis, toggleTimer, recordLap, stopTimer, resetTimer]);
 
   // 리셋 함수 (기존 로직과 통합)
   const resetTimer = useCallback(() => {
@@ -949,13 +985,18 @@ const EnhancedLogisticsTimer = () => {
 
   return (
     <div className={`min-h-screen ${theme.bg}`}>
-      {/* 토스트 메시지 */}
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
-      />
+      {/* Toast 알림 - NotificationService 연동 */}
+      {toasts.map(toast => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          isVisible={true}
+          onClose={() => removeToast(toast.id)}
+          theme={theme}
+          isDark={isDark}
+        />
+      ))}
 
       {/* 뒤로가기 경고 */}
       <BackWarning isVisible={showBackWarning} />
@@ -1083,7 +1124,7 @@ const EnhancedLogisticsTimer = () => {
 
           <div className="text-center">
             <div className={`text-4xl sm:text-5xl font-mono font-bold mb-6 ${theme.text} tracking-wider`}>
-              {ExportService.formatTime(currentTime)}
+              ExportService.formatTime(currentTime)
             </div>
 
             <div className={`text-sm ${theme.textMuted} mb-6`}>
@@ -1328,7 +1369,7 @@ const EnhancedLogisticsTimer = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           <div className="font-mono text-lg font-bold text-blue-600 mb-2">
-                            {ExportService.formatTime(lap.time)}
+                            ExportService.formatTime(lap.time)
                           </div>
                           <div className={`text-xs ${theme.textMuted} space-y-1`}>
                             <div className="flex items-center gap-2">
