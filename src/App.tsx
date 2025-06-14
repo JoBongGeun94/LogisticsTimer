@@ -709,13 +709,11 @@ const EnhancedLogisticsTimer = () => {
     setAllLapTimes(updatedAllLaps);
 
     if (currentSession) {
-      const updatedSession = { ...currentSession, lapTimes: updatedLaps };
-      setCurrentSession(updatedSession);
-      setSessions(prev => prev.map(s => s.id === currentSession.id ? updatedSession : s));
+      updateSessionLapTimes(updatedLaps);
     }
 
     showToast('측정 기록이 삭제되었습니다.', 'success');
-  }, [lapTimes, allLapTimes, currentSession, showToast, setAllLapTimes, setSessions]);
+  }, [lapTimes, allLapTimes, currentSession, showToast, setAllLapTimes, updateSessionLapTimes]);
 
   // 세션 생성 함수 (훅과 연동)
   const createSession = useCallback(() => {
