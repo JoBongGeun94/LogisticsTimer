@@ -550,7 +550,11 @@ const DetailedAnalysisModal = memo<{
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>변동계수 (CV)</span>
-                    <span className={theme.text}>{statisticsAnalysis.gaugeData.cv.toFixed(1)}%</span>
+                    <span className={theme.text}>
+                      {statisticsAnalysis.gaugeData ? 
+                        `${statisticsAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
+                      }
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>99% 달성시간 (Q99)</span>
@@ -1112,7 +1116,7 @@ const EnhancedLogisticsTimer = () => {
 
         {/* 실시간 분석 섹션 */}
         {lapTimes.length > 0 && (
-          
+
           <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">

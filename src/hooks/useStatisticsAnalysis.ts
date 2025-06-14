@@ -395,10 +395,31 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       // 🔧 상세분석과 완전 동일한 Gage R&R 백분율 계산
       const gageRRPercent = totalVariation > 0 ? (gageRR / totalVariation) * 100 : 0;
 
-      // 🔧 상세분석과 완전 동일한 CV 계산 공식
-      const actualMean = Math.sqrt(Math.max(0.01, anova.partMS / Math.max(1, nOperators * nRepeats)));
+      // 🔧 상세분석과 완전 동일한 CV 계산 공식 (표준 MSA 방식)
+      // 실제 관측값들의 평균 계산 (더 정확한 방법)
+      let observedMean = 0;
+      let totalObservations = 0;
+      for (const [partKey, operatorMap] of groupedData) {
+        for (const [operatorKey, measurements] of operatorMap) {
+          observedMean += measurements.reduce((sum, val) => sum + val, 0);
+          totalObservations += measurements.length;
+        }
+      }
+      observedMean = totalObservations > 0 ? observedMean / totalObservations : 0;
+      
+      // 총 표준편차 계산 (MSA 표준)
       const totalStd = Math.sqrt(var_part + var_operator + var_interaction + var_equipment);
-      const cv = actualMean > 0 ? (totalStd / actualMean) * 100 : 100;
+      
+      // CV 계산 - 실제 관측 평균 사용
+      const cv = observedMean > 0 ? (totalStd / observedMean) * 100 : 100;
+      
+      // 디버깅 로그 (개발용)
+      console.log('🔍 CV 계산 정보:', {
+        observedMean: observedMean.toFixed(3),
+        totalStd: totalStd.toFixed(3),
+        cv: cv.toFixed(1),
+        dataPoints: totalObservations
+      });
 
       // 🔧 상세분석과 완전 동일한 Q99 계산
       const conservativeFactor = 1.2; // 20% 안전 마진
