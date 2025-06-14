@@ -103,7 +103,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     status: 'info' as 'success' | 'warning' | 'error' | 'info'
   }));
 
-  // 실제 Gage R&R 값 계산 (MSA 표준 공식 적용) - 먼저 정의
+  // MSA 표준 ANOVA 기반 Gage R&R 계산 (상세 분석과 동일한 공식)
   const actualGRR = useMemo(() => {
     if (lapTimes.length < 6) return 0;
     
@@ -113,51 +113,158 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       
       if (operators.length < 2 || targets.length < 2) return 0;
       
-      // MSA 표준에 따른 분산 성분 계산
-      const timesInSeconds = lapTimes.map(lap => lap.time / 1000);
-      const grandMean = timesInSeconds.reduce((sum, t) => sum + t, 0) / timesInSeconds.length;
+      // 데이터 그룹화 (밀리초 -> 초 변환)
+      const groupedData = new Map<string, Map<string, number[]>>();
+      for (const lap of lapTimes) {
+        if (!groupedData.has(lap.target)) {
+          groupedData.set(lap.target, new Map<string, number[]>());
+        }
+        if (!groupedData.get(lap.target)!.has(lap.operator)) {
+          groupedData.get(lap.target)!.set(lap.operator, []);
+        }
+        groupedData.get(lap.target)!.get(lap.operator)!.push(lap.time / 1000);
+      }
       
-      // Repeatability 계산
-      let equipmentSS = 0;
+      // 기본 통계
+      let totalSum = 0;
+      let totalCount = 0;
+      for (const [target, operatorMap] of groupedData) {
+        for (const [operator, measurements] of operatorMap) {
+          totalSum += measurements.reduce((sum, val) => sum + val, 0);
+          totalCount += measurements.length;
+        }
+      }
+      const grandMean = totalSum / totalCount;
+      
+      // ANOVA 계산 (MSA 표준)
+      const nParts = targets.length;
+      const nOperators = operators.length;
+      let nRepeats = 0;
+      for (const [target, operatorMap] of groupedData) {
+        for (const [operator, measurements] of operatorMap) {
+          nRepeats = Math.max(nRepeats, measurements.length);
+        }
+      }
+      
+      // Part SS 계산
+      let partSS = 0;
+      for (const target of targets) {
+        let partSum = 0;
+        let partCount = 0;
+        if (groupedData.has(target)) {
+          for (const [operator, measurements] of groupedData.get(target)!) {
+            partSum += measurements.reduce((sum, val) => sum + val, 0);
+            partCount += measurements.length;
+          }
+        }
+        if (partCount > 0) {
+          const partMean = partSum / partCount;
+          partSS += partCount * Math.pow(partMean - grandMean, 2);
+        }
+      }
+      
+      // Operator SS 계산
+      let operatorSS = 0;
+      for (const operator of operators) {
+        let operatorSum = 0;
+        let operatorCount = 0;
+        for (const [target, operatorMap] of groupedData) {
+          if (operatorMap.has(operator)) {
+            const measurements = operatorMap.get(operator)!;
+            operatorSum += measurements.reduce((sum, val) => sum + val, 0);
+            operatorCount += measurements.length;
+          }
+        }
+        if (operatorCount > 0) {
+          const operatorMean = operatorSum / operatorCount;
+          operatorSS += operatorCount * Math.pow(operatorMean - grandMean, 2);
+        }
+      }
+      
+      // Interaction SS 계산
+      let interactionSS = 0;
       for (const target of targets) {
         for (const operator of operators) {
-          const cellTimes = lapTimes
-            .filter(lap => lap.target === target && lap.operator === operator)
-            .map(lap => lap.time / 1000);
-          
-          if (cellTimes.length > 1) {
-            const cellMean = cellTimes.reduce((sum, t) => sum + t, 0) / cellTimes.length;
-            equipmentSS += cellTimes.reduce((sum, t) => sum + Math.pow(t - cellMean, 2), 0);
+          if (groupedData.has(target) && groupedData.get(target)!.has(operator)) {
+            const measurements = groupedData.get(target)!.get(operator)!;
+            if (measurements.length > 0) {
+              const cellMean = measurements.reduce((sum, val) => sum + val, 0) / measurements.length;
+              
+              // Part 평균
+              let partSum = 0, partCount = 0;
+              for (const [op, meas] of groupedData.get(target)!) {
+                partSum += meas.reduce((sum, val) => sum + val, 0);
+                partCount += meas.length;
+              }
+              const partMean = partCount > 0 ? partSum / partCount : grandMean;
+              
+              // Operator 평균
+              let operatorSum = 0, operatorCount = 0;
+              for (const [tgt, operatorMap] of groupedData) {
+                if (operatorMap.has(operator)) {
+                  const meas = operatorMap.get(operator)!;
+                  operatorSum += meas.reduce((sum, val) => sum + val, 0);
+                  operatorCount += meas.length;
+                }
+              }
+              const operatorMean = operatorCount > 0 ? operatorSum / operatorCount : grandMean;
+              
+              interactionSS += measurements.length * Math.pow(cellMean - partMean - operatorMean + grandMean, 2);
+            }
           }
         }
       }
-      const repeatability = Math.sqrt(Math.max(0, equipmentSS / Math.max(1, timesInSeconds.length - targets.length * operators.length)));
       
-      // Reproducibility 계산
-      let operatorSS = 0;
-      for (const operator of operators) {
-        const operatorTimes = lapTimes.filter(lap => lap.operator === operator).map(lap => lap.time / 1000);
-        if (operatorTimes.length > 0) {
-          const operatorMean = operatorTimes.reduce((sum, t) => sum + t, 0) / operatorTimes.length;
-          operatorSS += operatorTimes.length * Math.pow(operatorMean - grandMean, 2);
+      // Total SS 계산
+      let totalSS = 0;
+      for (const [target, operatorMap] of groupedData) {
+        for (const [operator, measurements] of operatorMap) {
+          for (const measurement of measurements) {
+            totalSS += Math.pow(measurement - grandMean, 2);
+          }
         }
       }
-      const reproducibility = Math.sqrt(Math.max(0, operatorSS / Math.max(1, (operators.length - 1) * targets.length)));
       
-      // Part Variation 계산
-      let partSS = 0;
-      for (const target of targets) {
-        const targetTimes = lapTimes.filter(lap => lap.target === target).map(lap => lap.time / 1000);
-        if (targetTimes.length > 0) {
-          const targetMean = targetTimes.reduce((sum, t) => sum + t, 0) / targetTimes.length;
-          partSS += targetTimes.length * Math.pow(targetMean - grandMean, 2);
-        }
-      }
-      const partVariation = Math.sqrt(Math.max(0, partSS / Math.max(1, (targets.length - 1) * operators.length)));
+      // Equipment SS (Repeatability)
+      const equipmentSS = Math.max(0, totalSS - partSS - operatorSS - interactionSS);
       
-      // Total Gage R&R 계산 (상세 분석과 동일한 공식)
-      const gageRR = Math.sqrt(Math.pow(repeatability, 2) + Math.pow(reproducibility, 2));
-      const totalVariation = Math.sqrt(Math.pow(gageRR, 2) + Math.pow(partVariation, 2));
+      // 자유도 및 평균제곱 계산
+      const partDF = Math.max(1, nParts - 1);
+      const operatorDF = Math.max(1, nOperators - 1);
+      const interactionDF = Math.max(1, (nParts - 1) * (nOperators - 1));
+      const equipmentDF = Math.max(1, nParts * nOperators * (nRepeats - 1));
+      
+      const partMS = partSS / partDF;
+      const operatorMS = operatorSS / operatorDF;
+      const interactionMS = interactionSS / interactionDF;
+      const equipmentMS = equipmentSS / equipmentDF;
+      
+      // MSA 표준 분산 성분 계산
+      const var_equipment = equipmentMS;
+      const var_interaction = Math.max(0, (interactionMS - equipmentMS) / nRepeats);
+      const var_operator = Math.max(0, (operatorMS - interactionMS) / (nParts * nRepeats));
+      const var_part = Math.max(0, (partMS - interactionMS) / (nOperators * nRepeats));
+      
+      // 표준편차 계산
+      const repeatability = Math.sqrt(Math.max(0, var_equipment));
+      const reproducibility = Math.sqrt(Math.max(0, var_operator));
+      const partVariation = Math.sqrt(Math.max(0, var_part));
+      const interactionVariation = Math.sqrt(Math.max(0, var_interaction));
+      
+      // Total Gage R&R 계산 (MSA 표준)
+      const gageRR = Math.sqrt(
+        Math.pow(repeatability, 2) + 
+        Math.pow(reproducibility, 2) + 
+        Math.pow(interactionVariation, 2)
+      );
+      
+      // Total Variation 계산
+      const totalVariation = Math.sqrt(
+        Math.pow(gageRR, 2) + 
+        Math.pow(partVariation, 2)
+      );
+      
+      // Gage R&R 백분율 계산 (상세 분석과 완전 동일)
       const gageRRPercent = totalVariation > 0 ? (gageRR / totalVariation) * 100 : 0;
       
       return Math.min(100, Math.max(0, gageRRPercent));
@@ -195,64 +302,14 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       }
     }
 
-    // gaugeData 업데이트 (MSA 표준 공식 적용)
+    // gaugeData 업데이트 (actualGRR과 동일한 값 사용)
     if (allLaps.length >= 6) {
       const operators = Array.from(new Set(allLaps.map(lap => lap.operator)));
       const targets = Array.from(new Set(allLaps.map(lap => lap.target)));
       
       if (operators.length >= 2 && targets.length >= 2) {
-        // MSA 표준에 따른 분산 성분 계산
-        const timesInSeconds = allLaps.map(lap => lap.time / 1000);
-        const grandMean = timesInSeconds.reduce((sum, t) => sum + t, 0) / timesInSeconds.length;
-        
-        // Repeatability (Equipment Variance) 계산
-        let equipmentSS = 0;
-        for (const target of targets) {
-          for (const operator of operators) {
-            const cellTimes = allLaps
-              .filter(lap => lap.target === target && lap.operator === operator)
-              .map(lap => lap.time / 1000);
-            
-            if (cellTimes.length > 1) {
-              const cellMean = cellTimes.reduce((sum, t) => sum + t, 0) / cellTimes.length;
-              equipmentSS += cellTimes.reduce((sum, t) => sum + Math.pow(t - cellMean, 2), 0);
-            }
-          }
-        }
-        const repeatability = Math.sqrt(Math.max(0, equipmentSS / Math.max(1, timesInSeconds.length - targets.length * operators.length)));
-        
-        // Reproducibility (Operator Variance) 계산
-        let operatorSS = 0;
-        for (const operator of operators) {
-          const operatorTimes = allLaps.filter(lap => lap.operator === operator).map(lap => lap.time / 1000);
-          if (operatorTimes.length > 0) {
-            const operatorMean = operatorTimes.reduce((sum, t) => sum + t, 0) / operatorTimes.length;
-            operatorSS += operatorTimes.length * Math.pow(operatorMean - grandMean, 2);
-          }
-        }
-        const reproducibility = Math.sqrt(Math.max(0, operatorSS / Math.max(1, (operators.length - 1) * targets.length)));
-        
-        // Part Variation 계산
-        let partSS = 0;
-        for (const target of targets) {
-          const targetTimes = allLaps.filter(lap => lap.target === target).map(lap => lap.time / 1000);
-          if (targetTimes.length > 0) {
-            const targetMean = targetTimes.reduce((sum, t) => sum + t, 0) / targetTimes.length;
-            partSS += targetTimes.length * Math.pow(targetMean - grandMean, 2);
-          }
-        }
-        const partVariation = Math.sqrt(Math.max(0, partSS / Math.max(1, (targets.length - 1) * operators.length)));
-        
-        // Total Gage R&R 계산 (MSA 표준 공식)
-        const gageRR = Math.sqrt(Math.pow(repeatability, 2) + Math.pow(reproducibility, 2));
-        
-        // Total Variation 계산
-        const totalVariation = Math.sqrt(Math.pow(gageRR, 2) + Math.pow(partVariation, 2));
-        
-        // GRR 백분율 계산 (상세 분석과 동일한 공식)
-        const gageRRPercent = totalVariation > 0 ? (gageRR / totalVariation) * 100 : 0;
-        
-        gaugeData.grr = Math.min(100, Math.max(0, gageRRPercent));
+        // actualGRR과 동일한 계산 결과 사용하여 일관성 보장
+        gaugeData.grr = actualGRR;
         gaugeData.status = calculator.statusFromGRR(gaugeData.grr);
       }
     }
