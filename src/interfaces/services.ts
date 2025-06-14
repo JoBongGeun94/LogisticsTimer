@@ -18,7 +18,6 @@ export interface IValidationService {
 
 export interface IAnalysisService {
   calculateGageRR(lapTimes: LapTime[]): GageRRResult;
-  transformData(data: number[], transformType?: 'ln' | 'log10' | 'sqrt'): number[];
 }
 
 export interface IExportService {

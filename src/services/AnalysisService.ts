@@ -1,12 +1,5 @@
-import { LapTime, GageRRResult, ANOVAResult, VarianceComponents, TransformType } from '../types';
+import { LapTime, GageRRResult, ANOVAResult, VarianceComponents } from '../types';
 import { LOGISTICS_WORK_THRESHOLDS, NORMAL_DISTRIBUTION, F_DISTRIBUTION_CRITICAL } from '../constants/analysis';
-
-/**
- * 변환 인터페이스 (Interface Segregation Principle)
- */
-interface IDataTransformer {
-  transform(lapTimes: LapTime[], transformType: TransformType): LapTime[];
-}
 
 interface IStatisticsCalculator {
   calculateBasicStatistics(groupedData: Map<string, Map<string, number[]>>): BasicStatistics;
@@ -48,38 +41,6 @@ interface GageRRMetrics {
   cv: number;            // 변동계수 - 일관성 지표  
   q99: number;           // 99% 달성가능 시간
   isReliableForStandard: boolean; // 표준시간 설정 가능 여부
-}
-
-/**
- * 데이터 변환기 (Single Responsibility Principle)
- */
-class DataTransformer implements IDataTransformer {
-  transform(lapTimes: LapTime[], transformType: TransformType): LapTime[] {
-    if (transformType === 'none') return lapTimes;
-
-    return lapTimes.map(lap => {
-      let transformedTime = lap.time;
-
-      try {
-        switch (transformType) {
-          case 'ln':
-            transformedTime = Math.log(Math.max(lap.time, 1));
-            break;
-          case 'log10':
-            transformedTime = Math.log10(Math.max(lap.time, 1));
-            break;
-          case 'sqrt':
-            transformedTime = Math.sqrt(Math.max(lap.time, 0));
-            break;
-        }
-      } catch (error) {
-        console.warn('변환 실패, 원본값 사용:', error);
-        transformedTime = lap.time;
-      }
-
-      return { ...lap, time: transformedTime };
-    });
-  }
 }
 
 /**
@@ -542,10 +503,6 @@ class StatusEvaluator {
  * 분석 팩토리 (Dependency Inversion Principle)
  */
 class AnalysisFactory {
-  static createDataTransformer(): IDataTransformer {
-    return new DataTransformer();
-  }
-
   static createStatisticsCalculator(): IStatisticsCalculator {
     return new StatisticsCalculator();
   }
@@ -566,12 +523,11 @@ export class AnalysisService {
   private static readonly MAX_RECURSION_DEPTH = 100;
   private static recursionCounter = 0;
 
-  private static dataTransformer = AnalysisFactory.createDataTransformer();
   private static statisticsCalculator = AnalysisFactory.createStatisticsCalculator();
   private static anovaCalculator = AnalysisFactory.createANOVACalculator();
   private static gageRRCalculator = AnalysisFactory.createGageRRCalculator();
 
-  static calculateGageRR(lapTimes: LapTime[], transformType: TransformType = 'none'): GageRRResult {
+  static calculateGageRR(lapTimes: LapTime[]): GageRRResult {
     if (this.recursionCounter > this.MAX_RECURSION_DEPTH) {
       console.error('재귀 깊이 초과');
       this.recursionCounter = 0;
@@ -585,11 +541,8 @@ export class AnalysisService {
         throw new Error('Gage R&R 분석을 위해서는 최소 6개의 측정값이 필요합니다.');
       }
 
-      // 데이터 변환
-      const transformedTimes = this.dataTransformer.transform(lapTimes, transformType);
-
       // 데이터 그룹화
-      const groupedData = DataGrouper.groupSafely(transformedTimes);
+      const groupedData = DataGrouper.groupSafely(lapTimes);
 
       // 기본 통계 계산
       const statistics = this.statisticsCalculator.calculateBasicStatistics(groupedData);

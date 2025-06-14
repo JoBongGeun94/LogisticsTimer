@@ -54,6 +54,3 @@ export interface VarianceComponents {
   interaction: number;
   total: number;
 }
-
-// 로그 변환 타입
-export type TransformType = 'none' | 'ln' | 'log10' | 'sqrt';

@@ -1,42 +1,43 @@
 
 /**
- * 불필요한 파일 및 코드 정리 서비스 (Single Responsibility Principle)
+ * 코드 정리 및 최적화 서비스 (Single Responsibility Principle)
  */
-
 export class CleanupService {
   /**
-   * 사용하지 않는 파일 목록
+   * 로컬 스토리지 정리
    */
-  static getUnusedFiles(): string[] {
-    return [
-      'minimal_fix_script.sh',
-      'src/App.tsx.backup.20250611_201806',
-      'src/App.tsx.orig',
-      'src/App.tsx.rej',
-      'src/services/AnalysisService.ts.orig',
-      'src/services/AnalysisService.ts.rej',
-      'src/types/.gitkeep'
-    ];
+  static clearExpiredData(): void {
+    const keys = Object.keys(localStorage);
+    const expiredKeys = keys.filter(key => 
+      key.startsWith('temp_') || key.includes('_expired_')
+    );
+    
+    expiredKeys.forEach(key => localStorage.removeItem(key));
   }
 
   /**
-   * 중복된 설정 파일 목록
+   * 메모리 정리
    */
-  static getDuplicateConfigs(): string[] {
-    return [
-      'tailwind.config.js', // tailwind.config.ts와 중복
-      '.env.example' // 사용되지 않는 환경변수 예제
-    ];
+  static forceGarbageCollection(): void {
+    if (window.gc) {
+      window.gc();
+    }
   }
 
   /**
-   * 사용하지 않는 타입 정의 목록
+   * 콘솔 정리
    */
-  static getUnusedTypes(): string[] {
-    return [
-      'src/types/strict/SafeTypes.ts', // 사용되지 않음
-      'src/types/Events.ts', // 사용되지 않음
-      'src/types/Timer.ts' // App.tsx에서 직접 정의하여 중복
-    ];
+  static clearConsole(): void {
+    console.clear();
+  }
+
+  /**
+   * 종합 정리 실행
+   */
+  static performCleanup(): void {
+    this.clearExpiredData();
+    this.forceGarbageCollection();
+    this.clearConsole();
+    console.log('🧹 시스템 정리 완료');
   }
 }
