@@ -416,8 +416,8 @@ class GageRRCalculator implements IGageRRCalculator {
     }
 
     // Grand Mean 계산 - ANOVA에서 사용된 전체 평균 (올바른 CV 계산을 위함)
-    let grandMeanSum = 0;
-    let grandMeanCount = 0;
+    let totalSum = 0;
+    let totalCount = 0;
 
     if (groupedData) {
       // 모든 측정값의 합계와 개수 계산 (Grand Mean 구하기)
@@ -425,8 +425,8 @@ class GageRRCalculator implements IGageRRCalculator {
         for (const [operatorKey, measurements] of operatorMap) {
           for (const measurement of measurements) {
             if (!isNaN(measurement) && measurement > 0) {
-              grandMeanSum += measurement;
-              grandMeanCount++;
+              totalSum += measurement;
+              totalCount++;
             }
           }
         }
@@ -560,14 +560,7 @@ export class AnalysisService {
   private static readonly gageRRCalculator = AnalysisFactory.createGageRRCalculator();
 
   static calculateGageRR(lapTimes: LapTime[]): GageRRResult {
-    if (this.recursionCounter > this.MAX_RECURSION_DEPTH) {
-      console.error('재귀 깊이 초과');
-      this.recursionCounter = 0;
-      throw new Error('Maximum recursion depth exceeded');
-    }
-
-    this.recursionCounter++;
-
+    // 재귀 방지 체크 제거 - 현재 메서드는 재귀를 사용하지 않음
     try {
       // 엣지 케이스 처리 강화
       if (!lapTimes || lapTimes.length < 6) {
@@ -633,8 +626,6 @@ export class AnalysisService {
       // 분산 구성요소 계산
       const varianceComponents = this.calculateVarianceComponents(anova);
 
-      this.recursionCounter = 0;
-
       return {
         ...metrics,
         status: StatusEvaluator.determineStatus(metrics.gageRRPercent),
@@ -642,7 +633,6 @@ export class AnalysisService {
         varianceComponents
       };
     } catch (error) {
-      this.recursionCounter = 0;
       throw error;
     }
   }

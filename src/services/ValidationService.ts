@@ -1,24 +1,15 @@
 
-import { LapTime, SessionData, ValidationResult } from '../types';
+import { LapTime, SessionData } from '../types';
 
-/**
- * 검증 규칙 인터페이스 (Interface Segregation Principle)
- */
-interface ISessionValidator {
-  validate(sessionData: SessionCreationData): ValidationResult;
+// 검증 결과 인터페이스
+export interface ValidationResult {
+  isValid: boolean;
+  message?: string;
+  canAnalyze?: boolean;
+  analysisMessage?: string;
 }
 
-interface IMeasurementValidator {
-  validate(measurementData: MeasurementData): ValidationResult;
-}
-
-interface IGageRRValidator {
-  validate(lapTimes: LapTime[]): ValidationResult;
-}
-
-/**
- * 검증 데이터 타입 정의
- */
+// 세션 생성 데이터 인터페이스
 interface SessionCreationData {
   sessionName: string;
   workType: string;
@@ -26,6 +17,7 @@ interface SessionCreationData {
   targets: string[];
 }
 
+// 측정 데이터 인터페이스
 interface MeasurementData {
   currentSession: SessionData | null;
   currentOperator: string;
@@ -33,27 +25,65 @@ interface MeasurementData {
   currentTime: number;
 }
 
+// 검증기 인터페이스들 (Interface Segregation Principle)
+interface ISessionValidator {
+  validate(data: SessionCreationData): ValidationResult;
+}
+
+interface IMeasurementValidator {
+  validate(data: MeasurementData): ValidationResult;
+}
+
+interface IGageRRValidator {
+  validate(lapTimes: LapTime[]): ValidationResult;
+}
+
 /**
  * 세션 검증기 (Single Responsibility Principle)
  */
 class SessionValidator implements ISessionValidator {
   validate(data: SessionCreationData): ValidationResult {
-    const validOperators = data.operators.filter(op => op.trim());
-    const validTargets = data.targets.filter(tg => tg.trim());
-
-    if (!data.sessionName.trim() || !data.workType || validOperators.length === 0 || validTargets.length === 0) {
+    if (!data.sessionName?.trim()) {
       return {
         isValid: false,
-        message: '모든 필드를 입력해주세요.',
+        message: '세션명을 입력해주세요.',
         canAnalyze: false
       };
     }
 
-    // Gage R&R 분석 가능 여부 확인
-    const canAnalyze = validOperators.length >= 2 && validTargets.length >= 5;
+    if (!data.workType?.trim()) {
+      return {
+        isValid: false,
+        message: '작업 유형을 선택해주세요.',
+        canAnalyze: false
+      };
+    }
+
+    const validOperators = data.operators.filter(op => op?.trim());
+    const validTargets = data.targets.filter(tg => tg?.trim());
+
+    if (validOperators.length === 0) {
+      return {
+        isValid: false,
+        message: '최소 1명의 측정자를 입력해주세요.',
+        canAnalyze: false
+      };
+    }
+
+    if (validTargets.length === 0) {
+      return {
+        isValid: false,
+        message: '최소 1개의 대상자를 입력해주세요.',
+        canAnalyze: false
+      };
+    }
+
+    // Gage R&R 분석 가능 여부 체크
+    let canAnalyze = true;
     let analysisMessage = '';
 
-    if (!canAnalyze) {
+    if (validOperators.length < 2 || validTargets.length < 5) {
+      canAnalyze = false;
       if (validOperators.length < 2 && validTargets.length < 5) {
         analysisMessage = 'Gage R&R 분석을 위해서는 측정자 2명 이상, 대상자 5개 이상이 필요합니다.';
       } else if (validOperators.length < 2) {
@@ -67,42 +97,6 @@ class SessionValidator implements ISessionValidator {
       isValid: true,
       canAnalyze,
       analysisMessage
-    };
-  }
-}
-
-/**
- * 측정 검증기 (Single Responsibility Principle)
- */
-class MeasurementValidator implements IMeasurementValidator {
-  validate(data: MeasurementData): ValidationResult {
-    if (!data.currentSession) {
-      return {
-        isValid: false,
-        message: '먼저 작업 세션을 생성해주세요.',
-        canAnalyze: false
-      };
-    }
-
-    if (!data.currentOperator || !data.currentTarget) {
-      return {
-        isValid: false,
-        message: '측정자와 대상자를 선택해주세요.',
-        canAnalyze: false
-      };
-    }
-
-    if (data.currentTime === 0) {
-      return {
-        isValid: false,
-        message: '측정 시간이 0입니다. 타이머를 시작해주세요.',
-        canAnalyze: false
-      };
-    }
-
-    return {
-      isValid: true,
-      canAnalyze: true
     };
   }
 }
@@ -134,6 +128,42 @@ class GageRRValidator implements IGageRRValidator {
         message: 'Gage R&R 분석을 위해서는 최소 2명의 측정자와 2개의 대상자가 필요합니다.',
         canAnalyze: false,
         analysisMessage: '다양한 측정자와 대상자로 측정을 수행해주세요.'
+      };
+    }
+
+    return {
+      isValid: true,
+      canAnalyze: true
+    };
+  }
+}
+
+/**
+ * 측정 검증기 (Single Responsibility Principle)
+ */
+class MeasurementValidator implements IMeasurementValidator {
+  validate(data: MeasurementData): ValidationResult {
+    if (!data.currentSession) {
+      return {
+        isValid: false,
+        message: '먼저 작업 세션을 생성해주세요.',
+        canAnalyze: false
+      };
+    }
+
+    if (!data.currentOperator || !data.currentTarget) {
+      return {
+        isValid: false,
+        message: '측정자와 대상자를 선택해주세요.',
+        canAnalyze: false
+      };
+    }
+
+    if (data.currentTime === 0) {
+      return {
+        isValid: false,
+        message: '측정 시간이 0입니다. 타이머를 시작해주세요.',
+        canAnalyze: false
       };
     }
 

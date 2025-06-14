@@ -99,9 +99,9 @@ export interface WorkTypeThreshold {
 
 // 작업 유형별 임계값 맵핑 (확장성을 위한 구조)
 export const WORK_TYPE_THRESHOLDS_MAP: Record<string, WorkTypeThreshold> = Object.freeze({
-  '물자검수팀': LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE.검수,
-  '저장관리팀': LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE.운반,
-  '포장관리팀': LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE.적재,
-  '기타': LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE.기타
+  '물자검수팀': { cv: 7.0, icc: 0.78, basis: 'MSA-4 정확성 중시 작업 기준' },
+  '저장관리팀': { cv: 10.0, icc: 0.70, basis: '물류작업 표준시간 연구 기준' },
+  '포장관리팀': { cv: 12.0, icc: 0.65, basis: '산업공학 표준시간 연구 기준' },
+  '기타': { cv: 15.0, icc: 0.60, basis: 'MSA-4 최소 허용 기준' }
 });
 

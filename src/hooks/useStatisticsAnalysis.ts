@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { LapTime } from '../types';
 import { AnalysisService } from '../services/AnalysisService';
-import { ValidationService } from '../services/ValidationService';
 import { WORK_TYPE_THRESHOLDS_MAP } from '../constants/analysis';
 
 // 통계 계산 인터페이스 (Interface Segregation Principle)
@@ -46,7 +46,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
   }
 
   statusFromDP(dp: number): 'success' | 'warning' | 'error' | 'info' {
-    const threshold = LOGISTICS_WORK_THRESHOLDS.CV_THRESHOLD * 10;
+    const threshold = 12 * 10; // CV_THRESHOLD * 10
     return dp > threshold ? 'error' : 'success';
   }
 }
@@ -62,7 +62,6 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const [deltaPairValue, setDeltaPairValue] = useState(0);
   const [showRetakeModal, setShowRetakeModal] = useState(false);
   const [cache, setCache] = useState<Record<string, AnalysisCache>>({});
-  const [lastCalculationTime, setLastCalculationTime] = useState<number>(0);
 
   // 캐시 정리 함수 (메모리 누수 방지)
   const cleanupCache = useCallback(() => {
@@ -87,35 +86,35 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
   // 캐시 해시 생성 함수 (순환 참조 방지를 위해 독립적으로 정의)
   const generateCacheHash = useCallback((lapTimes: LapTime[]): string => {
-      if (!lapTimes || lapTimes.length === 0) return 'empty';
+    if (!lapTimes || lapTimes.length === 0) return 'empty';
 
-      // 더 정확한 데이터 식별을 위한 복합 해시
-      const sortedData = lapTimes
-        .map(lap => ({
-          op: lap.operator || '',
-          tg: lap.target || '',
-          tm: Math.round((lap.time || 0) * 1000) / 1000, // 소수점 3자리까지
-          ts: lap.timestamp || '',
-          id: lap.id || 0
-        }))
-        .sort((a, b) => {
-          // 다중 기준 정렬로 순서 일관성 보장
-          if (a.op !== b.op) return a.op.localeCompare(b.op);
-          if (a.tg !== b.tg) return a.tg.localeCompare(b.tg);
-          if (a.tm !== b.tm) return a.tm - b.tm;
-          return a.id - b.id;
-        });
+    // 더 정확한 데이터 식별을 위한 복합 해시
+    const sortedData = lapTimes
+      .map(lap => ({
+        op: lap.operator || '',
+        tg: lap.target || '',
+        tm: Math.round((lap.time || 0) * 1000) / 1000, // 소수점 3자리까지
+        ts: lap.timestamp || '',
+        id: lap.id || 0
+      }))
+      .sort((a, b) => {
+        // 다중 기준 정렬로 순서 일관성 보장
+        if (a.op !== b.op) return a.op.localeCompare(b.op);
+        if (a.tg !== b.tg) return a.tg.localeCompare(b.tg);
+        if (a.tm !== b.tm) return a.tm - b.tm;
+        return a.id - b.id;
+      });
 
-      const dataStr = JSON.stringify(sortedData);
+    const dataStr = JSON.stringify(sortedData);
 
-      // FNV-1a 해시 알고리즘 (충돌 확률 낮음)
-      let hash = 2166136261;
-      for (let i = 0; i < dataStr.length; i++) {
-        hash ^= dataStr.charCodeAt(i);
-        hash = (hash * 16777619) >>> 0; // 32비트 unsigned
-      }
+    // FNV-1a 해시 알고리즘 (충돌 확률 낮음)
+    let hash = 2166136261;
+    for (let i = 0; i < dataStr.length; i++) {
+      hash ^= dataStr.charCodeAt(i);
+      hash = (hash * 16777619) >>> 0; // 32비트 unsigned
+    }
 
-      return `${hash}_${lapTimes.length}_${Date.now() % 10000}`;
+    return `${hash}_${lapTimes.length}_${Date.now() % 10000}`;
   }, []);
 
   // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
@@ -157,7 +156,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         cv: Math.max(0, analysis.cv),
         q99: Math.max(0, analysis.q99),
         isReliableForStandard: analysis.isReliableForStandard,
-        varianceComponents: analysis.varianceComponents
+        varianceComponents: analysis.varianceComponents || { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
       };
 
       // 캐시 업데이트
@@ -165,7 +164,6 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         ...prevCache,
         [dataHash]: { timestamp: Date.now(), result }
       }));
-      setLastCalculationTime(Date.now());
 
       return result;
     } catch (error) {
@@ -185,19 +183,19 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     }
   }, [lapTimes, generateCacheHash, cache, calculator]);
 
-    // 동적 임계값 계산 함수 (순환 참조 방지를 위해 로컬 정의)
-    const getDynamicThresholdLocal = useCallback((workType: string, baseCV: number, measurementCount: number) => {
-      const defaultThreshold = { icc: 0.8, cv: 15 };
-      const typeThreshold = WORK_TYPE_THRESHOLDS_MAP[workType] || WORK_TYPE_THRESHOLDS_MAP['기타'] || defaultThreshold;
+  // 동적 임계값 계산 함수 (순환 참조 방지를 위해 로컬 정의)
+  const getDynamicThresholdLocal = useCallback((workType: string, measurementCount: number) => {
+    const defaultThreshold = { icc: 0.8, cv: 15 };
+    const typeThreshold = WORK_TYPE_THRESHOLDS_MAP[workType] || WORK_TYPE_THRESHOLDS_MAP['기타'] || defaultThreshold;
 
-      // 측정 수량에 따른 동적 조정
-      const adjustmentFactor = Math.max(0.8, Math.min(1.2, measurementCount / 30));
+    // 측정 수량에 따른 동적 조정
+    const adjustmentFactor = Math.max(0.8, Math.min(1.2, measurementCount / 30));
 
-      return {
-        icc: (typeThreshold.icc || 0.8) * adjustmentFactor,
-        cv: (typeThreshold.cv || 15) * adjustmentFactor
-      };
-    }, []);
+    return {
+      icc: (typeThreshold.icc || 0.8) * adjustmentFactor,
+      cv: (typeThreshold.cv || 15) * adjustmentFactor
+    };
+  }, []);
 
   // 통계 업데이트 - AnalysisService 기반으로 통합
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
@@ -214,7 +212,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       // 데이터 그룹화 (partKey -> operatorKey -> measurements[])
       const groupedData = new Map<string, Map<string, number[]>>();
       allLaps.forEach(lap => {
-        const partKey = `${lap.target}-${lap.taskType}`;
+        const partKey = lap.target;
         const operatorKey = lap.operator;
 
         if (!groupedData.has(partKey)) {
@@ -230,13 +228,13 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       });
 
       // ΔPair 계산 개선 (측정자간 평균 차이 - 정확한 공식)
-      const operatorGlobalMeans = new Map<string, { sum: number, count: number }>();
+      const operatorGlobalMeans = new Map<string, { sum: number; count: number }>();
 
       // 각 측정자의 전체 측정값 수집
       for (const [partKey, operatorMap] of groupedData) {
         for (const [operatorKey, measurements] of operatorMap) {
           if (!operatorGlobalMeans.has(operatorKey)) {
-            operatorGlobalMeans.set(operatorKey, { sum: number, count: number });
+            operatorGlobalMeans.set(operatorKey, { sum: 0, count: 0 });
           }
           const opData = operatorGlobalMeans.get(operatorKey)!;
           measurements.forEach(measurement => {
@@ -268,7 +266,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
           deltaPairValue = deltaPair;
 
           // 작업 유형별 임계값 적용
-          const threshold = LOGISTICS_WORK_THRESHOLDS.DELTA_PAIR_THRESHOLD;
+          const threshold = 0.10; // DELTA_PAIR_THRESHOLD
           needsRemeasurement = deltaPair > threshold;
         }
       }
@@ -278,7 +276,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
     setDeltaPairValue(deltaPairValue);
     setShowRetakeModal(needsRemeasurement);
-  }, [getDynamicThresholdLocal]);
+  }, []);
 
   // 상태 계산 최적화 - 순환 참조 방지
   const statisticsStatus = useMemo(() => ({
