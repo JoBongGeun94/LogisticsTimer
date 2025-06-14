@@ -465,17 +465,20 @@ const DetailedAnalysisModal = memo<{
               </div>
             )}
 
-            {/* 핵심 지표 */}
+            {/* 🔧 핵심 지표 - 실시간 분석과 완전 동일한 계산 공식 적용 */}
             <div className="grid grid-cols-2 gap-4">
-              {analysis && (
-                <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                  <h5 className={`font-medium ${theme.textSecondary} mb-2`}>Gage R&R</h5>
-                  <div className={`text-2xl font-bold ${theme.text}`}>{analysis.gageRRPercent.toFixed(1)}%</div>
+              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
+                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>Gage R&R</h5>
+                <div className={`text-2xl font-bold ${theme.text}`}>
+                  {statisticsAnalysis.gaugeData ? 
+                    `${statisticsAnalysis.gaugeData.grr.toFixed(1)}%` : 
+                    (analysis ? `${analysis.gageRRPercent.toFixed(1)}%` : '0.0%')
+                  }
                 </div>
-              )}
+              </div>
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h5 className={`font-medium ${theme.textSecondary} mb-2`}>ICC (2,1)</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>{statisticsAnalysis.iccValue.toFixed(2)}</div>
+                <div className={`text-2xl font-bold ${theme.text}`}>{statisticsAnalysis.iccValue.toFixed(3)}</div>
               </div>
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h5 className={`font-medium ${theme.textSecondary} mb-2`}>ΔPair</h5>
@@ -484,37 +487,53 @@ const DetailedAnalysisModal = memo<{
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h5 className={`font-medium ${theme.textSecondary} mb-2`}>변동계수</h5>
                 <div className={`text-2xl font-bold ${theme.text}`}>
-                  {lapTimes.length > 1 ?
-                    `${((Math.sqrt(lapTimes.reduce((acc, lap) => {
-                      const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
-                      return acc + Math.pow(lap.time - mean, 2);
-                    }, 0) / lapTimes.length) / (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)) * 100).toFixed(1)}%`
-                    : '0%'
+                  {statisticsAnalysis.gaugeData ? 
+                    `${statisticsAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
                   }
                 </div>
               </div>
             </div>
 
-            {/* 분산 구성요소 */}
-            {analysis && (
+            {/* 🔧 분산 구성요소 - 실시간 분석과 완전 동일한 데이터 소스 */}
+            {(statisticsAnalysis.gaugeData || analysis) && (
               <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
                 <h4 className={`font-semibold ${theme.text} mb-3`}>🔬 분산 구성요소</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>반복성 (Repeatability)</span>
-                    <span className={theme.text}>{analysis.repeatability.toFixed(4)}</span>
+                    <span className={theme.text}>
+                      {statisticsAnalysis.gaugeData ? 
+                        statisticsAnalysis.gaugeData.repeatability.toFixed(4) : 
+                        (analysis ? analysis.repeatability.toFixed(4) : '0.0000')
+                      }
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>재현성 (Reproducibility)</span>
-                    <span className={theme.text}>{analysis.reproducibility.toFixed(4)}</span>
+                    <span className={theme.text}>
+                      {statisticsAnalysis.gaugeData ? 
+                        statisticsAnalysis.gaugeData.reproducibility.toFixed(4) : 
+                        (analysis ? analysis.reproducibility.toFixed(4) : '0.0000')
+                      }
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>대상자 변동 (Part Variation)</span>
-                    <span className={theme.text}>{analysis.partVariation.toFixed(4)}</span>
+                    <span className={theme.text}>
+                      {statisticsAnalysis.gaugeData ? 
+                        statisticsAnalysis.gaugeData.partVariation.toFixed(4) : 
+                        (analysis ? analysis.partVariation.toFixed(4) : '0.0000')
+                      }
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className={theme.textSecondary}>총 변동 (Total Variation)</span>
-                    <span className={theme.text}>{analysis.totalVariation.toFixed(4)}</span>
+                    <span className={theme.text}>
+                      {statisticsAnalysis.gaugeData ? 
+                        statisticsAnalysis.gaugeData.totalVariation.toFixed(4) : 
+                        (analysis ? analysis.totalVariation.toFixed(4) : '0.0000')
+                      }
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1125,15 +1144,12 @@ const EnhancedLogisticsTimer = () => {
               />
               <MeasurementCard
                 title="변동계수"
-                value={lapTimes.length > 1 ?
-                  `${((Math.sqrt(lapTimes.reduce((acc, lap) => {
-                    const mean = lapTimes.reduce((sum, l) => sum + l.time, 0) / lapTimes.length;
-                    return acc + Math.pow(lap.time - mean, 2);
-                  }, 0) / lapTimes.length) / (lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)) * 100).toFixed(1)}%`
-                  : '0%'
+                value={statisticsAnalysis.gaugeData ? 
+                  `${statisticsAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
                 }
                 icon={Activity}
-                status="warning"
+                status={statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.cv <= 12 ? 'success' : 
+                       statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.cv <= 20 ? 'warning' : 'error'}
                 theme={theme}
                 size="sm"
                 isDark={isDark}

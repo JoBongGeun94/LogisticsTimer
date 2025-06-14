@@ -285,7 +285,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const [deltaPairValue, setDeltaPairValue] = useState(0);
   const [showRetakeModal, setShowRetakeModal] = useState(false);
 
-  // 완전한 게이지 데이터 계산 (상세 분석과 동일)
+  // 완전한 게이지 데이터 계산 - 상세분석과 100% 동일한 공식 적용
   const gaugeData = useMemo((): GaugeData => {
     if (lapTimes.length < 6) {
       console.info(`실시간 분석: 데이터 부족 (${lapTimes.length}/6개). 최소 6개 측정값 필요.`);
@@ -304,6 +304,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     }
 
     try {
+      // 상세분석과 동일한 데이터 검증
       const operators = Array.from(new Set(lapTimes.map(lap => lap.operator)));
       const targets = Array.from(new Set(lapTimes.map(lap => lap.target)));
       
@@ -322,69 +323,88 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         };
       }
 
-      // 데이터 그룹화 (상세 분석과 완전 동일)
+      // 🔧 상세분석 서비스와 완전 동일한 데이터 그룹화 로직 적용
       const groupedData = new Map<string, Map<string, number[]>>();
       for (const lap of lapTimes) {
-        if (!groupedData.has(lap.target)) {
-          groupedData.set(lap.target, new Map<string, number[]>());
+        if (!lap || !lap.target || !lap.operator || typeof lap.time !== 'number') {
+          console.warn('잘못된 데이터 건너뜀:', lap);
+          continue;
         }
-        if (!groupedData.get(lap.target)!.has(lap.operator)) {
-          groupedData.get(lap.target)!.set(lap.operator, []);
+
+        const partKey = lap.target;
+        const operatorKey = lap.operator;
+
+        if (!groupedData.has(partKey)) {
+          groupedData.set(partKey, new Map<string, number[]>());
         }
-        groupedData.get(lap.target)!.get(lap.operator)!.push(lap.time);
+
+        const partGroup = groupedData.get(partKey)!;
+        if (!partGroup.has(operatorKey)) {
+          partGroup.set(operatorKey, []);
+        }
+
+        partGroup.get(operatorKey)!.push(lap.time);
       }
 
-      // ANOVA 계산 (상세 분석과 동일)
+      // 🔧 상세분석과 완전 동일한 ANOVA 계산
       const anova = (calculator as any).calculateANOVA(groupedData);
       
-      // 분산 구성요소 계산 (상세 분석과 동일)
-      const nParts = targets.length;
-      const nOperators = operators.length;
-      let nRepeats = 0;
-      for (const [target, operatorMap] of groupedData) {
-        for (const [operator, measurements] of operatorMap) {
-          nRepeats = Math.max(nRepeats, measurements.length);
+      // 🔧 상세분석과 완전 동일한 데이터 구조 분석
+      const parts = Array.from(groupedData.keys());
+      const allOperators: string[] = [];
+      let maxRepeats = 0;
+
+      for (const [partKey, operatorMap] of groupedData) {
+        for (const [operatorKey, measurements] of operatorMap) {
+          if (!allOperators.includes(operatorKey)) {
+            allOperators.push(operatorKey);
+          }
+          maxRepeats = Math.max(maxRepeats, measurements.length);
         }
       }
 
-      // MSA 표준 분산 성분 계산
+      const nParts = parts.length;
+      const nOperators = allOperators.length;
+      const nRepeats = maxRepeats;
+
+      // 🔧 상세분석과 완전 동일한 MSA 표준 분산 성분 계산
       const var_equipment = anova.equipmentMS;
       const var_interaction = Math.max(0, (anova.interactionMS - anova.equipmentMS) / nRepeats);
       const var_operator = Math.max(0, (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats));
       const var_part = Math.max(0, (anova.partMS - anova.interactionMS) / (nOperators * nRepeats));
 
-      // 표준편차 계산
+      // 🔧 상세분석과 완전 동일한 표준편차 계산
       const repeatability = Math.sqrt(Math.max(0, var_equipment));
       const reproducibility = Math.sqrt(Math.max(0, var_operator));
       const partVariation = Math.sqrt(Math.max(0, var_part));
       const interactionVariation = Math.sqrt(Math.max(0, var_interaction));
 
-      // Total Gage R&R 계산
+      // 🔧 상세분석과 완전 동일한 Total Gage R&R 계산
       const gageRR = Math.sqrt(
         Math.pow(repeatability, 2) + 
         Math.pow(reproducibility, 2) + 
         Math.pow(interactionVariation, 2)
       );
 
-      // Total Variation 계산
+      // 🔧 상세분석과 완전 동일한 Total Variation 계산
       const totalVariation = Math.sqrt(
         Math.pow(gageRR, 2) + 
         Math.pow(partVariation, 2)
       );
 
-      // Gage R&R 백분율 계산
+      // 🔧 상세분석과 완전 동일한 Gage R&R 백분율 계산
       const gageRRPercent = totalVariation > 0 ? (gageRR / totalVariation) * 100 : 0;
 
-      // CV 계산 - 상세 분석과 완전 동일한 공식
+      // 🔧 상세분석과 완전 동일한 CV 계산 공식
       const actualMean = Math.sqrt(Math.max(0.01, anova.partMS / Math.max(1, nOperators * nRepeats)));
       const totalStd = Math.sqrt(var_part + var_operator + var_interaction + var_equipment);
       const cv = actualMean > 0 ? (totalStd / actualMean) * 100 : 100;
 
-      // Q99 계산 - 상세 분석과 동일
-      const conservativeFactor = 1.2;
+      // 🔧 상세분석과 완전 동일한 Q99 계산
+      const conservativeFactor = 1.2; // 20% 안전 마진
       const q99 = actualMean + NORMAL_DISTRIBUTION.Q99 * totalStd * conservativeFactor;
 
-      // 표준시간 설정 신뢰성 판단
+      // 🔧 상세분석과 완전 동일한 표준시간 설정 신뢰성 판단
       const thresholds = LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE['기타'];
       const isReliableForStandard = (cv <= thresholds.cv) && (iccValue >= thresholds.icc);
 
@@ -407,7 +427,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         isReliableForStandard
       };
     } catch (error) {
-      console.warn('Gauge 데이터 계산 오류:', error);
+      console.warn('실시간 Gauge 데이터 계산 오류:', error);
       return {
         grr: 0,
         repeatability: 0,
