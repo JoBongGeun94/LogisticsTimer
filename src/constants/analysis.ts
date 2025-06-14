@@ -42,7 +42,22 @@ export const LOGISTICS_WORK_THRESHOLDS = {
     '물자검수팀': 1.0,
     '저장관리팀': 1.1,
     '포장관리팀': 1.2
-  } as const
+  } as const,
+
+  // 동적 임계값 계산을 위한 함수
+  getDynamicThreshold: (workType: string, baseCV: number, measurementCount: number) => {
+    const typeThreshold = WORK_TYPE_THRESHOLDS[workType as keyof typeof WORK_TYPE_THRESHOLDS] 
+                         || WORK_TYPE_THRESHOLDS['기타'];
+    
+    // 측정 횟수에 따른 보정 (측정이 많을수록 엄격하게)
+    const countAdjustment = measurementCount >= 20 ? 0.9 : 
+                           measurementCount >= 10 ? 0.95 : 1.0;
+    
+    return {
+      icc: typeThreshold.icc * countAdjustment,
+      cv: typeThreshold.cv * countAdjustment
+    };
+  }
 } as const;
 
 // 정규분포 분위수 상수 (정확한 값으로 수정)
@@ -107,20 +122,7 @@ export const WORK_TYPE_THRESHOLDS = {
   }
 } as const;
 
-// 동적 임계값 계산 함수
-export const getDynamicThreshold = (workType: string, baseCV: number, measurementCount: number) => {
-  const typeThreshold = WORK_TYPE_THRESHOLDS[workType as keyof typeof WORK_TYPE_THRESHOLDS] 
-                       || WORK_TYPE_THRESHOLDS['기타'];
-  
-  // 측정 횟수에 따른 보정 (측정이 많을수록 엄격하게)
-  const countAdjustment = measurementCount >= 20 ? 0.9 : 
-                         measurementCount >= 10 ? 0.95 : 1.0;
-  
-  return {
-    icc: typeThreshold.icc * countAdjustment,
-    cv: typeThreshold.cv * countAdjustment
-  };
-};
+
 
 // 로그 변환 옵션
 export const LOG_TRANSFORM_OPTIONS = {
