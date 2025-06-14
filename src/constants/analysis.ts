@@ -45,93 +45,19 @@ export const LOGISTICS_WORK_THRESHOLDS = {
   } as const
 } as const;
 
-// 정규분포 분위수 상수 (정확한 값으로 수정)
+// 정규분포 분위수 상수
 export const NORMAL_DISTRIBUTION = {
-  Q90: 1.282,   // 90% 분위수
-  Q95: 1.645,   // 95% 분위수  
+  Q95: 1.645,   // 95% 분위수
   Q99: 2.326,   // 99% 분위수
-  Q999: 3.090,  // 99.9% 분위수
-  Q9999: 3.719  // 99.99% 분위수
+  Q999: 3.090   // 99.9% 분위수
 } as const;
 
-// F-분포 임계값 (자유도별 동적 계산을 위한 기본값)
+// F-분포 임계값 (개선된 근사)
 export const F_DISTRIBUTION_CRITICAL = {
-  ALPHA_001: { 
-    base: 6.63, 
-    adjustment_factor: 1.2,
-    min_df_threshold: 10
-  },
-  ALPHA_01: { 
-    base: 4.61, 
-    adjustment_factor: 1.15,
-    min_df_threshold: 10
-  },
-  ALPHA_05: { 
-    base: 3.84, 
-    adjustment_factor: 1.1,
-    min_df_threshold: 10
-  },
-  ALPHA_10: { 
-    base: 2.71, 
-    adjustment_factor: 1.05,
-    min_df_threshold: 10
-  }
-} as const;
-
-// 물류작업별 특화 임계값 (작업 유형별 세분화)
-export const LOGISTICS_WORK_THRESHOLDS = {
-  // 기본 임계값
-  ICC_EXCELLENT: 0.8,
-  ICC_ACCEPTABLE: 0.7,
-  CV_THRESHOLD: 0.12, // 12%
-  DELTA_PAIR_THRESHOLD: 0.15, // 15%
-  GRR_EXCELLENT: 10,   // 10% 미만: 우수
-  GRR_ACCEPTABLE: 30,  // 30% 미만: 허용 가능
-  GRR_MARGINAL: 50,    // 50% 미만: 제한적 사용
-
-  // 작업 유형별 세부 임계값 (연구 기반)
-  BY_WORK_TYPE: {
-    '피킹': { 
-      icc: 0.8, 
-      cv: 6, 
-      description: '정밀한 선별 작업' 
-    },
-    '검수': { 
-      icc: 0.78, 
-      cv: 7, 
-      description: '품질 검증 작업' 
-    },
-    '운반': { 
-      icc: 0.7, 
-      cv: 10, 
-      description: '물리적 이동 작업' 
-    },
-    '적재': { 
-      icc: 0.65, 
-      cv: 12, 
-      description: '적재 및 보관 작업' 
-    },
-    '기타': { 
-      icc: 0.7, 
-      cv: 12, 
-      description: '일반 물류 작업' 
-    }
-  },
-
-  // 동적 임계값 계산을 위한 함수
-  getDynamicThreshold: (workType: string, baseCV: number, measurementCount: number) => {
-    const typeThreshold = LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE[workType as keyof typeof LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE] 
-                         || LOGISTICS_WORK_THRESHOLDS.BY_WORK_TYPE['기타'];
-    
-    // 측정 횟수에 따른 보정 (측정이 많을수록 엄격하게)
-    const countAdjustment = measurementCount >= 20 ? 0.9 : 
-                           measurementCount >= 10 ? 0.95 : 1.0;
-    
-    return {
-      icc: typeThreshold.icc * countAdjustment,
-      cv: typeThreshold.cv * countAdjustment
-    };
-  }
+  ALPHA_001: { large_df: 6.63, small_df: 8.0 },
+  ALPHA_01: { large_df: 4.61, small_df: 5.5 },
+  ALPHA_05: { large_df: 3.84, small_df: 4.0 },
+  ALPHA_10: { large_df: 2.71, small_df: 3.0 }
 } as const;
 
 // 로그 변환 옵션

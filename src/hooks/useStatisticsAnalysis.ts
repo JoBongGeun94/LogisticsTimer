@@ -56,29 +56,18 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const [deltaPairValue, setDeltaPairValue] = useState(0);
   const [showRetakeModal, setShowRetakeModal] = useState(false);
 
-  // 성능 최적화: 메모이제이션 개선 및 해시 기반 캐싱 (타입 안전성 강화)
+  // 성능 최적화: 메모이제이션 개선 및 해시 기반 캐싱
   const analysisCache = useRef<{
     dataHash: string;
     result: GaugeData;
-    timestamp?: number;
-  }>({ 
-    dataHash: '', 
-    result: {
-      grr: 0, 
-      repeatability: 0, 
-      reproducibility: 0, 
-      partVariation: 0, 
-      totalVariation: 0, 
-      status: 'info', 
-      cv: 0, 
-      q99: 0, 
-      isReliableForStandard: false, 
-      varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
-    },
-    timestamp: 0
-  });
+  }>({ dataHash: '', result: {
+    grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
+    totalVariation: 0, status: 'info', cv: 0, q99: 0, 
+    isReliableForStandard: false, 
+    varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
+  }});
 
-  // 게이지 데이터 계산 - AnalysisService만 사용 (캐시 로직 개선)
+  // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
   const gaugeData = useMemo((): GaugeData => {
     if (lapTimes.length < 6) {
       return {
@@ -95,38 +84,32 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
     }
 
-    // 개선된 해시 계산 (측정자, 대상자 변화 감지)
-    const uniqueOperators = [...new Set(lapTimes.map(lap => lap.operator))].sort();
-    const uniqueTargets = [...new Set(lapTimes.map(lap => lap.target))].sort();
-    const dataHash = `${lapTimes.length}-${uniqueOperators.join(',')}-${uniqueTargets.join(',')}-${lapTimes.slice(-3).map(lap => lap.time).join(',')}`;
+    // 성능 최적화: 해시 기반 캐시 활용
+    const dataHash = `${lapTimes.length}-${lapTimes[lapTimes.length - 1]?.time}-${lapTimes[lapTimes.length - 1]?.operator}-${lapTimes[lapTimes.length - 1]?.target}`;
 
     if (analysisCache.current.dataHash === dataHash) {
       return analysisCache.current.result;
     }
 
     try {
-      // AnalysisService를 통한 통합 계산 (오류 처리 강화)
+      // AnalysisService를 통한 통합 계산 (중복 제거)
       const analysis = AnalysisService.calculateGageRR(lapTimes);
 
       const result: GaugeData = {
-        grr: Math.min(100, Math.max(0, analysis.gageRRPercent || 0)),
-        repeatability: Math.max(0, analysis.repeatability || 0),
-        reproducibility: Math.max(0, analysis.reproducibility || 0),
-        partVariation: Math.max(0, analysis.partVariation || 0),
-        totalVariation: Math.max(0, analysis.totalVariation || 0),
-        status: calculator.statusFromGRR(analysis.gageRRPercent || 0),
-        cv: Math.max(0, analysis.cv || 0),
-        q99: Math.max(0, analysis.q99 || 0),
-        isReliableForStandard: analysis.isReliableForStandard || false,
-        varianceComponents: analysis.varianceComponents || { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
+        grr: Math.min(100, Math.max(0, analysis.gageRRPercent)),
+        repeatability: analysis.repeatability,
+        reproducibility: analysis.reproducibility,
+        partVariation: analysis.partVariation,
+        totalVariation: analysis.totalVariation,
+        status: calculator.statusFromGRR(analysis.gageRRPercent),
+        cv: Math.max(0, analysis.cv),
+        q99: Math.max(0, analysis.q99),
+        isReliableForStandard: analysis.isReliableForStandard,
+        varianceComponents: analysis.varianceComponents
       };
 
-      // 캐시 업데이트 (타임스탬프 추가)
-      analysisCache.current = { 
-        dataHash, 
-        result,
-        timestamp: Date.now()
-      };
+      // 캐시 업데이트
+      analysisCache.current = { dataHash, result };
 
       return result;
     } catch (error) {
@@ -144,53 +127,34 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
       };
     }
-  }, [lapTimes, calculator]);
+  }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, calculator]);
 
-  // 통계 업데이트 - AnalysisService 기반으로 통합 (오류 처리 강화)
+  // 통계 업데이트 - AnalysisService 기반으로 통합
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
     try {
-      // ICC 재계산 - AnalysisService 활용 (안전성 검증 추가)
+      // ICC 재계산 - AnalysisService 활용
       if (allLaps.length >= 6) {
-        try {
-          const analysis = AnalysisService.calculateGageRR(allLaps);
-          const iccValue = Math.max(0, Math.min(1, analysis.icc || 0));
-          setIccValue(iccValue);
-        } catch (analysisError) {
-          console.warn('ICC 계산 오류:', analysisError);
-          setIccValue(0);
-        }
+        const analysis = AnalysisService.calculateGageRR(allLaps);
+        setIccValue(analysis.icc);
       }
 
-      // ΔPair 계산 (동일 측정자, 동일 대상자인 경우만)
+      // ΔPair 계산 (최적화: 마지막 2개만 계산)
       if (allLaps.length >= 2) {
         const lastTwo = allLaps.slice(-2);
-        
-        // 동일 조건에서의 측정만 비교
-        if (lastTwo[0].operator === lastTwo[1].operator && 
-            lastTwo[0].target === lastTwo[1].target) {
-          
-          const deltaPair = Math.abs(lastTwo[1].time - lastTwo[0].time);
-          setDeltaPairValue(deltaPair);
+        const deltaPair = Math.abs(lastTwo[1].time - lastTwo[0].time);
+        setDeltaPairValue(deltaPair);
 
-          // 동적 임계값 계산 - 작업 특성 및 측정 횟수 반영
-          const workTimeMean = allLaps
-            .filter(lap => lap.operator === newLap.operator && lap.target === newLap.target)
-            .reduce((sum, lap) => sum + lap.time, 0) / Math.max(1, allLaps.filter(lap => lap.operator === newLap.operator && lap.target === newLap.target).length);
-          
-          const dynamicThreshold = LOGISTICS_WORK_THRESHOLDS.getDynamicThreshold('기타', 0.12, allLaps.length);
-          const threshold = workTimeMean * (dynamicThreshold.cv / 100);
-          
-          // 연속 측정값 차이가 동적 임계값 초과 시 재측정 권고
-          if (deltaPair > threshold && allLaps.length > 6) {
-            setShowRetakeModal(true);
-          }
+        // 임계값 비교 최적화 - 물류작업 특성 반영
+        const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
+        const threshold = workTimeMean * LOGISTICS_WORK_THRESHOLDS.DELTA_PAIR_THRESHOLD;
+        
+        // 연속 측정값 차이가 15% 초과 시 재측정 권고
+        if (deltaPair > threshold && allLaps.length > 2) {
+          setShowRetakeModal(true);
         }
       }
     } catch (error) {
       console.warn('통계 업데이트 오류:', error);
-      // 오류 발생 시 기본값으로 초기화
-      setIccValue(0);
-      setDeltaPairValue(0);
     }
   }, []);
 

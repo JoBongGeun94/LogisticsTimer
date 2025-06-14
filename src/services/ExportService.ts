@@ -48,13 +48,6 @@ class DataFormatter implements IDataFormatter {
     return Number(value).toFixed(decimals);
   }
 
-  private safeFormatText(text: string | number | undefined | null): string {
-    if (text === null || text === undefined) {
-      return '';
-    }
-    return String(text).trim();
-  }
-
   private getStatusDescription(status: string): string {
     switch (status) {
       case 'excellent': return '측정시스템이 매우 우수하여 모든 용도로 사용 가능';
@@ -243,13 +236,13 @@ class DataFormatter implements IDataFormatter {
     // 데이터 유효성 검증 강화
     if (!analysis || typeof analysis !== 'object') {
       console.warn('분석 결과가 유효하지 않습니다');
-      return [['오류', '분석 결과를 불러올 수 없습니다', '', '']];
+      return [['오류', '분석 결과를 불러올 수 없습니다']];
     }
 
     // 세션 및 lapTimes 검증 추가
     if (!session || !lapTimes || lapTimes.length === 0) {
       console.warn('세션 또는 측정 데이터가 유효하지 않습니다');
-      return [['오류', '세션 또는 측정 데이터를 불러올 수 없습니다', '', '']];
+      return [['오류', '세션 또는 측정 데이터를 불러올 수 없습니다']];
     }
 
     // 필수 속성 존재 여부 확인 및 안전한 기본값 설정
@@ -458,23 +451,22 @@ class CSVFileExporter implements IFileExporter {
       // CSV 형식으로 변환 (개선된 안전한 이스케이프 처리)
       const csvContent = validData.map(row => 
         row.map(cell => {
-          // 모든 값을 문자열로 변환 (숫자 검증 제거)
+          // null, undefined, NaN, Infinity 안전 처리
           let cellStr = '';
-          if (cell !== null && cell !== undefined) {
+          if (cell !== null && cell !== undefined && 
+              !Number.isNaN(cell) && !Number.isNaN(Number(cell)) && 
+              Number.isFinite(Number(cell))) {
             cellStr = String(cell).trim();
           }
           
-          // 빈 문자열 처리
+          // 빈 문자열이나 잘못된 값 처리
           if (cellStr === '' || cellStr === 'undefined' || cellStr === 'null') {
             return '""';
           }
           
-          // CSV 특수문자, 줄바꿈, 한글이 포함된 경우 따옴표로 감싸기
+          // 특수문자 및 한글 처리 개선
           if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('\r') || 
-              cellStr.includes('"') || cellStr.includes(';') || /[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(cellStr) ||
-              cellStr.includes('=') || cellStr.includes('%') || cellStr.includes('●') || 
-              cellStr.includes('📋') || cellStr.includes('🏆') || cellStr.includes('📈') ||
-              cellStr.includes('✅') || cellStr.includes('❌') || cellStr.includes('⚠️')) {
+              cellStr.includes('"') || cellStr.includes(';') || /[가-힣]/.test(cellStr)) {
             return `"${cellStr.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
           }
           
@@ -482,7 +474,7 @@ class CSVFileExporter implements IFileExporter {
         }).join(',')
       ).join('\r\n');
       
-      // UTF-8 BOM 추가 + Excel 호환성 개선
+      // UTF-8 BOM 추가 + 강화된 인코딩
       const BOM = '\uFEFF';
       const blob = new Blob([BOM + csvContent], { 
         type: 'text/csv;charset=utf-8;' 
