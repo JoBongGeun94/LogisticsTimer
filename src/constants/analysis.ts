@@ -102,3 +102,12 @@ const WORK_TYPE_THRESHOLDS_MAP: Record<string, { icc: number; cv: number }> = {
 // 동적 임계값 계산 함수 (별도 분리)
 export const getDynamicThreshold = (workType: string, baseCV: number, measurementCount: number) => {
   const typeThreshold = WORK_TYPE_THRESHOLDS_MAP[workType] || WORK_TYPE_THRESHOLDS_MAP['기타'];
+  
+  // 측정 수량에 따른 동적 조정
+  const adjustmentFactor = Math.max(0.8, Math.min(1.2, measurementCount / 30));
+  
+  return {
+    icc: typeThreshold.icc * adjustmentFactor,
+    cv: typeThreshold.cv * adjustmentFactor
+  };
+};
