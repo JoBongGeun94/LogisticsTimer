@@ -94,6 +94,14 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const [iccValue, setIccValue] = useState(0);
   const [deltaPairValue, setDeltaPairValue] = useState(0);
   const [showRetakeModal, setShowRetakeModal] = useState(false);
+  
+  // gaugeData 객체 추가 (물류작업 특성 반영)
+  const [gaugeData] = useState(() => ({
+    grr: 0,
+    repeatability: 0,
+    reproducibility: 0,
+    status: 'info' as 'success' | 'warning' | 'error' | 'info'
+  }));
 
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
     // 윈도우 버퍼에 데이터 추가
@@ -122,16 +130,48 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         setShowRetakeModal(true);
       }
     }
-  }, [calculator, windowBuffer]);
 
-  // 실제 Gage R&R 값 계산 (고정값 대신)
+    // gaugeData 업데이트 (실시간 반영)
+    if (allLaps.length >= 6) {
+      const newGRR = actualGRR;
+      gaugeData.grr = newGRR;
+      gaugeData.status = calculator.statusFromGRR(newGRR);
+    }
+  }, [calculator, windowBuffer, actualGRR, gaugeData]);
+
+  // 실제 Gage R&R 값 계산 (물류작업 특성 반영)
   const actualGRR = useMemo(() => {
     if (lapTimes.length < 6) return 0;
+    
     try {
-      // AnalysisService를 사용하여 실제 GRR 계산
-      const validation = lapTimes.length >= 6;
-      return validation ? 0 : 0; // 실제 계산은 상위 컴포넌트에서
-    } catch {
+      // 물류작업 특성에 맞는 간단한 GRR 근사 계산
+      const operators = Array.from(new Set(lapTimes.map(lap => lap.operator)));
+      const targets = Array.from(new Set(lapTimes.map(lap => lap.target)));
+      
+      if (operators.length < 2 || targets.length < 2) return 0;
+      
+      // 측정자간 변동성 계산
+      let operatorVariance = 0;
+      for (const operator of operators) {
+        const operatorTimes = lapTimes.filter(lap => lap.operator === operator).map(lap => lap.time / 1000);
+        if (operatorTimes.length > 1) {
+          const mean = operatorTimes.reduce((sum, t) => sum + t, 0) / operatorTimes.length;
+          const variance = operatorTimes.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / (operatorTimes.length - 1);
+          operatorVariance += variance;
+        }
+      }
+      
+      // 총 변동성 계산
+      const allTimes = lapTimes.map(lap => lap.time / 1000);
+      const grandMean = allTimes.reduce((sum, t) => sum + t, 0) / allTimes.length;
+      const totalVariance = allTimes.reduce((sum, t) => sum + Math.pow(t - grandMean, 2), 0) / (allTimes.length - 1);
+      
+      // GRR 백분율 계산 (물류작업 특성 고려)
+      const grrPercent = totalVariance > 0 ? Math.sqrt(operatorVariance / operators.length) / Math.sqrt(totalVariance) * 100 : 0;
+      
+      return Math.min(100, Math.max(0, grrPercent));
+    } catch (error) {
+      console.warn('GRR 계산 오류:', error);
       return 0;
     }
   }, [lapTimes]);
@@ -148,6 +188,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     showRetakeModal,
     setShowRetakeModal,
     updateStatistics,
-    statisticsStatus
+    statisticsStatus,
+    gaugeData  // 누락된 gaugeData 객체 추가
   };
 };
