@@ -608,10 +608,10 @@ const EnhancedLogisticsTimer = () => {
   // 기본 다크모드로 설정 (요구사항 3번)
   const [isDark, setIsDark] = useState(true);
   const [lapTimes, setLapTimes] = useState<LapTime[]>([]);
-  
+
   // 수정된 useLocalStorage 사용 (무한 렌더링 방지)
   const [allLapTimes, setAllLapTimes] = useLocalStorage<LapTime[]>('logisticsTimer_allLapTimes', []);
-  
+
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
   const [showLanding, setShowLanding] = useState(true); // 소개 화면 첫번째 (요구사항 1번)
   const [selectedSessionHistory, setSelectedSessionHistory] = useState<SessionData | null>(null);
@@ -673,7 +673,7 @@ const EnhancedLogisticsTimer = () => {
     setLapTimes(updatedLaps);
     setAllLapTimes(prev => [...prev, newLap]);
     updateSessionLapTimes(updatedLaps);
-    
+
     // 통계 업데이트
     statisticsAnalysis.updateStatistics(newLap, updatedLaps);
   }, [lapTimes, setAllLapTimes, updateSessionLapTimes]);
@@ -767,11 +767,11 @@ const EnhancedLogisticsTimer = () => {
   // 세션 생성 함수 (훅과 연동)
   const createSession = useCallback(() => {
     const success = createSessionFromManager(sessionName, workType, operators, targets);
-    
+
     if (success) {
       setShowNewSessionModal(false);
       setLapTimes([]);
-      
+
       // 폼 리셋
       setSessionName('');
       setWorkType('');
@@ -1093,6 +1093,7 @@ const EnhancedLogisticsTimer = () => {
 
         {/* 실시간 분석 섹션 */}
         {lapTimes.length > 0 && (
+          
           <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
@@ -1101,7 +1102,7 @@ const EnhancedLogisticsTimer = () => {
               </div>
             </div>
 
-            
+
 
             <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
               <MeasurementCard
@@ -1670,5 +1671,56 @@ const EnhancedLogisticsTimer = () => {
     </div>
   );
 };
+
+// 통계 카드 컴포넌트 (Single Responsibility Principle)
+const StatCard = memo<{
+  title: string;
+  value: string | number;
+  unit?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  status: 'success' | 'warning' | 'error' | 'info';
+  theme: Theme;
+  isDark: boolean;
+  size?: 'sm' | 'md';
+}>(({ title, value, unit, icon: Icon, status, theme, isDark, size = 'md' }) => {
+  const colors = {
+    text: status === 'success' ? (isDark ? 'text-green-400' : 'text-green-600') :
+          status === 'warning' ? (isDark ? 'text-yellow-400' : 'text-yellow-600') :
+          status === 'error' ? (isDark ? 'text-red-400' : 'text-red-600') :
+          theme.textSecondary,
+    icon: status === 'success' ? (isDark ? 'text-green-400' : 'text-green-500') :
+          status === 'warning' ? (isDark ? 'text-yellow-400' : 'text-yellow-500') :
+          status === 'error' ? (isDark ? 'text-red-400' : 'text-red-500') :
+          theme.textMuted
+  };
+
+  const sizes = {
+    sm: {
+      icon: 'w-4 h-4',
+      title: 'text-xs',
+      value: 'text-sm'
+    },
+    md: {
+      icon: 'w-5 h-5',
+      title: 'text-sm',
+      value: 'text-lg'
+    }
+  };
+
+  return (
+    <div className={`rounded-lg p-3 ${theme.surface} shadow-sm border ${theme.border} flex flex-col`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon className={`${sizes[size].icon} ${colors.icon}`} />
+          <span className={`${sizes[size].title} font-medium ${theme.textSecondary}`}>{title}</span>
+        </div>
+        <div className={`${sizes[size].value} font-bold ${colors.text} font-mono`}>
+          {value}
+          {unit && <span className="text-xs font-normal ml-1">{unit}</span>}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default EnhancedLogisticsTimer;
