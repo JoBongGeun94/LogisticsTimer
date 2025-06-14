@@ -221,7 +221,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       for (const [partKey, operatorMap] of groupedData) {
         for (const [operatorKey, measurements] of operatorMap) {
           if (!operatorGlobalMeans.has(operatorKey)) {
-            operatorGlobalMeans.set(operatorKey, { sum: 0, count: 0 });
+            operatorGlobalMeans.set(operatorKey, { sum: 0; count: 0 });
           }
           const opData = operatorGlobalMeans.get(operatorKey)!;
           measurements.forEach(measurement => {

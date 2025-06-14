@@ -1,4 +1,3 @@
-
 // MSA 규격 완전 준수 분석 상수
 export const MSA_REQUIREMENTS = {
   // MSA-4 규격 기준
@@ -90,3 +89,16 @@ export const PERFORMANCE_CONFIG = {
   MIN_RECALC_INTERVAL: 1000, // 최소 재계산 간격 1초
   MAX_MEASUREMENTS_CACHE: 1000, // 최대 측정값 캐시 개수
 } as const;
+
+// 기본 임계값 맵 (순환 참조 방지)
+const WORK_TYPE_THRESHOLDS_MAP: Record<string, { icc: number; cv: number }> = {
+  '피킹': { icc: 0.8, cv: 6 },
+  '검수': { icc: 0.78, cv: 7 },
+  '운반': { icc: 0.7, cv: 10 },
+  '적재': { icc: 0.65, cv: 12 },
+  '기타': { icc: 0.7, cv: 12 }
+};
+
+// 동적 임계값 계산 함수 (별도 분리)
+export const getDynamicThreshold = (workType: string, baseCV: number, measurementCount: number) => {
+  const typeThreshold = WORK_TYPE_THRESHOLDS_MAP[workType] || WORK_TYPE_THRESHOLDS_MAP['기타'];

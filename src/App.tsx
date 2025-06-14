@@ -25,6 +25,16 @@ import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
 import { useSessionManager } from './hooks/useSessionManager';
 import { NotificationService } from './services';
 
+// 시간 포맷팅 유틸리티 함수
+const formatTime = (milliseconds: number): string => {
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const ms = Math.floor((milliseconds % 1000) / 10);
+  
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+};
+
 // NotificationService와 연결된 Toast 시스템
 const useNotificationService = () => {
   const [toasts, setToasts] = useState<Array<{
@@ -1124,7 +1134,7 @@ const EnhancedLogisticsTimer = () => {
 
           <div className="text-center">
             <div className={`text-4xl sm:text-5xl font-mono font-bold mb-6 ${theme.text} tracking-wider`}>
-              ExportService.formatTime(currentTime)
+              {formatTime(currentTime)}
             </div>
 
             <div className={`text-sm ${theme.textMuted} mb-6`}>
@@ -1191,7 +1201,7 @@ const EnhancedLogisticsTimer = () => {
               />
               <MeasurementCard
                 title="평균 시간"
-                value={ExportService.formatTime(lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)}
+                value={formatTime(lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)}
                 icon={Clock}
                 status="success"
                 theme={theme}
@@ -1369,7 +1379,7 @@ const EnhancedLogisticsTimer = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           <div className="font-mono text-lg font-bold text-blue-600 mb-2">
-                            ExportService.formatTime(lap.time)
+                            {formatTime(lap.time)}
                           </div>
                           <div className={`text-xs ${theme.textMuted} space-y-1`}>
                             <div className="flex items-center gap-2">
