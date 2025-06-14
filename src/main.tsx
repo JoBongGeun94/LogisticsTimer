@@ -7,28 +7,6 @@ import App from './App.tsx';
 // 캐시 무효화: 2025-06-04 07:13 KST
 // 빌드 ID: CACHE_CLEAR_V2_0_2
 
-// 안전한 초기화를 위한 조건부 렌더링
-const root = ReactDOM.createRoot(document.getElementById('root')!);
-const renderApp = () => {
-  try {
-    root.render(
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>
-    );
-  } catch (error) {
-    console.error('앱 초기화 오류:', error);
-    root.render(
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <h2>애플리케이션 로딩 중...</h2>
-        <p>잠시 후 다시 시도해주세요.</p>
-      </div>
-    );
-  }
-};
-
-renderApp();
-
 // 에러 경계 컴포넌트
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -115,17 +93,27 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error('Root element not found');
+// 안전한 초기화를 위한 함수
+const initializeApp = () => {
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    throw new Error('Root element not found');
+  }
+
+  const root = ReactDOM.createRoot(rootElement);
+
+  root.render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
+};
+
+// DOM이 로드된 후 앱 초기화
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  initializeApp();
 }
-
-const root = ReactDOM.createRoot(rootElement);
-
-root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>
-);

@@ -555,9 +555,9 @@ export class AnalysisService {
   private static readonly MAX_RECURSION_DEPTH = 100;
   private static recursionCounter = 0;
 
-  private static statisticsCalculator = AnalysisFactory.createStatisticsCalculator();
-  private static anovaCalculator = AnalysisFactory.createANOVACalculator();
-  private static gageRRCalculator = AnalysisFactory.createGageRRCalculator();
+  private static readonly statisticsCalculator = AnalysisFactory.createStatisticsCalculator();
+  private static readonly anovaCalculator = AnalysisFactory.createANOVACalculator();
+  private static readonly gageRRCalculator = AnalysisFactory.createGageRRCalculator();
 
   static calculateGageRR(lapTimes: LapTime[]): GageRRResult {
     if (this.recursionCounter > this.MAX_RECURSION_DEPTH) {

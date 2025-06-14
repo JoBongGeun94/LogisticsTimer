@@ -85,8 +85,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   }, [cleanupCache]);
 
   // 캐시 해시 생성 함수 (순환 참조 방지를 위해 독립적으로 정의)
-  const generateCacheHash = useMemo(() => {
-    return (lapTimes: LapTime[]): string => {
+  const generateCacheHash = useCallback((lapTimes: LapTime[]): string => {
       if (!lapTimes || lapTimes.length === 0) return 'empty';
 
       // 더 정확한 데이터 식별을 위한 복합 해시
@@ -116,7 +115,6 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       }
 
       return `${hash}_${lapTimes.length}_${Date.now() % 10000}`;
-    };
   }, []);
 
   // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
