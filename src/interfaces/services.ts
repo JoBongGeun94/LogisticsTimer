@@ -1,5 +1,9 @@
 import { LapTime, SessionData, GageRRResult, ValidationResult } from '../types';
 
+export interface IAnalysisService {
+  calculateGageRR(lapTimes: LapTime[]): GageRRResult;
+}
+
 export interface IValidationService {
   validateMeasurement(
     session: SessionData | null,
@@ -14,10 +18,6 @@ export interface IValidationService {
     targets: string[]
   ): ValidationResult;
   validateGageRRAnalysis(lapTimes: LapTime[]): ValidationResult;
-}
-
-export interface IAnalysisService {
-  calculateGageRR(lapTimes: LapTime[]): GageRRResult;
 }
 
 export interface IExportService {

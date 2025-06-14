@@ -5,35 +5,9 @@ import { AnalysisService } from '../services/AnalysisService';
 
 // 통계 계산 인터페이스 (Interface Segregation Principle)
 interface IStatisticsCalculator {
-  calcICC(values: { worker: string; observer: string; time: number }[]): number;
-  calcDeltaPair(ev: { tA: number; tB: number }): number;
   statusFromGRR(grr: number): 'success' | 'warning' | 'error' | 'info';
   statusFromICC(icc: number): 'success' | 'warning' | 'error' | 'info';
   statusFromDP(dp: number): 'success' | 'warning' | 'error' | 'info';
-}
-
-// 분산 구성요소 인터페이스 (Single Responsibility Principle)
-interface VarianceComponents {
-  part: number;
-  operator: number;
-  interaction: number;
-  equipment: number;
-  total: number;
-}
-
-// ANOVA 결과 인터페이스
-interface ANOVAResult {
-  partSS: number;
-  operatorSS: number;
-  interactionSS: number;
-  equipmentSS: number;
-  totalSS: number;
-  partMS: number;
-  operatorMS: number;
-  interactionMS: number;
-  equipmentMS: number;
-  fStatistic: number;
-  pValue: number;
 }
 
 // 게이지 데이터 인터페이스 (Interface Segregation Principle)
@@ -47,38 +21,17 @@ interface GaugeData {
   cv: number;
   q99: number;
   isReliableForStandard: boolean;
-  varianceComponents: VarianceComponents;
+  varianceComponents: {
+    part: number;
+    operator: number;
+    interaction: number;
+    equipment: number;
+    total: number;
+  };
 }
 
 // 통계 계산 구현체 (Single Responsibility Principle)
 class StatisticsCalculator implements IStatisticsCalculator {
-  calcICC(values: { worker: string; observer: string; time: number }[]): number {
-    if (values.length < 6) return 0;
-
-    try {
-      // LapTime 형식으로 변환하여 AnalysisService 활용
-      const lapTimes: LapTime[] = values.map((v, index) => ({
-        id: index,
-        time: v.time,
-        timestamp: new Date().toISOString(),
-        operator: v.worker,
-        target: v.observer,
-        sessionId: 'temp'
-      }));
-
-      // AnalysisService를 통한 ICC 계산 (개선된 공식 적용)
-      const analysis = AnalysisService.calculateGageRR(lapTimes);
-      return Number.isNaN(analysis.icc) ? 0 : Math.max(0, Math.min(1, analysis.icc));
-    } catch (error) {
-      console.warn('ICC 계산 오류:', error);
-      return 0;
-    }
-  }
-
-  calcDeltaPair(ev: { tA: number; tB: number }): number {
-    return Math.abs(ev.tA - ev.tB);
-  }
-
   statusFromGRR(grr: number): 'success' | 'warning' | 'error' | 'info' {
     if (grr < 10) return 'success';
     if (grr < 30) return 'warning';
@@ -97,31 +50,8 @@ class StatisticsCalculator implements IStatisticsCalculator {
   }
 }
 
-// 윈도우 버퍼 (Single Responsibility Principle)
-type WindowBuffer<T> = { 
-  size: number; 
-  push: (v: T) => void; 
-  values: () => T[] 
-};
-
-function createWindowBuffer<T>(size: number): WindowBuffer<T> {
-  const buffer: T[] = [];
-
-  return {
-    size,
-    push: (value: T) => {
-      buffer.push(value);
-      if (buffer.length > size) {
-        buffer.shift();
-      }
-    },
-    values: () => [...buffer]
-  };
-}
-
 export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const [calculator] = useState<IStatisticsCalculator>(() => new StatisticsCalculator());
-  const [windowBuffer] = useState(() => createWindowBuffer<{ worker: string; observer: string; time: number }>(30));
   const [iccValue, setIccValue] = useState(0);
   const [deltaPairValue, setDeltaPairValue] = useState(0);
   const [showRetakeModal, setShowRetakeModal] = useState(false);
@@ -137,7 +67,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
   }});
 
-  // 게이지 데이터 계산 - AnalysisService 활용으로 중복 제거
+  // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거)
   const gaugeData = useMemo((): GaugeData => {
     if (lapTimes.length < 6) {
       console.info(`실시간 분석: 데이터 부족 (${lapTimes.length}/6개). 최소 6개 측정값 필요.`);
@@ -149,15 +79,15 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         totalVariation: 0,
         status: 'info',
         cv: 0,
-		q99: 0,
+        q99: 0,
         isReliableForStandard: false,
-		varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
+        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
       };
     }
 
     // 성능 최적화: 해시 기반 캐시 활용
     const dataHash = lapTimes.map(lap => `${lap.operator}-${lap.target}-${lap.time}`).join('|');
-    
+
     if (analysisCache.current.dataHash === dataHash) {
       return analysisCache.current.result;
     }
@@ -176,7 +106,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         cv: Math.max(0, analysis.cv),
         q99: Math.max(0, analysis.q99),
         isReliableForStandard: analysis.isReliableForStandard,
-		varianceComponents: analysis.varianceComponents
+        varianceComponents: analysis.varianceComponents
       };
 
       // 캐시 업데이트
@@ -196,43 +126,39 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         totalVariation: 0,
         status: 'error',
         cv: 0,
-		q99: 0,
+        q99: 0,
         isReliableForStandard: false,
-		varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
+        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
       };
     }
-  }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, calculator]); // 의존성 최적화
+  }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, calculator]);
 
-  // 통계 업데이트 최적화
+  // 통계 업데이트 - AnalysisService 기반으로 통합
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
-    // 윈도우 버퍼에 데이터 추가
-    windowBuffer.push({
-      worker: newLap.operator,
-      observer: newLap.target,
-      time: newLap.time
-    });
-
-    // ICC 재계산 (AnalysisService 활용)
-    const newICC = calculator.calcICC(windowBuffer.values());
-    setIccValue(newICC);
-
-    // ΔPair 계산 (최적화: 마지막 2개만 계산)
-    if (allLaps.length >= 2) {
-      const lastTwo = allLaps.slice(-2);
-      const deltaPair = calculator.calcDeltaPair({
-        tA: lastTwo[0].time,
-        tB: lastTwo[1].time
-      });
-      setDeltaPairValue(deltaPair);
-
-      // 임계값 비교 최적화
-      const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
-      const threshold = workTimeMean * 0.15;
-      if (deltaPair > threshold) {
-        setShowRetakeModal(true);
+    try {
+      // ICC 재계산 - AnalysisService 활용
+      if (allLaps.length >= 6) {
+        const analysis = AnalysisService.calculateGageRR(allLaps);
+        setIccValue(analysis.icc);
       }
+
+      // ΔPair 계산 (최적화: 마지막 2개만 계산)
+      if (allLaps.length >= 2) {
+        const lastTwo = allLaps.slice(-2);
+        const deltaPair = Math.abs(lastTwo[0].time - lastTwo[1].time);
+        setDeltaPairValue(deltaPair);
+
+        // 임계값 비교 최적화
+        const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
+        const threshold = workTimeMean * 0.15;
+        if (deltaPair > threshold) {
+          setShowRetakeModal(true);
+        }
+      }
+    } catch (error) {
+      console.warn('통계 업데이트 오류:', error);
     }
-  }, [calculator, windowBuffer]);
+  }, []);
 
   // 상태 계산 최적화
   const statisticsStatus = useMemo(() => ({

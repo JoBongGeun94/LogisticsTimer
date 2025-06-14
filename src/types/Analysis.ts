@@ -1,3 +1,4 @@
+
 import { QualityStatus, RiskLevel } from './Common';
 
 export interface StatisticalMetrics {
@@ -12,15 +13,17 @@ export interface StatisticalMetrics {
 }
 
 export interface ANOVAResult {
-  readonly operator: number;
-  readonly part: number;
-  readonly interaction: number;
-  readonly error: number;
-  readonly total: number;
-  readonly operatorPercent: number;
-  readonly partPercent: number;
-  readonly interactionPercent: number;
-  readonly errorPercent: number;
+  readonly partSS: number;
+  readonly operatorSS: number;
+  readonly interactionSS: number;
+  readonly equipmentSS: number;
+  readonly totalSS: number;
+  readonly partMS: number;
+  readonly operatorMS: number;
+  readonly interactionMS: number;
+  readonly equipmentMS: number;
+  readonly fStatistic: number;
+  readonly pValue: number;
 }
 
 export interface AnalysisInterpretation {
@@ -37,20 +40,11 @@ export interface GageRRAnalysis extends StatisticalMetrics {
   interpretation: AnalysisInterpretation;
 }
 
-// ANOVA 분석 결과 타입
-export interface ANOVAResults {
-  fOperators: number;
-  fParts: number;
-  fInteraction: number;
-  pValueOperators: number;
-  pValueParts: number;
-}
-
-// 분산 성분 타입
+// 분산 성분 타입 (실제 사용 구조와 일치)
 export interface VarianceComponents {
-  repeatability: number;
-  reproducibility: number;
-  partToPart: number;
+  part: number;
+  operator: number;
   interaction: number;
+  equipment: number;
   total: number;
 }

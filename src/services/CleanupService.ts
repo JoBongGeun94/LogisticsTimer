@@ -1,43 +1,32 @@
-
 /**
- * 코드 정리 및 최적화 서비스 (Single Responsibility Principle)
+ * 메모리 및 성능 최적화 서비스 (Single Responsibility Principle)
  */
 export class CleanupService {
   /**
-   * 로컬 스토리지 정리
+   * 브라우저 메모리 최적화
    */
-  static clearExpiredData(): void {
-    const keys = Object.keys(localStorage);
-    const expiredKeys = keys.filter(key => 
-      key.startsWith('temp_') || key.includes('_expired_')
-    );
-    
-    expiredKeys.forEach(key => localStorage.removeItem(key));
-  }
-
-  /**
-   * 메모리 정리
-   */
-  static forceGarbageCollection(): void {
+  static optimizeMemory(): void {
+    // 가비지 컬렉션 힌트 (브라우저 지원 시)
     if (window.gc) {
-      window.gc();
+      try {
+        window.gc();
+      } catch (error) {
+        console.debug('가비지 컬렉션 실행 불가');
+      }
     }
   }
 
   /**
-   * 콘솔 정리
+   * 성능 정보 로깅
    */
-  static clearConsole(): void {
-    console.clear();
-  }
-
-  /**
-   * 종합 정리 실행
-   */
-  static performCleanup(): void {
-    this.clearExpiredData();
-    this.forceGarbageCollection();
-    this.clearConsole();
-    console.log('🧹 시스템 정리 완료');
+  static logPerformanceMetrics(): void {
+    if (performance.memory) {
+      const { usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit } = performance.memory;
+      console.debug('메모리 사용량:', {
+        used: `${Math.round(usedJSHeapSize / 1024 / 1024)} MB`,
+        total: `${Math.round(totalJSHeapSize / 1024 / 1024)} MB`,
+        limit: `${Math.round(jsHeapSizeLimit / 1024 / 1024)} MB`
+      });
+    }
   }
 }
