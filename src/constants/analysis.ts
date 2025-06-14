@@ -99,15 +99,16 @@ const WORK_TYPE_THRESHOLDS_MAP: Record<string, { icc: number; cv: number }> = {
   '기타': { icc: 0.7, cv: 12 }
 };
 
-// 동적 임계값 계산 함수 (별도 분리)
+// 동적 임계값 계산 함수 (별도 분리) - 순환 참조 방지
 export const getDynamicThreshold = (workType: string, baseCV: number, measurementCount: number) => {
-  const typeThreshold = WORK_TYPE_THRESHOLDS_MAP[workType] || WORK_TYPE_THRESHOLDS_MAP['기타'];
+  const defaultThreshold = { icc: 0.8, cv: 15 };
+  const typeThreshold = WORK_TYPE_THRESHOLDS_MAP[workType] || WORK_TYPE_THRESHOLDS_MAP['기타'] || defaultThreshold;
   
   // 측정 수량에 따른 동적 조정
   const adjustmentFactor = Math.max(0.8, Math.min(1.2, measurementCount / 30));
   
   return {
-    icc: typeThreshold.icc * adjustmentFactor,
-    cv: typeThreshold.cv * adjustmentFactor
+    icc: (typeThreshold.icc || 0.8) * adjustmentFactor,
+    cv: (typeThreshold.cv || 15) * adjustmentFactor
   };
 };

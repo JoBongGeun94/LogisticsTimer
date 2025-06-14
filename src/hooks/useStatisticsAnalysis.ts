@@ -84,37 +84,39 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     return () => clearInterval(cleanup);
   }, [cleanupCache]);
 
-  // 캐시 해시 생성 (개선된 해시 함수 - 충돌 방지)
-  const generateCacheHash = useCallback((lapTimes: LapTime[]): string => {
-    if (!lapTimes || lapTimes.length === 0) return 'empty';
+  // 캐시 해시 생성 함수 (순환 참조 방지를 위해 독립적으로 정의)
+  const generateCacheHash = useMemo(() => {
+    return (lapTimes: LapTime[]): string => {
+      if (!lapTimes || lapTimes.length === 0) return 'empty';
 
-    // 더 정확한 데이터 식별을 위한 복합 해시
-    const sortedData = lapTimes
-      .map(lap => ({
-        op: lap.operator || '',
-        tg: lap.target || '',
-        tm: Math.round((lap.time || 0) * 1000) / 1000, // 소수점 3자리까지
-        ts: lap.timestamp || '',
-        id: lap.id || 0
-      }))
-      .sort((a, b) => {
-        // 다중 기준 정렬로 순서 일관성 보장
-        if (a.op !== b.op) return a.op.localeCompare(b.op);
-        if (a.tg !== b.tg) return a.tg.localeCompare(b.tg);
-        if (a.tm !== b.tm) return a.tm - b.tm;
-        return a.id - b.id;
-      });
+      // 더 정확한 데이터 식별을 위한 복합 해시
+      const sortedData = lapTimes
+        .map(lap => ({
+          op: lap.operator || '',
+          tg: lap.target || '',
+          tm: Math.round((lap.time || 0) * 1000) / 1000, // 소수점 3자리까지
+          ts: lap.timestamp || '',
+          id: lap.id || 0
+        }))
+        .sort((a, b) => {
+          // 다중 기준 정렬로 순서 일관성 보장
+          if (a.op !== b.op) return a.op.localeCompare(b.op);
+          if (a.tg !== b.tg) return a.tg.localeCompare(b.tg);
+          if (a.tm !== b.tm) return a.tm - b.tm;
+          return a.id - b.id;
+        });
 
-    const dataStr = JSON.stringify(sortedData);
+      const dataStr = JSON.stringify(sortedData);
 
-    // FNV-1a 해시 알고리즘 (충돌 확률 낮음)
-    let hash = 2166136261;
-    for (let i = 0; i < dataStr.length; i++) {
-      hash ^= dataStr.charCodeAt(i);
-      hash = (hash * 16777619) >>> 0; // 32비트 unsigned
-    }
+      // FNV-1a 해시 알고리즘 (충돌 확률 낮음)
+      let hash = 2166136261;
+      for (let i = 0; i < dataStr.length; i++) {
+        hash ^= dataStr.charCodeAt(i);
+        hash = (hash * 16777619) >>> 0; // 32비트 unsigned
+      }
 
-    return `${hash}_${lapTimes.length}_${Date.now() % 10000}`;
+      return `${hash}_${lapTimes.length}_${Date.now() % 10000}`;
+    };
   }, []);
 
   // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
@@ -265,7 +267,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     setShowRetakeModal(needsRemeasurement);
   }, []);
 
-  // 상태 계산 최적화
+  // 상태 계산 최적화 - 순환 참조 방지
   const statisticsStatus = useMemo(() => ({
     grr: calculator.statusFromGRR(gaugeData.grr),
     icc: calculator.statusFromICC(iccValue),

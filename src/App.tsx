@@ -772,10 +772,14 @@ const EnhancedLogisticsTimer = () => {
   // 통계 분석 훅
   const statisticsAnalysis = useStatisticsAnalysis(lapTimes);
 
-  // 통계 업데이트 함수 별도 정의 (순환 참조 방지)
+  // 통계 업데이트 함수 별도 정의 (순환 참조 방지) - 안전한 참조
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
-    if (statisticsAnalysis?.updateStatistics) {
-      statisticsAnalysis.updateStatistics(newLap, allLaps);
+    try {
+      if (statisticsAnalysis && typeof statisticsAnalysis.updateStatistics === 'function') {
+        statisticsAnalysis.updateStatistics(newLap, allLaps);
+      }
+    } catch (error) {
+      console.warn('통계 업데이트 실패:', error);
     }
   }, [statisticsAnalysis]);
 

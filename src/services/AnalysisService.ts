@@ -483,6 +483,11 @@ class GageRRCalculator implements IGageRRCalculator {
 
   private calculateVarianceComponents(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number): VarianceComponents {
     // MSA-4 표준에 따른 올바른 분산 성분 계산 (REML 방법론)
+    const defaultVariance = { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 };
+    
+    if (!anova || typeof anova !== 'object') {
+      return defaultVariance;
+    }
 
     // Repeatability (Equipment Variance) - 항상 양수
     const sigma2_equipment = Math.max(0, anova.equipmentMS);
