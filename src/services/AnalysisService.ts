@@ -17,7 +17,7 @@ interface IANOVACalculator {
 }
 
 interface IGageRRCalculator {
-  calculate(anova: ANOVAResult, nParts?: number, nOperators?: number, nRepeats?: number): GageRRMetrics;
+  calculate(anova: ANOVAResult, nParts?: number, nOperators?: number, nRepeats?: number, groupedData?: Map<string, Map<string, number[]>>): GageRRMetrics;
 }
 
 /**
@@ -355,7 +355,7 @@ class ANOVACalculator implements IANOVACalculator {
  * Gage R&R 계산기 (Single Responsibility Principle)
  */
 class GageRRCalculator implements IGageRRCalculator {
-  calculate(anova: ANOVAResult, nParts: number = 5, nOperators: number = 2, nRepeats: number = 5): GageRRMetrics {
+  calculate(anova: ANOVAResult, nParts: number = 5, nOperators: number = 2, nRepeats: number = 5, groupedData?: Map<string, Map<string, number[]>>): GageRRMetrics {
     const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
 
     // 표준편차 계산 (올바른 공식)
@@ -408,24 +408,26 @@ class GageRRCalculator implements IGageRRCalculator {
                 Math.max(0, (anova.partMS - anova.equipmentMS) / denominator) : 0;
 
     // CV 계산 - 올바른 공식: (표준편차 / 평균) × 100
-    // 실제 측정값들의 평균 계산
+    // 실제 측정값들의 평균 계산 (안전한 처리)
     let totalSum = 0;
     let totalCount = 0;
 
-    // 모든 실제 측정값의 합계와 개수 계산
-    for (const [partKey, operatorMap] of groupedData) {
-      for (const [operatorKey, measurements] of operatorMap) {
-        for (const measurement of measurements) {
-          if (!isNaN(measurement)) {
-            totalSum += measurement;
-            totalCount++;
+    if (groupedData) {
+      // 모든 실제 측정값의 합계와 개수 계산
+      for (const [partKey, operatorMap] of groupedData) {
+        for (const [operatorKey, measurements] of operatorMap) {
+          for (const measurement of measurements) {
+            if (!isNaN(measurement) && measurement > 0) {
+              totalSum += measurement;
+              totalCount++;
+            }
           }
         }
       }
     }
 
-    // 실제 측정값들의 평균
-    const actualMean = totalCount > 0 ? totalSum / totalCount : 0.01;
+    // 실제 측정값들의 평균 (안전한 기본값 설정)
+    const actualMean = totalCount > 0 ? totalSum / totalCount : 1000; // 1초 기본값
 
     // 총 표준편차 계산 (모든 변동 성분 포함)
     const totalStd = Math.sqrt(varianceComponents.part + varianceComponents.operator + 
@@ -581,7 +583,7 @@ export class AnalysisService {
       }
 
       // Gage R&R 지표 계산
-      const metrics = this.gageRRCalculator.calculate(anova, parts.length, operators.length, maxRepeats);
+      const metrics = this.gageRRCalculator.calculate(anova, parts.length, operators.length, maxRepeats, groupedData);
 
       // 분산 구성요소 계산
       const varianceComponents = this.calculateVarianceComponents(anova);
