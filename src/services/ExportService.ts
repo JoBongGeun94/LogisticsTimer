@@ -63,16 +63,31 @@ class DataFormatter implements IDataFormatter {
   }
 
   formatAnalysisData(session: SessionData, lapTimes: LapTime[], analysis: GageRRResult): string[][] {
-    // 데이터 유효성 검증
+    // 데이터 유효성 검증 강화
     if (!analysis || typeof analysis !== 'object') {
       console.warn('분석 결과가 유효하지 않습니다');
       return [['오류', '분석 결과를 불러올 수 없습니다']];
     }
 
+    // 필수 속성 존재 여부 확인
+    const safeAnalysis = {
+      status: analysis.status || 'unacceptable',
+      gageRRPercent: analysis.gageRRPercent || 0,
+      icc: analysis.icc || 0,
+      deltaPair: analysis.deltaPair || 0,
+      cv: analysis.cv || 0,
+      repeatability: analysis.repeatability || 0,
+      reproducibility: analysis.reproducibility || 0,
+      partVariation: analysis.partVariation || 0,
+      totalVariation: analysis.totalVariation || 0,
+      q99: analysis.q99 || 0,
+      isReliableForStandard: analysis.isReliableForStandard || false
+    };
+
     // 상세분석 모달과 완전 동기화된 Excel 보고서 생성
-    const statusText = analysis.status === 'excellent' ? '우수' :
-                      analysis.status === 'acceptable' ? '양호' :
-                      analysis.status === 'marginal' ? '보통' : '불량';
+    const statusText = safeAnalysis.status === 'excellent' ? '우수' :
+                      safeAnalysis.status === 'acceptable' ? '양호' :
+                      safeAnalysis.status === 'marginal' ? '보통' : '불량';
 
     const analysisSection = [
       ['=== 📊 상세분석 결과 ===', '', '', ''],
@@ -81,24 +96,24 @@ class DataFormatter implements IDataFormatter {
       ['', '', '', ''],
       ['📈 핵심 지표', '', '', ''],
       ['분석 항목', '값', '단위', '평가 기준'],
-      ['Gage R&R', this.safeFormat(analysis.gageRRPercent, 1), '%', '< 10% 우수, 10-30% 양호'],
-      ['ICC (2,1)', this.safeFormat(analysis.icc, 3), '', '>= 0.75 신뢰 가능'],
-      ['ΔPair', this.safeFormat(analysis.deltaPair, 3), 's', '측정자간 차이'],
-      ['변동계수 (CV)', this.safeFormat(analysis.cv, 1), '%', '<= 8% 일관성 우수'],
+      ['Gage R&R', this.safeFormat(safeAnalysis.gageRRPercent, 1), '%', '< 10% 우수, 10-30% 양호'],
+      ['ICC (2,1)', this.safeFormat(safeAnalysis.icc, 3), '', '>= 0.75 신뢰 가능'],
+      ['ΔPair', this.safeFormat(safeAnalysis.deltaPair, 3), 's', '측정자간 차이'],
+      ['변동계수 (CV)', this.safeFormat(safeAnalysis.cv, 1), '%', '<= 8% 일관성 우수'],
       ['', '', '', ''],
       ['🔬 분산 구성요소', '', '', ''],
       ['구성요소', '값', '단위', '설명'],
-      ['반복성 (Repeatability)', this.safeFormat(analysis.repeatability, 4), 'ms', '동일 조건 반복 측정 변동'],
-      ['재현성 (Reproducibility)', this.safeFormat(analysis.reproducibility, 4), 'ms', '측정자간 변동'],
-      ['대상자 변동 (Part Variation)', this.safeFormat(analysis.partVariation, 4), 'ms', '대상자간 실제 차이'],
-      ['총 변동 (Total Variation)', this.safeFormat(analysis.totalVariation, 4), 'ms', '전체 측정 시스템 변동'],
+      ['반복성 (Repeatability)', this.safeFormat(safeAnalysis.repeatability, 4), 'ms', '동일 조건 반복 측정 변동'],
+      ['재현성 (Reproducibility)', this.safeFormat(safeAnalysis.reproducibility, 4), 'ms', '측정자간 변동'],
+      ['대상자 변동 (Part Variation)', this.safeFormat(safeAnalysis.partVariation, 4), 'ms', '대상자간 실제 차이'],
+      ['총 변동 (Total Variation)', this.safeFormat(safeAnalysis.totalVariation, 4), 'ms', '전체 측정 시스템 변동'],
       ['', '', '', ''],
       ['⏱️ 작업시간 분석', '', '', ''],
       ['지표명', '값', '단위', '평가'],
-      ['급내상관계수 (ICC)', this.safeFormat(analysis.icc, 3), '', '측정자간 신뢰성'],
-      ['변동계수 (CV)', this.safeFormat(analysis.cv, 1), '%', '작업 일관성'],
-      ['99% 달성시간 (Q99)', this.safeFormat((analysis.q99 || 0) / 1000, 2), '초', '99% 완료 예상시간'],
-      ['표준시간 설정 가능', analysis.isReliableForStandard ? 'O (가능)' : 'X (불가)', '', 'ICC >= 0.75 & CV <= 8%'],
+      ['급내상관계수 (ICC)', this.safeFormat(safeAnalysis.icc, 3), '', '측정자간 신뢰성'],
+      ['변동계수 (CV)', this.safeFormat(safeAnalysis.cv, 1), '%', '작업 일관성'],
+      ['99% 달성시간 (Q99)', this.safeFormat(safeAnalysis.q99 / 1000, 2), '초', '99% 완료 예상시간'],
+      ['표준시간 설정 가능', safeAnalysis.isReliableForStandard ? 'O (가능)' : 'X (불가)', '', 'ICC >= 0.75 & CV <= 8%'],
       ['', '', '', ''],
       ['📋 해석 및 권장사항', '', '', ''],
       ['평가 결과', '권장사항', '근거', '']
@@ -106,17 +121,17 @@ class DataFormatter implements IDataFormatter {
 
     // 상태별 권장사항 추가 (상세분석 모달과 동일)
     let recommendations: string[][] = [];
-    if (analysis.status === 'excellent') {
+    if (safeAnalysis.status === 'excellent') {
       recommendations = [
         ['우수한 측정 시스템', '모든 측정에 신뢰할 수 있습니다', '', ''],
         ['', '현재 측정 절차를 유지하세요', '', '']
       ];
-    } else if (analysis.status === 'acceptable') {
+    } else if (safeAnalysis.status === 'acceptable') {
       recommendations = [
         ['양호한 측정 시스템', '대부분의 용도로 사용 가능합니다', '', ''],
         ['', '정기적인 교정을 권장합니다', '', '']
       ];
-    } else if (analysis.status === 'marginal') {
+    } else if (safeAnalysis.status === 'marginal') {
       recommendations = [
         ['제한적 사용 권장', '측정 절차 개선이 필요합니다', '', ''],
         ['', '교육 및 장비 점검을 고려하세요', '', '']

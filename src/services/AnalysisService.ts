@@ -411,7 +411,7 @@ class GageRRCalculator implements IGageRRCalculator {
     // 실제 측정값들의 평균 계산
     let totalSum = 0;
     let totalCount = 0;
-    
+
     // 모든 실제 측정값의 합계와 개수 계산
     for (const [partKey, operatorMap] of groupedData) {
       for (const [operatorKey, measurements] of operatorMap) {
@@ -423,14 +423,14 @@ class GageRRCalculator implements IGageRRCalculator {
         }
       }
     }
-    
+
     // 실제 측정값들의 평균
     const actualMean = totalCount > 0 ? totalSum / totalCount : 0.01;
-    
+
     // 총 표준편차 계산 (모든 변동 성분 포함)
     const totalStd = Math.sqrt(varianceComponents.part + varianceComponents.operator + 
                               varianceComponents.interaction + varianceComponents.equipment);
-    
+
     // 변동계수 계산: CV = (σ / μ) × 100
     const cv = actualMean > 0 ? (totalStd / actualMean) * 100 : 100;
 
