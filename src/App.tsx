@@ -1,7 +1,4 @@
-Combining changes to fix App.tsx and complete unfinished parts, focusing on maintaining UI/UX and applying SOLID principles.
-```
 
-```replit_final_file
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import {
   Play, Pause, Square, Download, Plus, Users,
@@ -82,10 +79,8 @@ const STATUS_COLORS = {
   }
 } as const;
 
-// 작업 유형 상수 (요구사항 7번)
+// 작업 유형 상수
 const WORK_TYPES = ['물자검수팀', '저장관리팀', '포장관리팀'] as const;
-
-// === 통계 계산 함수들이 useStatisticsAnalysis 훅으로 이동됨 ===
 
 // ==================== 유틸리티 훅 ====================
 const useBackButtonPrevention = () => {
@@ -244,30 +239,26 @@ const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg
   );
 });
 
-// 랜딩 페이지 (소개 화면 첫번째 - 요구사항 1번)
+// 랜딩 페이지 (소개 화면 첫번째)
 const ModernLandingPage = memo<{
   isDark: boolean;
   onStart: () => void;
 }>(({ isDark, onStart }) => {
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
-      {/* 고급스러운 배경 효과 */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-br from-blue-400/20 via-purple-500/15 to-transparent rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-32 left-16 w-80 h-80 bg-gradient-to-tr from-indigo-400/15 via-blue-500/10 to-transparent rounded-full blur-3xl"></div>
         <div className="absolute top-1/3 left-1/4 w-32 h-32 bg-gradient-to-r from-cyan-400/10 to-blue-500/10 rounded-full blur-2xl animate-bounce"></div>
         <div className="absolute bottom-1/4 right-1/3 w-40 h-40 bg-gradient-to-l from-purple-400/10 to-indigo-500/10 rounded-full blur-2xl"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]"></div>
       </div>
 
       <div className="relative z-10 flex flex-col items-center justify-start min-h-screen px-6 text-center pt-20">
-        {/* 로고 섹션 */}
         <div className="transform hover:scale-105 transition-transform duration-300 mb-16 mt-16">
           <ConsolidatedSupplyLogo isDark={isDark} size="lg" />
         </div>
 
-        {/* 타이틀 섹션 */}
         <div className="mb-20 space-y-6">
           <h2 className="text-4xl font-bold text-white leading-tight tracking-tight">
             물류 작업현장<br />
@@ -281,7 +272,6 @@ const ModernLandingPage = memo<{
           </div>
         </div>
 
-        {/* 기능 하이라이트 */}
         <div className="mb-20 grid grid-cols-1 gap-6 w-full max-w-sm">
           <div className="group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl blur-lg group-hover:blur-xl transition-all duration-300"></div>
@@ -323,7 +313,6 @@ const ModernLandingPage = memo<{
           </div>
         </div>
 
-        {/* 시작 버튼 */}
         <button
           onClick={onStart}
           className="group relative overflow-hidden px-12 py-5 rounded-2xl font-bold text-xl shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2"
@@ -339,7 +328,6 @@ const ModernLandingPage = memo<{
           <div className="absolute inset-0 rounded-2xl border-2 border-white/20 group-hover:border-white/40 transition-colors duration-300"></div>
         </button>
 
-        {/* 하단 상태 정보 */}
         <div className="mt-12 text-center">
           <div className="inline-flex items-center space-x-3 px-6 py-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
             <div className="flex space-x-1">
@@ -433,149 +421,196 @@ const AnalysisUnavailableMessage = memo<{
   );
 });
 
-// 🔧 상세분석 모달 컴포넌트 (성능 최적화 적용)
-const DetailedAnalysisModal = memo<{
-  isVisible: boolean;
-  onClose: () => void;
-  analysis: any;
-  theme: Theme;
-  isDark: boolean;
-  lapTimes: LapTime[];
-  statisticsAnalysis: any;
-}>(({ isVisible, onClose, analysis, theme, isDark, lapTimes, statisticsAnalysis }) => {
-  // 성능 최적화: 분석 데이터 메모이제이션
-  const memoizedAnalysis = useMemo(() => {
-    if (!analysis || !statisticsAnalysis) return null;
-    return {
-      ...analysis,
-      iccValue: statisticsAnalysis.iccValue,
-      deltaPairValue: statisticsAnalysis.deltaPairValue,
-      gaugeData: statisticsAnalysis.gaugeData
-    };
-  }, [analysis, statisticsAnalysis.iccValue, statisticsAnalysis.deltaPairValue, statisticsAnalysis.gaugeData]);
+// 메인 App 컴포넌트
+export default function App() {
+  // 테마 및 UI 상태
+  const [isDarkMode, setIsDarkMode] = useLocalStorage<boolean>('darkMode', false);
+  const [showLanding, setShowLanding] = useLocalStorage<boolean>('showLanding', true);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info'; isVisible: boolean }>({
+    message: '',
+    type: 'info',
+    isVisible: false
+  });
 
-  if (!isVisible) return null;
+  // 훅들
+  const { showBackWarning } = useBackButtonPrevention();
+  const sessionManager = useSessionManager();
+  const timerLogic = useTimerLogic();
+  const statisticsAnalysis = useStatisticsAnalysis(sessionManager.lapTimes);
+
+  // 테마 객체
+  const theme = useMemo(() => THEME_COLORS[isDarkMode ? 'dark' : 'light'], [isDarkMode]);
+
+  // 키보드 단축키 처리
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'Space' && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        if (timerLogic.isRunning) {
+          timerLogic.pause();
+        } else {
+          timerLogic.start();
+        }
+      }
+      if (event.code === 'Enter' && timerLogic.isRunning) {
+        event.preventDefault();
+        timerLogic.stop();
+      }
+      if (event.code === 'KeyR' && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        timerLogic.reset();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [timerLogic.isRunning, timerLogic.start, timerLogic.pause, timerLogic.stop, timerLogic.reset]);
+
+  // 토스트 메시지 표시 함수
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    setToast({ message, type, isVisible: true });
+  }, []);
+
+  const hideToast = useCallback(() => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  }, []);
+
+  // 랜딩 페이지 표시
+  if (showLanding) {
+    return <ModernLandingPage isDark={isDarkMode} onStart={() => setShowLanding(false)} />;
+  }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className={`${theme.card} rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border ${theme.border}`}>
-        <div className="p-6">
+    <div className={`min-h-screen ${theme.bg} ${theme.text} transition-colors duration-300`}>
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        {/* 헤더 */}
+        <div className={`${theme.card} rounded-xl shadow-sm p-6 mb-6 border ${theme.border}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-xl font-bold ${theme.text}`}>🔍 상세분석 결과</h3>
-            <button
-              onClick={onClose}
-              className={`${theme.textMuted} hover:${theme.textSecondary} transition-colors p-1`}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            {/* 종합 평가 */}
-            {analysis && (
-              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h4 className={`font-semibold ${theme.text} mb-3`}>📊 종합 평가</h4>
-                <div className="flex items-center justify-center">
-                  <StatusBadge status={analysis.status} size="lg" isDark={isDark} />
-                </div>
-              </div>
-            )}
-
-            {/* 🔧 핵심 지표 - 메모이제이션된 분석 데이터 사용 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>Gage R&R</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>
-                  {memoizedAnalysis?.gaugeData ? 
-                    `${memoizedAnalysis.gaugeData.grr.toFixed(1)}%` : 
-                    (memoizedAnalysis ? `${memoizedAnalysis.gageRRPercent.toFixed(1)}%` : '0.0%')
-                  }
-                </div>
-              </div>
-              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>ICC (2,1)</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>{memoizedAnalysis?.iccValue.toFixed(3) || '0.000'}</div>
-              </div>
-              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>ΔPair</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>{memoizedAnalysis?.deltaPairValue.toFixed(3) || '0.000'}s</div>
-              </div>
-              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h5 className={`font-medium ${theme.textSecondary} mb-2`}>변동계수</h5>
-                <div className={`text-2xl font-bold ${theme.text}`}>
-                  {memoizedAnalysis?.gaugeData ? 
-                    `${memoizedAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
-                  }
-                </div>
+            <div className="flex items-center space-x-4">
+              <ConsolidatedSupplyLogo isDark={isDarkMode} size="sm" />
+              <div>
+                <h1 className={`text-2xl font-bold ${theme.text}`}>물류 작업 시간 측정</h1>
+                <p className={`text-sm ${theme.textMuted}`}>Gage R&R 분석 시스템</p>
               </div>
             </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`p-2 rounded-lg transition-colors ${theme.surfaceHover} ${theme.textSecondary}`}
+              >
+                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={() => setShowLanding(true)}
+                className={`p-2 rounded-lg transition-colors ${theme.surfaceHover} ${theme.textSecondary}`}
+              >
+                <Info className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
 
-            {/* 🔧 분산 구성요소 - 메모이제이션된 데이터 사용 */}
-            {memoizedAnalysis && (
-              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h4 className={`font-semibold ${theme.text} mb-3`}>🔬 분산 구성요소</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className={theme.textSecondary}>반복성 (Repeatability)</span>
-                    <span className={theme.text}>
-                      {memoizedAnalysis.gaugeData ? 
-                        memoizedAnalysis.gaugeData.repeatability.toFixed(4) : 
-                        (memoizedAnalysis.repeatability?.toFixed(4) || '0.0000')
-                      }
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={theme.textSecondary}>재현성 (Reproducibility)</span>
-                    <span className={theme.text}>
-                      {memoizedAnalysis.gaugeData ? 
-                        memoizedAnalysis.gaugeData.reproducibility.toFixed(4) : 
-                        (memoizedAnalysis.reproducibility?.toFixed(4) || '0.0000')
-                      }
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={theme.textSecondary}>대상자 변동 (Part Variation)</span>
-                    <span className={theme.text}>
-                      {memoizedAnalysis.gaugeData ? 
-                        memoizedAnalysis.gaugeData.partVariation.toFixed(4) : 
-                        (memoizedAnalysis.partVariation?.toFixed(4) || '0.0000')
-                      }
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={theme.textSecondary}>총 변동 (Total Variation)</span>
-                    <span className={theme.text}>
-                      {memoizedAnalysis.gaugeData ? 
-                        memoizedAnalysis.gaugeData.totalVariation.toFixed(4) : 
-                        (memoizedAnalysis.totalVariation?.toFixed(4) || '0.0000')
-                      }
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
+        {/* 타이머 섹션 */}
+        <div className={`${theme.card} rounded-xl shadow-sm p-6 mb-6 border ${theme.border}`}>
+          <div className="text-center mb-6">
+            <div className={`text-6xl font-mono font-bold ${theme.text} mb-4`}>
+              {timerLogic.displayTime}
+            </div>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={timerLogic.isRunning ? timerLogic.pause : timerLogic.start}
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  timerLogic.isRunning 
+                    ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                } hover:scale-105`}
+              >
+                {timerLogic.isRunning ? (
+                  <>
+                    <Pause className="w-5 h-5 inline mr-2" />
+                    일시정지
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-5 h-5 inline mr-2" />
+                    시작
+                  </>
+                )}
+              </button>
+              <button
+                onClick={timerLogic.stop}
+                disabled={!timerLogic.isRunning}
+                className="px-6 py-3 rounded-lg font-medium bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+              >
+                <Square className="w-5 h-5 inline mr-2" />
+                측정완료
+              </button>
+              <button
+                onClick={timerLogic.reset}
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 hover:scale-105 ${theme.surface} ${theme.textSecondary} hover:${theme.surfaceHover}`}
+              >
+                <RefreshCw className="w-5 h-5 inline mr-2" />
+                리셋
+              </button>
+            </div>
+          </div>
+        </div>
 
-            {/* 작업시간 분석 지표 - 메모이제이션된 데이터 사용 */}
-            {memoizedAnalysis && memoizedAnalysis.gaugeData && (
-              <div className={`${theme.surface} p-4 rounded-lg border ${theme.border}`}>
-                <h4 className={`font-semibold ${theme.text} mb-3`}>⏱️ 작업시간 분석</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className={theme.textSecondary}>급내상관계수 (ICC)</span>
-                    <span className={theme.text}>{memoizedAnalysis.iccValue.toFixed(3)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={theme.textSecondary}>변동계수 (CV)</span>
-                    <span className={theme.text}>
-                      {memoizedAnalysis.gaugeData ? 
-                        `${memoizedAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
-                      }
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={theme.textSecondary}>99% 달성시간 (Q99)</span>
-                    <span className={theme.text}>{(memoizedAnalysis.gaugeData.q99 / 1000).toFixed(2)}초</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={theme.textSecondary}>표준시간 설정 가능</span>
-                    <span className={`font-medium ${memoizedAnalysis.gaugeData.isReliableForStandard ? 'text-green-600' : 'text-red-600'}`}>
+        {/* 통계 분석 섹션 */}
+        {statisticsAnalysis.gaugeData && (
+          <div className={`${theme.card} rounded-xl shadow-sm p-6 mb-6 border ${theme.border}`}>
+            <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>실시간 분석 결과</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <MeasurementCard
+                title="Gage R&R"
+                value={`${statisticsAnalysis.gaugeData.grr.toFixed(1)}`}
+                unit="%"
+                icon={BarChart3}
+                status={statisticsAnalysis.gaugeData.grr <= 10 ? 'success' : statisticsAnalysis.gaugeData.grr <= 30 ? 'warning' : 'error'}
+                theme={theme}
+                isDark={isDarkMode}
+              />
+              <MeasurementCard
+                title="ICC (2,1)"
+                value={statisticsAnalysis.iccValue.toFixed(3)}
+                icon={Calculator}
+                status="info"
+                theme={theme}
+                isDark={isDarkMode}
+              />
+              <MeasurementCard
+                title="변동계수"
+                value={`${statisticsAnalysis.gaugeData.cv.toFixed(1)}`}
+                unit="%"
+                icon={Activity}
+                status="info"
+                theme={theme}
+                isDark={isDarkMode}
+              />
+              <MeasurementCard
+                title="측정 개수"
+                value={sessionManager.lapTimes.length}
+                unit="개"
+                icon={Package}
+                status="info"
+                theme={theme}
+                isDark={isDarkMode}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 토스트 메시지 */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
+
+      {/* 뒤로가기 경고 */}
+      <BackWarning isVisible={showBackWarning} />
+    </div>
+  );
+}
