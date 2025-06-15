@@ -23,7 +23,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTimerLogic } from './hooks/useTimerLogic';
 import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
 import { useSessionManager } from './hooks/useSessionManager';
-import { NotificationService } from './services';
+import { NotificationServiceInstance as NotificationService } from './services';
 
 // 시간 포맷팅 유틸리티 함수
 const formatTime = (milliseconds: number): string => {
@@ -278,14 +278,20 @@ const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg
           filter: isDark ? 'brightness(1.1)' : 'none'
         }}
         onError={(e) => {
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          const parent = target.parentElement;
-          if (parent && !parent.querySelector('.logo-fallback')) {
-            const fallback = document.createElement('div');
-            fallback.className = 'logo-fallback flex items-center justify-center w-full h-full bg-blue-600 text-white rounded-full text-sm font-bold';
-            fallback.textContent = '종합보급창';
-            parent.appendChild(fallback);
+          try {
+            const target = e.target as HTMLImageElement;
+            if (target) {
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent && !parent.querySelector('.logo-fallback')) {
+                const fallback = document.createElement('div');
+                fallback.className = 'logo-fallback flex items-center justify-center w-full h-full bg-blue-600 text-white rounded-full text-sm font-bold';
+                fallback.textContent = '종합보급창';
+                parent.appendChild(fallback);
+              }
+            }
+          } catch (error) {
+            console.warn('Logo fallback error:', error);
           }
         }}
       />
@@ -768,29 +774,8 @@ const EnhancedLogisticsTimer = () => {
     showToast
   });
 
-  // Applying change: improve the way statistics analysis hook is used to prevent circular dependencies.
   // 통계 분석 훅 - 안전한 초기화
-  const statisticsAnalysis = useMemo(() => {
-    try {
-      return useStatisticsAnalysis(lapTimes);
-    } catch (error) {
-      console.error('통계 분석 훅 초기화 오류:', error);
-      return {
-        iccValue: 0,
-        deltaPairValue: 0,
-        showRetakeModal: false,
-        setShowRetakeModal: () => {},
-        updateStatistics: () => {},
-        statisticsStatus: { grr: 'info', icc: 'info', deltaPair: 'info' },
-        gaugeData: {
-          grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0,
-          totalVariation: 0, status: 'info', cv: 0, q99: 0,
-          isReliableForStandard: false,
-          varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
-        }
-      };
-    }
-  }, [lapTimes]);
+  const statisticsAnalysis = useStatisticsAnalysis(lapTimes);
 
   // 통계 업데이트 함수 별도 정의 (순환 참조 방지) - 안전한 참조
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {

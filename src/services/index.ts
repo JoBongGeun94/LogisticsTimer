@@ -1,11 +1,11 @@
 
-// ValidationService를 먼저 export (다른 서비스들이 의존할 수 있음)
-export { ValidationService } from './ValidationService';
-
-// 기본 서비스들
+// 의존성 순서에 따른 export (순환 참조 방지)
 export { StorageService } from './StorageService';
 export { NotificationService } from './NotificationService';
-
-// 분석 관련 서비스들 (ValidationService 이후)
+export { ValidationService } from './ValidationService';
 export { AnalysisService } from './AnalysisService';
 export { ExportService } from './ExportService';
+
+// 기본 인스턴스 export
+import NotificationServiceInstance from './NotificationService';
+export { NotificationServiceInstance };

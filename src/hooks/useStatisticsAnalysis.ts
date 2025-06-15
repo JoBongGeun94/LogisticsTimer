@@ -1,6 +1,34 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { LapTime } from '../types';
 import { AnalysisService } from '../services/AnalysisService';
+import { 
+  evaluateGageRR, 
+  evaluateICC, 
+  evaluateDeltaPair, 
+  ANALYSIS_CONSTANTS 
+} from '../constants/analysis';
+
+// 기본 반환값 정의
+const DEFAULT_ANALYSIS = {
+  iccValue: 0,
+  deltaPairValue: 0,
+  showRetakeModal: false,
+  setShowRetakeModal: () => {},
+  updateStatistics: () => {},
+  statisticsStatus: { grr: 'info' as const, icc: 'info' as const, deltaPair: 'info' as const },
+  gaugeData: {
+    grr: 0, 
+    repeatability: 0, 
+    reproducibility: 0, 
+    partVariation: 0,
+    totalVariation: 0, 
+    status: 'info' as const, 
+    cv: 0, 
+    q99: 0,
+    isReliableForStandard: false,
+    varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
+  }
+};
 import { WORK_TYPE_THRESHOLDS_MAP, WorkTypeThreshold } from '../constants/analysis';
 
 // 통계 계산 인터페이스 (Interface Segregation Principle)
