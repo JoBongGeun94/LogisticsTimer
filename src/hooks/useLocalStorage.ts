@@ -147,7 +147,7 @@ class StorageManager<T> {
 export function useLocalStorage<T>(
   key: string, 
   initialValue: T
-): [T, (value: T | ((prev: T) => T)) => void] {
+): readonly [T, (value: T | ((prev: T) => T)) => void] {
   // 저장소 관리자 인스턴스 생성 (Open/Closed Principle)
   const storageManager = useRef<StorageManager<T>>(
     new StorageManager(

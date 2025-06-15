@@ -16,9 +16,16 @@ export interface IValidationService {
   validateGageRRAnalysis(lapTimes: LapTime[]): ValidationResult;
 }
 
-export interface IAnalysisService {
+export interface IGageRRAnalyzer {
   calculateGageRR(lapTimes: LapTime[]): GageRRResult;
+}
+
+export interface IDataTransformer {
   transformData(data: number[], transformType?: 'ln' | 'log10' | 'sqrt'): number[];
+}
+
+export interface IAnalysisService extends IGageRRAnalyzer, IDataTransformer {
+  // 기존 분석 서비스는 여러 인터페이스 조합
 }
 
 export interface IExportService {

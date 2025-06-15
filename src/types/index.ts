@@ -1,22 +1,22 @@
 // ==================== 기본 타입 정의 ====================
 export interface LapTime {
-  id: number;
-  time: number;
-  timestamp: string;
-  operator: string;
-  target: string;
-  sessionId: string;
+  readonly id: number;
+  readonly time: number;
+  readonly timestamp: string;
+  readonly operator: string;
+  readonly target: string;
+  readonly sessionId: string;
 }
 
 export interface SessionData {
-  id: string;
-  name: string;
-  workType: string;
-  operators: string[];
-  targets: string[];
-  lapTimes: LapTime[];
-  startTime: string;
-  isActive: boolean;
+  readonly id: string;
+  readonly name: string;
+  readonly workType: string;
+  readonly operators: readonly string[];
+  readonly targets: readonly string[];
+  readonly lapTimes: readonly LapTime[];
+  readonly startTime: string;
+  readonly isActive: boolean;
 }
 
 export interface Theme {

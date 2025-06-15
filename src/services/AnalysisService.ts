@@ -571,17 +571,23 @@ class AnalysisFactory {
 /**
  * 통합 분석 서비스 (Facade Pattern + Open/Closed Principle)
  */
-export class AnalysisService {
-  private static readonly MAX_RECURSION_DEPTH = 100;
+export interface IAnalysisConfig {
+  readonly maxRecursionDepth: number;
+}
+
+class AnalysisService {
+  private static readonly config: IAnalysisConfig = {
+    maxRecursionDepth: 100
+  };
   private static recursionCounter = 0;
 
-  private static dataTransformer = AnalysisFactory.createDataTransformer();
-  private static statisticsCalculator = AnalysisFactory.createStatisticsCalculator();
-  private static anovaCalculator = AnalysisFactory.createANOVACalculator();
-  private static gageRRCalculator = AnalysisFactory.createGageRRCalculator();
+  private static readonly dataTransformer = AnalysisFactory.createDataTransformer();
+  private static readonly statisticsCalculator = AnalysisFactory.createStatisticsCalculator();
+  private static readonly anovaCalculator = AnalysisFactory.createANOVACalculator();
+  private static readonly gageRRCalculator = AnalysisFactory.createGageRRCalculator();
 
   static calculateGageRR(lapTimes: LapTime[], transformType: TransformType = 'none'): GageRRResult {
-    if (this.recursionCounter > this.MAX_RECURSION_DEPTH) {
+    if (this.recursionCounter > this.config.maxRecursionDepth) {
       console.error('재귀 깊이 초과');
       this.recursionCounter = 0;
       throw new Error('Maximum recursion depth exceeded');
