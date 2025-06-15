@@ -83,17 +83,17 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   // 측정자 및 대상자 변경 감지를 위한 현재 상태 추적
   const currentOperatorRef = useRef<string>('');
   const currentTargetRef = useRef<string>('');
-  
+
   // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
   const gaugeData = useMemo((): GaugeData => {
     // 측정자 및 대상자 변경 시 캐시 초기화
     const currentOperator = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.operator : '';
     const currentTarget = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.target : '';
-    
+
     // 측정자 또는 대상자 변경 감지
     const operatorChanged = currentOperator && currentOperator !== currentOperatorRef.current;
     const targetChanged = currentTarget && currentTarget !== currentTargetRef.current;
-    
+
     if (operatorChanged || targetChanged) {
       analysisCache.current = { dataHash: '', result: {
         grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
@@ -101,12 +101,12 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         isReliableForStandard: false, 
         varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
       } as GaugeData };
-      
+
       if (operatorChanged) {
         currentOperatorRef.current = currentOperator;
         console.log(`🔄 측정자 변경 감지: ${currentOperatorRef.current} → 분석 캐시 초기화`);
       }
-      
+
       if (targetChanged) {
         currentTargetRef.current = currentTarget;
         console.log(`🎯 대상자 변경 감지: ${currentTargetRef.current} → 분석 캐시 초기화`);
@@ -171,7 +171,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     const latestLap = lapTimes[lapTimes.length - 1];
     const uniqueOperators = [...new Set(lapTimes.map(lap => lap.operator))].sort().join(',');
     const uniqueTargets = [...new Set(lapTimes.map(lap => lap.target))].sort().join(',');
-    
+
     // 완전한 데이터 해시 계산 (측정값 순서와 필터 상태 포함)
     const timeValues = lapTimes.map(lap => lap.time).join(',');
     const operatorSequence = lapTimes.map(lap => lap.operator).join(',');
@@ -189,7 +189,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       const analysisStartTime = performance.now();
       const analysis = AnalysisService.calculateGageRR(lapTimes);
       const analysisEndTime = performance.now();
-      
+
       console.log(`📊 분석 완료: ${(analysisEndTime - analysisStartTime).toFixed(1)}ms`);
 
       // 🔧 원자적 결과 생성 (모든 속성을 한번에 설정)
@@ -223,18 +223,18 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       return result;
     } catch (error) {
       console.error('실시간 Gauge 데이터 계산 오류:', error);
-      
+
       // 구체적인 오류 메시지 제공
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
       console.warn(`📊 분석 실패 원인: ${errorMessage}`);
-      
+
       // 오류 정보를 포함한 기본 통계 반환 (폴백 매커니즘)
       const times = lapTimes.map(lap => lap.time).filter(time => typeof time === 'number' && time > 0);
       const fallbackStats = times.length > 0 ? {
         mean: times.reduce((sum, time) => sum + time, 0) / times.length,
         std: Math.sqrt(times.reduce((sum, time) => sum + Math.pow(time - (times.reduce((s, t) => s + t, 0) / times.length), 2), 0) / Math.max(1, times.length - 1))
       } : { mean: 0, std: 0 };
-      
+
       return {
         grr: 0,
         repeatability: fallbackStats.std,
@@ -287,6 +287,121 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     } catch (error) {
       console.warn('통계 업데이트 오류:', error);
     }
+  }, []);
+
+    // 🔧 재측정 모달 트리거 (강화된 임계값 기반)
+  const checkRetakeCriteria = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
+    if (allLaps.length < 2) return false;
+
+    const currentTime = newLap.time;
+    const previousTime = allLaps[allLaps.length - 2].time;
+    const timeDifference = Math.abs(currentTime - previousTime);
+
+    // 🔧 세션별 측정 기록 분리
+    const sessionId = newLap.sessionId;
+    const sessionLaps = allLaps.filter(lap => lap.sessionId === sessionId);
+    const sameOperatorLaps = sessionLaps.filter(lap => 
+      lap.operator === newLap.operator && lap.target === newLap.target
+    );
+
+    // 🔧 다단계 임계값 시스템
+    let shouldRetake = false;
+    const reasons: string[] = [];
+
+    // 1. 초기 측정 단계 (데이터 부족)
+    if (sessionLaps.length < 3) {
+      const percentageThreshold = Math.max(currentTime, previousTime) * 0.6; // 60% 차이
+      const absoluteThreshold = 45000; // 45초
+      const dynamicThreshold = Math.min(percentageThreshold, absoluteThreshold);
+
+      if (timeDifference > dynamicThreshold) {
+        shouldRetake = true;
+        reasons.push(`초기측정 임계값 초과: ${(timeDifference/1000).toFixed(1)}초 > ${(dynamicThreshold/1000).toFixed(1)}초`);
+      }
+    } else {
+      // 2. 통계적 임계값 (전체 세션 기준)
+      const sessionTimes = sessionLaps.map(lap => lap.time);
+      const sessionMean = sessionTimes.reduce((sum, time) => sum + time, 0) / sessionTimes.length;
+      const sessionVariance = sessionTimes.reduce((sum, time) => sum + Math.pow(time - sessionMean, 2), 0) / (sessionTimes.length - 1);
+      const sessionStdDev = Math.sqrt(sessionVariance);
+
+      // 3시그마 규칙 (99.7% 신뢰구간)
+      const statisticalThreshold = 3 * sessionStdDev;
+
+      if (timeDifference > statisticalThreshold) {
+        shouldRetake = true;
+        reasons.push(`통계적 임계값 초과: ${(timeDifference/1000).toFixed(1)}초 > ${(statisticalThreshold/1000).toFixed(1)}초`);
+      }
+
+      // 3. 개인별 일관성 검사 (동일 측정자-대상자 조합)
+      if (sameOperatorLaps.length >= 2) {
+        const personalTimes = sameOperatorLaps.map(lap => lap.time);
+        const personalMean = personalTimes.reduce((sum, time) => sum + time, 0) / personalTimes.length;
+        const personalVariance = personalTimes.reduce((sum, time) => sum + Math.pow(time - personalMean, 2), 0) / Math.max(personalTimes.length - 1, 1);
+        const personalStdDev = Math.sqrt(personalVariance);
+
+        // 개인별 2.5시그마 규칙
+        const personalThreshold = 2.5 * personalStdDev;
+        const personalDeviation = Math.abs(currentTime - personalMean);
+
+        if (personalDeviation > personalThreshold && personalThreshold > 0) {
+          shouldRetake = true;
+          reasons.push(`개인 일관성 임계값 초과: ${(personalDeviation/1000).toFixed(1)}초 > ${(personalThreshold/1000).toFixed(1)}초`);
+        }
+      }
+
+      // 4. 작업유형별 특수 규칙
+      const workTypeMultiplier = getWorkTypeMultiplier(newLap.workType);
+      const workTypeAdjustedThreshold = statisticalThreshold * workTypeMultiplier;
+
+      if (timeDifference > workTypeAdjustedThreshold && workTypeMultiplier !== 1) {
+        shouldRetake = true;
+        reasons.push(`작업유형별 임계값 초과: ${newLap.workType} (배수: ${workTypeMultiplier})`);
+      }
+
+      // 5. 연속 이상치 감지
+      if (sessionLaps.length >= 3) {
+        const recentLaps = sessionLaps.slice(-3);
+        const recentTimes = recentLaps.map(lap => lap.time);
+        const isConsecutiveOutlier = recentTimes.every(time => 
+          Math.abs(time - sessionMean) > sessionStdDev * 2
+        );
+
+        if (isConsecutiveOutlier) {
+          shouldRetake = true;
+          reasons.push('연속 이상치 패턴 감지');
+        }
+      }
+
+      // 6. 극값 감지 (최솟값/최댓값 대비)
+      const minTime = Math.min(...sessionTimes);
+      const maxTime = Math.max(...sessionTimes);
+      const range = maxTime - minTime;
+
+      if (range > 0) {
+        const extremeThreshold = range * 0.8; // 전체 범위의 80%
+        if (timeDifference > extremeThreshold) {
+          shouldRetake = true;
+          reasons.push(`극값 범위 초과: ${(timeDifference/1000).toFixed(1)}초 > ${(extremeThreshold/1000).toFixed(1)}초`);
+        }
+      }
+    }
+
+    // 디버깅 정보 출력
+    if (shouldRetake) {
+      console.warn(`🚨 재측정 권장: ${reasons.join(', ')}`);
+      console.debug('측정 상세 정보:', {
+        currentTime: (currentTime/1000).toFixed(2) + '초',
+        previousTime: (previousTime/1000).toFixed(2) + '초',
+        difference: (timeDifference/1000).toFixed(2) + '초',
+        sessionCount: sessionLaps.length,
+        operator: newLap.operator,
+        target: newLap.target,
+        workType: newLap.workType
+      });
+    }
+
+    return shouldRetake;
   }, []);
 
   // 상태 계산 최적화

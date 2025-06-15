@@ -304,20 +304,20 @@ class ANOVACalculator implements IANOVACalculator {
     // 🔧 베타 함수를 이용한 정확한 F-분포 CDF 계산
     try {
       const x = df2 / (df2 + df1 * fStat);
-      
+
       // 불완전 베타 함수 근사 (Incomplete Beta Function)
       const betaRegularized = this.incompleteBeta(x, df2 / 2, df1 / 2);
       const pValue = Math.max(0.0001, Math.min(0.9999, betaRegularized));
-      
+
       console.log(`📈 F-통계량: ${fStat.toFixed(4)}, df1: ${df1}, df2: ${df2}, p-value: ${pValue.toFixed(6)}`);
-      
+
       return pValue;
     } catch (error) {
       console.warn('⚠️ 정확한 p-value 계산 실패, 근사치 사용:', error);
-      
+
       // 폴백: 개선된 근사 계산
       const dfAdjustment = Math.min(1.5, Math.max(0.8, 1.0 + (15 - df2) * 0.05));
-      
+
       const criticalValues = {
         p001: F_DISTRIBUTION_CRITICAL.ALPHA_001.small_df * dfAdjustment,
         p01: F_DISTRIBUTION_CRITICAL.ALPHA_01.small_df * dfAdjustment,
@@ -329,7 +329,7 @@ class ANOVACalculator implements IANOVACalculator {
       if (fStat > criticalValues.p01) return 0.01;
       if (fStat > criticalValues.p05) return 0.05;
       if (fStat > criticalValues.p10) return 0.1;
-      
+
       return Math.max(0.1, Math.min(0.9, 0.8 - Math.log(1 + fStat) * 0.2));
     }
   }
@@ -358,7 +358,7 @@ class ANOVACalculator implements IANOVACalculator {
     const qam = a - 1;
     let c = 1;
     let d = 1 - qab * x / qap;
-    
+
     if (Math.abs(d) < 1e-30) d = 1e-30;
     d = 1 / d;
     let h = d;
@@ -366,7 +366,7 @@ class ANOVACalculator implements IANOVACalculator {
     for (let m = 1; m <= 200; m++) {
       const m2 = 2 * m;
       const aa = m * (b - m) * x / ((qam + m2) * (a + m2));
-      
+
       d = 1 + aa * d;
       if (Math.abs(d) < 1e-30) d = 1e-30;
       c = 1 + aa / c;
@@ -393,7 +393,7 @@ class ANOVACalculator implements IANOVACalculator {
   private logGamma(z: number): number {
     if (z < 0) return NaN;
     if (z < 1e-10) return -Math.log(z);
-    
+
     const g = 7;
     const coeffs = [
       0.99999999999980993,
@@ -478,7 +478,7 @@ class GageRRCalculator implements IGageRRCalculator {
     const MS_between = anova.partMS;
     const MS_within = anova.equipmentMS;
     const k = nOperators;
-    
+
     const icc_denominator = MS_between + (k - 1) * MS_within;
     const icc = icc_denominator > 0 ? 
                 Math.max(0, Math.min(1, (MS_between - MS_within) / icc_denominator)) : 0;
@@ -556,7 +556,7 @@ class GageRRCalculator implements IGageRRCalculator {
     const sigma2_equipment = Math.max(0, anova.equipmentMS);
 
     // 🔧 단계적 분산 성분 계산 (음수 발생 시 제약 적용)
-    
+
     // 1단계: 원시 분산 성분 계산
     const var_interaction_raw = (anova.interactionMS - anova.equipmentMS) / nRepeats;
     const var_operator_raw = (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats);
@@ -569,15 +569,15 @@ class GageRRCalculator implements IGageRRCalculator {
 
     if (var_interaction_raw < 0) {
       console.log(`📊 상호작용 분산 음수 감지: ${var_interaction_raw.toFixed(6)} → 제약 적용`);
-      
+
       // 음수 상호작용 분산을 다른 성분에 재분배
       const negativeVariance = Math.abs(var_interaction_raw);
       var_interaction = 0;
-      
+
       // 측정자 및 대상자 분산 재계산 (음수 분산 흡수)
       var_operator = Math.max(0, var_operator_raw + negativeVariance * 0.5);
       var_part = Math.max(0, var_part_raw + negativeVariance * 0.5);
-      
+
       console.log(`🔧 재분배 완료: 측정자=${var_operator.toFixed(6)}, 대상자=${var_part.toFixed(6)}`);
     } else {
       var_interaction = var_interaction_raw;
@@ -683,15 +683,15 @@ export class AnalysisService {
 
       // 📊 데이터 전처리 파이프라인 적용 (Single Responsibility Principle)
       const timeValues = validLapTimes.map(lap => lap.time);
-      
+
       // 1단계: 이상치 감지 및 제거 (IQR 방법 사용)
       const outlierAnalysis = OutlierDetectionService.detectOutliersIQR(timeValues);
       console.log(`🔍 이상치 감지: ${outlierAnalysis.outliers.length}개 발견`);
-      
+
       // 2단계: 정규성 검정 (Shapiro-Wilk 테스트)
       let normalityTest = null;
       let isDataNormal = true;
-      
+
       try {
         if (outlierAnalysis.cleanData.length >= 3) {
           normalityTest = NormalityTestService.shapiroWilkTest(outlierAnalysis.cleanData);
@@ -702,11 +702,11 @@ export class AnalysisService {
         console.warn('정규성 검정 실패:', error);
         isDataNormal = false;
       }
-      
+
       // 3단계: 전처리된 데이터로 측정값 필터링 (이상치 제거된 데이터 사용)
       const cleanTimeSet = new Set(outlierAnalysis.cleanData);
       const preprocessedLapTimes = validLapTimes.filter(lap => cleanTimeSet.has(lap.time));
-      
+
       // 🔧 전처리 후 데이터 충분성 재검증 및 일관성 보장
       if (preprocessedLapTimes.length < 6) {
         console.warn('⚠️ 전처리 후 데이터 부족 - 원본 데이터로 분석 진행');
@@ -730,7 +730,7 @@ export class AnalysisService {
       // 측정자 수 검증 강화
       const operatorSet = new Set();
       const operatorMeasurementCount = new Map<string, number>();
-      
+
       for (const [partKey, operatorMap] of groupedData) {
         for (const [operatorKey, measurements] of operatorMap) {
           operatorSet.add(operatorKey);
@@ -743,7 +743,7 @@ export class AnalysisService {
       // 측정자별 최소 측정 횟수 검증
       const insufficientOperators = Array.from(operatorMeasurementCount.entries())
         .filter(([operator, count]) => count < 3);
-      
+
       if (insufficientOperators.length > 0) {
         console.warn(`⚠️ 측정 횟수 부족한 측정자: ${insufficientOperators.map(([op, count]) => `${op}(${count}회)`).join(', ')}`);
       }
@@ -862,7 +862,7 @@ export class AnalysisService {
 
   private static calculateVarianceComponents(anova: ANOVAResult): VarianceComponents {
     // MSA-4 표준에 따른 분산 성분 계산 (REML 방법론)
-    
+
     // Repeatability (Equipment Variance) - 항상 양수
     const sigma2_equipment = Math.max(0, anova.equipmentMS);
 
@@ -888,5 +888,225 @@ export class AnalysisService {
       equipment: sigma2_equipment,
       total: Math.max(0.0001, var_total)
     };
+  }
+
+  /**
+   * F-분포 p-value 정확한 계산 (베타함수 기반)
+   */
+  private static calculateFDistributionPValue(fStatistic: number, df1: number, df2: number): number {
+    try {
+      // 🔧 정확한 F-분포 CDF 계산 (베타함수 기반)
+      if (fStatistic <= 0) return 1;
+      if (!isFinite(fStatistic)) return 0;
+
+      // F-분포와 베타분포의 관계 이용: F ~ Beta(df1/2, df2/2)
+      const x = df1 * fStatistic / (df1 * fStatistic + df2);
+
+      // 베타분포의 CDF 계산
+      const betaValue = this.regularizedIncompleteBeta(x, df1 / 2, df2 / 2);
+
+      // p-value = 1 - CDF(F)
+      const pValue = 1 - betaValue;
+
+      // 수치적 안정성 확보
+      return Math.max(0, Math.min(1, pValue));
+    } catch (error) {
+      console.warn('정확한 F-분포 계산 실패, 개선된 근사치 사용:', error);
+
+      // 🔧 개선된 폴백: Welch-Satterthwaite 근사
+      return this.calculateFDistributionPValueApproximate(fStatistic, df1, df2);
+    }
+  }
+
+  /**
+   * 정규화된 불완전 베타함수 (Regularized Incomplete Beta Function)
+   */
+  private static regularizedIncompleteBeta(x: number, a: number, b: number): number {
+    if (x < 0 || x > 1) return NaN;
+    if (x === 0) return 0;
+    if (x === 1) return 1;
+
+    // 대칭성 이용하여 수치적 안정성 향상
+    if (x > (a + 1) / (a + b + 2)) {
+      return 1 - this.regularizedIncompleteBeta(1 - x, b, a);
+    }
+
+    // 연분수 전개 (Continued Fraction Expansion)
+    const betaLn = this.logBeta(a, b);
+    const front = Math.exp(Math.log(x) * a + Math.log(1 - x) * b - betaLn) / a;
+
+    return front * this.betaContinuedFraction(x, a, b) / Math.exp(betaLn);
+  }
+
+  /**
+   * 로그 베타함수
+   */
+  private static logBeta(a: number, b: number): number {
+    return this.logGamma(a) + this.logGamma(b) - this.logGamma(a + b);
+  }
+
+  /**
+   * 로그 감마함수 (Lanczos 근사)
+   */
+  private static logGamma(x: number): number {
+    if (x <= 0) return NaN;
+
+    // Lanczos 계수
+    const g = 7;
+    const coeff = [
+      0.99999999999980993,
+      676.5203681218851,
+      -1259.1392167224028,
+      771.32342877765313,
+      -176.61502916214059,
+      12.507343278686905,
+      -0.13857109526572012,
+      9.9843695780195716e-6,
+      1.5056327351493116e-7
+    ];
+
+    if (x < 0.5) {
+      return Math.log(Math.PI / Math.sin(Math.PI * x)) - this.logGamma(1 - x);
+    }
+
+    x -= 1;
+    let result = coeff[0];
+    for (let i = 1; i < coeff.length; i++) {
+      result += coeff[i] / (x + i);
+    }
+
+    const t = x + g + 0.5;
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(result);
+  }
+
+  /**
+   * 베타함수 연분수 전개
+   */
+  private static betaContinuedFraction(x: number, a: number, b: number): number {
+    const maxIterations = 200;
+    const epsilon = 1e-15;
+
+    const qab = a + b;
+    const qap = a + 1;
+    const qam = a - 1;
+
+    let c = 1;
+    let d = 1 - qab * x / qap;
+    if (Math.abs(d) < 1e-30) d = 1e-30;
+    d = 1 / d;
+    let h = d;
+
+    for (let m = 1; m <= maxIterations; m++) {
+      const m2 = 2 * m;
+
+      // Even step
+      let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+      d = 1 + aa * d;
+      if (Math.abs(d) < 1e-30) d = 1e-30;
+      c = 1 + aa / c;
+      if (Math.abs(c) < 1e-30) c = 1e-30;
+      d = 1 / d;
+      h *= d * c;
+
+      // Odd step
+      aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+      d = 1 + aa * d;
+      if (Math.abs(d) < 1e-30) d = 1e-30;
+      c = 1 + aa / c;
+      if (Math.abs(c) < 1e-30) c = 1e-30;
+      d = 1 / d;
+      const del = d * c;
+      h *= del;
+
+      if (Math.abs(del - 1) < epsilon) break;
+    }
+
+    return h;
+  }
+
+  /**
+   * F-분포 p-value 개선된 근사 계산
+   */
+  private static calculateFDistributionPValueApproximate(fStatistic: number, df1: number, df2: number): number {
+    // 🔧 Wilson-Hilferty 변환을 사용한 정규분포 근사
+    if (df2 >= 30) {
+      const h = 2 / (9 * df1);
+      const w = 2 / (9 * df2);
+      const z = (1 - w) * Math.pow(fStatistic, 1/3) - (1 - h);
+      const denominator = Math.sqrt(h * Math.pow(fStatistic, 2/3) + w);
+
+      if (denominator > 0) {
+        const normalZ = z / denominator;
+        return 1 - this.standardNormalCDF(normalZ);
+      }
+    }
+
+    // 🔧 자유도별 경험적 근사 공식
+    if (df1 === 1 && df2 >= 5) {
+      // F(1, df2) 특수 케이스
+      const t = Math.sqrt(fStatistic);
+      return 2 * (1 - this.studentTCDF(t, df2));
+    }
+
+    if (df1 >= 5 && df2 >= 5) {
+      // 큰 자유도에서의 근사
+      const logF = Math.log(fStatistic);
+      const approxP = Math.exp(-Math.max(0, logF - 1) * Math.sqrt(df1 * df2) / (df1 + df2));
+      return Math.min(1, approxP);
+    }
+
+    // 🔧 기본 근사치 (보수적 추정)
+    if (fStatistic > 10) return 0.001;
+    if (fStatistic > 5) return 0.01;
+    if (fStatistic > 3) return 0.05;
+    if (fStatistic > 2) return 0.1;
+    if (fStatistic > 1.5) return 0.2;
+    return 0.5;
+  }
+
+  /**
+   * 표준정규분포 CDF
+   */
+  private static standardNormalCDF(z: number): number {
+    return 0.5 * (1 + this.erf(z / Math.sqrt(2)));
+  }
+
+  /**
+   * 오차함수 (Error Function)
+   */
+  private static erf(x: number): number {
+    // Abramowitz and Stegun 근사
+    const a1 =  0.254829592;
+    const a2 = -0.284496736;
+    const a3 =  1.421413741;
+    const a4 = -1.453152027;
+    const a5 =  1.061405429;
+    const p  =  0.3275911;
+
+    const sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+
+    const t = 1.0 / (1.0 + p * x);
+    const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+
+    return sign * y;
+  }
+
+  /**
+   * Student's t-분포 CDF
+   */
+  private static studentTCDF(t: number, df: number): number {
+    if (df >= 30) {
+      return this.standardNormalCDF(t);
+    }
+
+    const x = df / (df + t * t);
+    const betaValue = this.regularizedIncompleteBeta(x, df / 2, 0.5);
+
+    if (t >= 0) {
+      return 0.5 + 0.5 * (1 - betaValue);
+    } else {
+      return 0.5 * betaValue;
+    }
   }
 }

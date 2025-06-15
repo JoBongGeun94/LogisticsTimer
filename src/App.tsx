@@ -929,12 +929,12 @@ const EnhancedLogisticsTimer = () => {
       return (!filterOptions.operator || lap.operator === filterOptions.operator) &&
         (!filterOptions.target || lap.target === filterOptions.target);
     });
-    
+
     // 🔧 필터링 결과가 분석에 영향을 주는 경우 캐시 무효화
     if (filtered.length !== lapTimes.length) {
       console.log(`🔍 필터 적용: ${lapTimes.length} → ${filtered.length}개 기록`);
     }
-    
+
     return filtered;
   }, [lapTimes, filterOptions]);
 
@@ -945,25 +945,25 @@ const EnhancedLogisticsTimer = () => {
 
     try {
       const analysisStartTime = performance.now();
-      
+
       // 🔧 동일한 데이터셋으로 분석 실행 (완전 동기화)
       const synchronizedLapTimes = [...lapTimes]; // 불변성 보장
       const analysisResult = AnalysisService.calculateGageRR(synchronizedLapTimes);
-      
+
       const analysisEndTime = performance.now();
       console.log(`🔍 상세분석 완료: ${(analysisEndTime - analysisStartTime).toFixed(1)}ms`);
-      
+
       // 🔧 실시간 통계와의 동기화 검증 강화
       const gaugeData = statisticsAnalysis.gaugeData;
       const grrDifference = Math.abs(analysisResult.gageRRPercent - gaugeData.grr);
       const cvDifference = Math.abs(analysisResult.cv - gaugeData.cv);
-      
+
       if (grrDifference > 0.1 || cvDifference > 0.1) {
         console.warn(`⚠️ 분석 결과 불일치 감지: GRR차이=${grrDifference.toFixed(3)}, CV차이=${cvDifference.toFixed(3)}`);
-        
+
         // 캐시 무효화 및 재동기화
         StorageService.invalidateCache();
-        
+
         // 실시간 통계 강제 갱신
         statisticsAnalysis.updateStatistics(
           synchronizedLapTimes[synchronizedLapTimes.length - 1],
@@ -972,14 +972,14 @@ const EnhancedLogisticsTimer = () => {
       } else {
         console.log(`✅ 실시간-상세분석 동기화 확인: GRR=${analysisResult.gageRRPercent.toFixed(1)}%, CV=${analysisResult.cv.toFixed(1)}%`);
       }
-      
+
       return analysisResult;
     } catch (error) {
       console.error('🚨 상세분석 오류:', error);
-      
+
       // 🔧 구체적인 오류 처리 및 복구
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
-      
+
       if (errorMessage.includes('측정자')) {
         showToast(`측정자 설정 문제: ${errorMessage}`, 'warning');
       } else if (errorMessage.includes('대상자')) {
@@ -989,7 +989,7 @@ const EnhancedLogisticsTimer = () => {
       } else {
         showToast('상세분석 중 오류가 발생했습니다. 기본 분석을 제공합니다.', 'warning');
       }
-      
+
       return null;
     }
   }, [lapTimes, showToast, statisticsAnalysis.gaugeData, statisticsAnalysis.updateStatistics]);
@@ -1380,7 +1380,7 @@ const EnhancedLogisticsTimer = () => {
           <button
             onClick={() => setShowDetailedAnalysis(true)}
             disabled={lapTimes.length < 3}
-            className="bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
+            className="bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-allowed flex items-center justify-center space-x-2 transition-colors"
           >
             <Info className="w-4 h-4" />
             <span>상세</span>
