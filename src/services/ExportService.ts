@@ -1,3 +1,4 @@
+
 import { LapTime, SessionData, GageRRResult } from '../types';
 
 /**
@@ -209,7 +210,7 @@ class DataFormatter implements IDataFormatter {
   private classifyMeasurement(time: number, analysis: any): string {
     const mean = analysis.q99 / 2; // 대략적인 평균 추정
     const std = analysis.totalVariation || 1000;
-
+    
     if (time < mean - 2 * std) return '매우 빠름';
     if (time < mean - std) return '빠름';
     if (time > mean + 2 * std) return '매우 느림';
@@ -441,7 +442,7 @@ class CSVFileExporter implements IFileExporter {
     try {
       // 데이터 유효성 검증 및 정리
       const validData = data.filter(row => Array.isArray(row) && row.length > 0);
-
+      
       if (validData.length === 0) {
         console.warn('내보낼 데이터가 없습니다.');
         return false;
@@ -457,40 +458,40 @@ class CSVFileExporter implements IFileExporter {
               Number.isFinite(Number(cell))) {
             cellStr = String(cell).trim();
           }
-
+          
           // 빈 문자열이나 잘못된 값 처리
           if (cellStr === '' || cellStr === 'undefined' || cellStr === 'null') {
             return '""';
           }
-
+          
           // 특수문자 및 한글 처리 개선
           if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('\r') || 
               cellStr.includes('"') || cellStr.includes(';') || /[가-힣]/.test(cellStr)) {
             return `"${cellStr.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
           }
-
+          
           return cellStr;
         }).join(',')
       ).join('\r\n');
-
+      
       // UTF-8 BOM 추가 + 강화된 인코딩
       const BOM = '\uFEFF';
       const blob = new Blob([BOM + csvContent], { 
         type: 'text/csv;charset=utf-8;' 
       });
-
+      
       // 파일명 안전성 검증
       const safeFilename = filename.replace(/[<>:"/\\|?*]/g, '_');
-
+      
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
-
+      
       link.setAttribute('href', url);
       link.setAttribute('download', safeFilename);
       link.style.visibility = 'hidden';
-
+      
       document.body.appendChild(link);
-
+      
       // 클릭 이벤트 처리 개선
       setTimeout(() => {
         link.click();
@@ -499,7 +500,7 @@ class CSVFileExporter implements IFileExporter {
           URL.revokeObjectURL(url);
         }, 100);
       }, 100);
-
+      
       return true;
     } catch (error) {
       console.error('CSV 내보내기 오류:', error);
@@ -544,20 +545,6 @@ class ExportFactory {
   }
 }
 
-// 시간 포맷팅 함수 정의
-const formatTime = (milliseconds: number): string => {
-  if (!milliseconds || milliseconds < 0) return '0.000';
-
-  const totalSeconds = milliseconds / 1000;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = (totalSeconds % 60).toFixed(3);
-
-  if (minutes > 0) {
-    return `${minutes}:${seconds.padStart(6, '0')}`;
-  }
-  return seconds;
-};
-
 /**
  * 통합 익스포트 서비스 (Facade Pattern + Open/Closed Principle)
  */
@@ -567,7 +554,7 @@ export class ExportService {
   private static fileExporter = ExportFactory.createFileExporter();
 
   static formatTime(milliseconds: number): string {
-    return formatTime(milliseconds);
+    return this.timeFormatter.format(milliseconds);
   }
 
   static exportMeasurementData(session: SessionData, lapTimes: LapTime[]): boolean {
@@ -578,7 +565,7 @@ export class ExportService {
 
       const data = this.dataFormatter.formatMeasurementData(session, lapTimes);
       const filename = FilenameGenerator.generateMeasurementFilename(session.name);
-
+      
       return this.fileExporter.export(data, filename);
     } catch (error) {
       console.error('측정 데이터 내보내기 오류:', error);
@@ -605,7 +592,7 @@ export class ExportService {
 
       const data = this.dataFormatter.formatAnalysisData(session, lapTimes, enhancedAnalysis);
       const filename = FilenameGenerator.generateAnalysisFilename(session.name);
-
+      
       return this.fileExporter.export(data, filename);
     } catch (error) {
       console.error('상세분석 보고서 내보내기 오류:', error);

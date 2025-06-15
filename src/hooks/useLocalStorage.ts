@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * 저장소 인터페이스 (Interface Segregation Principle)
@@ -116,15 +117,7 @@ class StorageManager<T> {
   read(key: string, defaultValue: T): T {
     try {
       const item = this.storageProvider.getItem(key);
-      if (!item) return defaultValue;
-
-      // 🔧 안전한 역직렬화
-      try {
-        return this.serializer.deserialize(item);
-      } catch (deserializeError) {
-        console.warn(`역직렬화 실패 (${key}):`, deserializeError);
-        return defaultValue;
-      }
+      return item ? this.serializer.deserialize(item) : defaultValue;
     } catch (error) {
       this.errorHandler.handleReadError(key, error as Error);
       return defaultValue;
@@ -175,7 +168,7 @@ export function useLocalStorage<T>(
   // setValue 함수 메모이제이션 (dependency 변경 방지)
   const setValue = useCallback((value: T | ((prev: T) => T)) => {
     const valueToStore = value instanceof Function ? value(storedValue) : value;
-
+    
     // 값이 동일하면 업데이트 생략 (무한 렌더링 방지)
     if (ValueComparator.areEqual(valueToStore, prevValueRef.current)) {
       return;
@@ -183,7 +176,7 @@ export function useLocalStorage<T>(
 
     setStoredValue(valueToStore);
     prevValueRef.current = valueToStore;
-
+    
     // localStorage에 저장
     storageManager.write(key, valueToStore);
   }, [key, storedValue, storageManager]);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import {
   Play, Pause, Square, Download, Plus, Users,
   Package, Clock, BarChart3, FileText, Calculator,
@@ -23,8 +23,6 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTimerLogic } from './hooks/useTimerLogic';
 import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
 import { useSessionManager } from './hooks/useSessionManager';
-import { NotificationService } from './services/NotificationService';
-import { StorageService } from './services/StorageService';
 
 // ==================== 테마 상수 (Open/Closed Principle) ====================
 const THEME_COLORS = {
@@ -440,44 +438,16 @@ const DetailedAnalysisModal = memo<{
   lapTimes: LapTime[];
   statisticsAnalysis: any;
 }>(({ isVisible, onClose, analysis, theme, isDark, lapTimes, statisticsAnalysis }) => {
-  // 성능 최적화: 분석 데이터 메모이제이션 - 타입 안전성 강화
+  // 성능 최적화: 분석 데이터 메모이제이션
   const memoizedAnalysis = useMemo(() => {
-    if (!analysis || !statisticsAnalysis?.gaugeData) return null;
-    
-    try {
-      // 🔧 안전한 참조 생성 - 순환 참조 방지
-      return {
-        gageRRPercent: Number(analysis.gageRRPercent) || 0,
-        status: analysis.status || 'info',
-        iccValue: Number(statisticsAnalysis.iccValue) || 0,
-        deltaPairValue: Number(statisticsAnalysis.deltaPairValue) || 0,
-        gaugeData: {
-          grr: Number(statisticsAnalysis.gaugeData.grr) || 0,
-          cv: Number(statisticsAnalysis.gaugeData.cv) || 0,
-          q99: Number(statisticsAnalysis.gaugeData.q99) || 0,
-          repeatability: Number(statisticsAnalysis.gaugeData.repeatability) || 0,
-          reproducibility: Number(statisticsAnalysis.gaugeData.reproducibility) || 0,
-          partVariation: Number(statisticsAnalysis.gaugeData.partVariation) || 0,
-          totalVariation: Number(statisticsAnalysis.gaugeData.totalVariation) || 0,
-          isReliableForStandard: Boolean(statisticsAnalysis.gaugeData.isReliableForStandard),
-          dataQuality: statisticsAnalysis.gaugeData.dataQuality ? {
-            ...statisticsAnalysis.gaugeData.dataQuality
-          } : null
-        }
-      };
-    } catch (error) {
-      console.error('메모이제이션 오류:', error);
-      return null;
-    }
-  }, [
-    analysis?.gageRRPercent, 
-    analysis?.status,
-    statisticsAnalysis?.iccValue, 
-    statisticsAnalysis?.deltaPairValue, 
-    statisticsAnalysis?.gaugeData?.grr,
-    statisticsAnalysis?.gaugeData?.cv,
-    statisticsAnalysis?.gaugeData?.q99
-  ]);
+    if (!analysis || !statisticsAnalysis) return null;
+    return {
+      ...analysis,
+      iccValue: statisticsAnalysis.iccValue,
+      deltaPairValue: statisticsAnalysis.deltaPairValue,
+      gaugeData: statisticsAnalysis.gaugeData
+    };
+  }, [analysis, statisticsAnalysis.iccValue, statisticsAnalysis.deltaPairValue, statisticsAnalysis.gaugeData]);
 
   if (!isVisible) return null;
 
@@ -694,39 +664,6 @@ const EnhancedLogisticsTimer = () => {
     isVisible: false
   });
 
-  // NotificationService와 연결
-  useEffect(() => {
-    const notificationService = NotificationService.getInstance();
-    const unsubscribe = notificationService.subscribe((message: string, type: string) => {
-      setToast({ 
-        message, 
-        type: type as 'success' | 'error' | 'warning' | 'info', 
-        isVisible: true 
-      });
-    });
-
-    return unsubscribe;
-  }, []);
-
-  // 토스트 메시지 표시 함수
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info') => {
-    const notificationService = NotificationService.getInstance();
-    switch (type) {
-      case 'success':
-        notificationService.success(message);
-        break;
-      case 'error':
-        notificationService.error(message);
-        break;
-      case 'warning':
-        notificationService.warning(message);
-        break;
-      case 'info':
-        notificationService.info(message);
-        break;
-    }
-  }, []);
-
   // 필터 상태 (요구사항 8번)
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     operator: '',
@@ -744,6 +681,11 @@ const EnhancedLogisticsTimer = () => {
 
   const theme = useMemo(() => THEME_COLORS[isDark ? 'dark' : 'light'], [isDark]);
 
+  // 토스트 메시지 표시 함수
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    setToast({ message, type, isVisible: true });
+  }, []);
+
   // 세션 관리 훅
   const {
     sessions,
@@ -759,31 +701,16 @@ const EnhancedLogisticsTimer = () => {
     resetAllSessions
   } = useSessionManager({ showToast });
 
-  // 랩타임 기록 콜백 (레이스 컨디션 방지)
+  // 랩타임 기록 콜백
   const handleLapRecorded = useCallback((newLap: LapTime) => {
-    // 🔧 안전한 검증
-    if (!newLap || typeof newLap.time !== 'number' || newLap.time <= 0) {
-      console.warn('잘못된 랩타임 데이터:', newLap);
-      return;
-    }
+    const updatedLaps = [...lapTimes, newLap];
+    setLapTimes(updatedLaps);
+    setAllLapTimes(prev => [...prev, newLap]);
+    updateSessionLapTimes(updatedLaps);
 
-    // 🔧 원자적 상태 업데이트 - 배치 처리로 순서 보장
-    startTransition(() => {
-      setLapTimes(prev => {
-        const updated = [...prev, newLap];
-        // 통계 업데이트를 같은 배치에서 처리
-        statisticsAnalysis.updateStatistics(newLap, updated);
-        return updated;
-      });
-      
-      setAllLapTimes(prev => [...prev, newLap]);
-      
-      // 세션 업데이트는 별도 처리
-      if (currentSession) {
-        updateSessionLapTimes([...lapTimes, newLap]);
-      }
-    });
-  }, [lapTimes, setAllLapTimes, updateSessionLapTimes, statisticsAnalysis, currentSession]);
+    // 통계 업데이트
+    statisticsAnalysis.updateStatistics(newLap, updatedLaps);
+  }, [lapTimes, setAllLapTimes, updateSessionLapTimes]);
 
   // 타이머 로직 훅
   const {
@@ -813,12 +740,10 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [isDark]);
 
-  // 키보드 이벤트 (메모리 누수 방지 강화)
+  // 키보드 이벤트
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // 안전한 타겟 확인
-      const target = e.target as Element;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (showNewSessionModal || selectedSessionHistory || showLanding || showDetailedAnalysis) return;
 
       switch (e.code) {
@@ -841,32 +766,9 @@ const EnhancedLogisticsTimer = () => {
       }
     };
 
-    // 🔧 AbortController를 사용한 안전한 이벤트 관리
-    const controller = new AbortController();
-    const eventOptions = { 
-      passive: false, 
-      signal: controller.signal,
-      capture: false
-    };
-    
-    window.addEventListener('keydown', handleKeyPress, eventOptions);
-    
-    return () => {
-      controller.abort();
-      // 추가 정리 작업
-      window.removeEventListener('keydown', handleKeyPress);
-    };
-  }, [
-    // 🔧 안전한 의존성 배열
-    showNewSessionModal, 
-    selectedSessionHistory, 
-    showLanding, 
-    showDetailedAnalysis,
-    toggleTimer,
-    recordLap,
-    stopTimer,
-    resetTimer
-  ]);
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
 
   // 리셋 함수 (기존 로직과 통합)
   const resetTimer = useCallback(() => {
@@ -945,7 +847,7 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [targets]);
 
-  // 다운로드 함수들 (요구사항 10, 11번 - 매개변수 수정)
+  // 다운로드 함수들 (요구사항 10, 11번 - 오류 수정)
   const downloadMeasurementData = useCallback(() => {
     if (lapTimes.length === 0) {
       showToast('다운로드할 측정 기록이 없습니다.', 'warning');
@@ -965,7 +867,7 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [lapTimes, currentSession, showToast]);
 
-  // 상세분석 다운로드 (올바른 매개변수 사용)
+  // 상세분석 다운로드
   const downloadDetailedAnalysis = useCallback(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     if (!validation.isValid) {
@@ -979,7 +881,7 @@ const EnhancedLogisticsTimer = () => {
     }
 
     try {
-      const analysis = AnalysisService.calculateGageRR(lapTimes);
+      const analysis = AnalysisService.calculateGageRR(lapTimes, 'none');
       const success = ExportService.exportDetailedAnalysis(currentSession, lapTimes, analysis);
       if (success) {
         showToast('상세 분석 보고서가 다운로드되었습니다.', 'success');
@@ -992,124 +894,53 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [lapTimes, currentSession, showToast]);
 
-  // 🔧 필터링된 측정 기록 (안전한 배열 접근)
+  // 필터링된 측정 기록 (요구사항 8번)
   const filteredLapTimes = useMemo(() => {
-    if (!lapTimes || lapTimes.length === 0) return [];
-    
-    const filtered = lapTimes.filter(lap => {
-      if (!lap || !lap.operator || !lap.target) return false;
+    return lapTimes.filter(lap => {
       return (!filterOptions.operator || lap.operator === filterOptions.operator) &&
         (!filterOptions.target || lap.target === filterOptions.target);
     });
-
-    // 🔧 필터링 결과가 분석에 영향을 주는 경우 캐시 무효화
-    if (filtered.length !== lapTimes.length) {
-      console.log(`🔍 필터 적용: ${lapTimes.length} → ${filtered.length}개 기록`);
-    }
-
-    return filtered;
   }, [lapTimes, filterOptions]);
 
-  // 🔧 실시간-상세분석 완전 동기화된 분석
+  // Gage R&R 분석
   const analysis = useMemo(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     if (!validation.isValid) return null;
 
     try {
-      const analysisStartTime = performance.now();
-
-      // 🔧 데이터 유효성 검증 강화
-      if (!lapTimes || lapTimes.length < 3) {
-        return null;
-      }
-
-      // 🔧 동일한 데이터셋으로 분석 실행 (완전 동기화)
-      const synchronizedLapTimes = [...lapTimes]; // 불변성 보장
-      const analysisResult = AnalysisService.calculateGageRR(synchronizedLapTimes);
-
-      const analysisEndTime = performance.now();
-      console.log(`🔍 상세분석 완료: ${(analysisEndTime - analysisStartTime).toFixed(1)}ms`);
-
-      // 🔧 실시간 통계와의 동기화 검증 강화
-      const gaugeData = statisticsAnalysis.gaugeData;
-      const grrDifference = Math.abs(analysisResult.gageRRPercent - gaugeData.grr);
-      const cvDifference = Math.abs(analysisResult.cv - gaugeData.cv);
-
-      if (grrDifference > 0.1 || cvDifference > 0.1) {
-        console.warn(`⚠️ 분석 결과 불일치 감지: GRR차이=${grrDifference.toFixed(3)}, CV차이=${cvDifference.toFixed(3)}`);
-
-        // 캐시 무효화 및 재동기화
-        StorageService.invalidateCache();
-
-        // 실시간 통계 강제 갱신
-        statisticsAnalysis.updateStatistics(
-          synchronizedLapTimes[synchronizedLapTimes.length - 1],
-          synchronizedLapTimes
-        );
-      } else {
-        console.log(`✅ 실시간-상세분석 동기화 확인: GRR=${analysisResult.gageRRPercent.toFixed(1)}%, CV=${analysisResult.cv.toFixed(1)}%`);
-      }
-
-      return analysisResult;
+      return AnalysisService.calculateGageRR(lapTimes, 'none');
     } catch (error) {
-      console.error('🚨 상세분석 오류:', error);
-
-      // 🔧 구체적인 오류 처리 및 복구
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
-
-      if (errorMessage.includes('측정자')) {
-        showToast(`측정자 설정 문제: ${errorMessage}`, 'warning');
-      } else if (errorMessage.includes('대상자')) {
-        showToast(`대상자 설정 문제: ${errorMessage}`, 'warning');
-      } else if (errorMessage.includes('측정값')) {
-        showToast(`측정 데이터 문제: ${errorMessage}`, 'error');
-      } else {
-        showToast('상세분석 중 오류가 발생했습니다. 기본 분석을 제공합니다.', 'warning');
-      }
-
+      console.error('분석 오류:', error);
       return null;
     }
-  }, [lapTimes, showToast, statisticsAnalysis.gaugeData, statisticsAnalysis.updateStatistics]);
+  }, [lapTimes]);
 
-  // 분석 가능 여부 확인 (요구사항 6번) - 조건 완화 및 개선
+  // 분석 가능 여부 확인 (요구사항 6번)
   const canAnalyze = useMemo(() => {
-    if (!currentSession) return { canAnalyze: false, message: '활성 세션이 없습니다.' };
+    if (!currentSession) return { canAnalyze: false, message: '' };
 
     const operatorCount = currentSession.operators.length;
     const targetCount = currentSession.targets.length;
-    const measurementCount = lapTimes.length;
 
-    // 기본 분석 조건 (3개 이상 측정값)
-    if (measurementCount < 3) {
-      return {
-        canAnalyze: false,
-        message: '기본 분석을 위해서는 최소 3회 이상의 측정이 필요합니다.'
-      };
-    }
-
-    // 완전한 Gage R&R 분석 조건
     if (operatorCount < 2 && targetCount < 5) {
       return {
-        canAnalyze: measurementCount >= 3, // 기본 분석은 가능
-        message: '완전한 Gage R&R 분석을 위해서는 측정자 2명 이상, 대상자 5개 이상이 필요합니다.'
+        canAnalyze: false,
+        message: 'Gage R&R 분석을 위해서는 측정자 2명 이상, 대상자 5개 이상이 필요합니다.'
       };
     } else if (operatorCount < 2) {
       return {
-        canAnalyze: measurementCount >= 3,
-        message: '완전한 Gage R&R 분석을 위해서는 측정자 2명 이상이 필요합니다.'
+        canAnalyze: false,
+        message: 'Gage R&R 분석을 위해서는 측정자 2명 이상이 필요합니다.'
       };
     } else if (targetCount < 5) {
       return {
-        canAnalyze: measurementCount >= 3,
-        message: '완전한 Gage R&R 분석을 위해서는 대상자 5개 이상이 필요합니다.'
+        canAnalyze: false,
+        message: 'Gage R&R 분석을 위해서는 대상자 5개 이상이 필요합니다.'
       };
     }
 
-    return { 
-      canAnalyze: true, 
-      message: measurementCount >= 6 ? '' : '6회 이상 측정 시 더 정확한 분석 결과를 얻을 수 있습니다.'
-    };
-  }, [currentSession, lapTimes.length]);
+    return { canAnalyze: true, message: '' };
+  }, [currentSession]);
 
   // 랜딩 페이지 표시 (요구사항 1번)
   if (showLanding) {
@@ -1296,6 +1127,7 @@ const EnhancedLogisticsTimer = () => {
 
         {/* 실시간 분석 섹션 */}
         {lapTimes.length > 0 && (
+
           <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
@@ -1304,7 +1136,8 @@ const EnhancedLogisticsTimer = () => {
               </div>
             </div>
 
-            {/* 기본 통계 - 항상 표시 */}
+
+
             <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
               <MeasurementCard
                 title="측정 횟수"
@@ -1338,98 +1171,55 @@ const EnhancedLogisticsTimer = () => {
               />
             </div>
 
-            {/* 고급 통계 - 조건부 표시 (통일된 조건) */}
-            {lapTimes.length >= 3 && (
+            {/* === NEW 3-카드 영역 시작 === */}
+            {!canAnalyze.canAnalyze ? (
+              <AnalysisUnavailableMessage
+                theme={theme}
+                isDark={isDark}
+                message={canAnalyze.message}
+              />
+            ) : lapTimes.length >= 6 ? (
               <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
                 <MeasurementCard
                   title="Gage R&R"
-                  value={statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.grr > 0 ? 
-                    `${statisticsAnalysis.gaugeData.grr.toFixed(1)}%` : 'N/A'
-                  }
+                  value={`${statisticsAnalysis.gaugeData.grr.toFixed(1)}%`}
                   icon={BarChart3}
-                  status={statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.grr > 0 ? 
-                    statisticsAnalysis.statisticsStatus.grr : 'info'
-                  }
+                  status={statisticsAnalysis.statisticsStatus.grr}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
                 <MeasurementCard
                   title="ICC (2,1)"
-                  value={statisticsAnalysis.iccValue > 0 ? 
-                    statisticsAnalysis.iccValue.toFixed(2) : 'N/A'
-                  }
+                  value={statisticsAnalysis.iccValue.toFixed(2)}
                   icon={Target}
-                  status={statisticsAnalysis.iccValue > 0 ? 
-                    statisticsAnalysis.statisticsStatus.icc : 'info'
-                  }
+                  status={statisticsAnalysis.statisticsStatus.icc}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
                 <MeasurementCard
                   title="ΔPair"
-                  value={statisticsAnalysis.deltaPairValue > 0 ? 
-                    `${statisticsAnalysis.deltaPairValue.toFixed(3)}s` : 'N/A'
-                  }
+                  value={`${statisticsAnalysis.deltaPairValue.toFixed(3)}s`}
                   icon={Calculator}
-                  status={statisticsAnalysis.deltaPairValue > 0 ? 
-                    statisticsAnalysis.statisticsStatus.deltaPair : 'info'
-                  }
+                  status={statisticsAnalysis.statisticsStatus.deltaPair}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
               </div>
-            )}
+            ) : null}
+            {/* === NEW 3-카드 영역 끝 === */}
 
-            {/* 분석 가능 여부에 따른 메시지 - 조건 통일 */}
-            {!canAnalyze.canAnalyze && lapTimes.length < 3 ? (
-              <div className={`${theme.surface} p-3 rounded-lg border ${theme.border} text-center`}>
-                <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
-                  <Info className={`w-6 h-6 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-                </div>
-                <p className={`text-sm ${theme.text} font-medium mb-1`}>
-                  기본 분석 진행 중
-                </p>
-                <p className={`text-xs ${theme.textMuted}`}>
-                  {canAnalyze.message}
-                </p>
-                <p className={`text-xs ${theme.textMuted} mt-1`}>
-                  💡 현재까지의 기본 통계는 참고용으로 활용 가능합니다.
-                </p>
-              </div>
-            ) : analysis && lapTimes.length >= 6 ? (
+            {/* 간략한 상태 표시 */}
+            {analysis && lapTimes.length >= 6 && canAnalyze.canAnalyze && (
               <div className={`${theme.surface} p-3 rounded-lg border ${theme.border} text-center`}>
                 <StatusBadge status={analysis.status} size="md" isDark={isDark} />
                 <p className={`text-sm ${theme.textMuted} mt-2`}>
                   상세한 분석과 해석은 상세분석 페이지에서 확인하세요
                 </p>
-                {/* 데이터 품질 정보 표시 */}
-                {statisticsAnalysis.gaugeData.dataQuality && (
-                  <div className={`mt-2 text-xs ${theme.textMuted} space-y-1`}>
-                    {statisticsAnalysis.gaugeData.dataQuality.outliersDetected > 0 && (
-                      <div className="flex items-center justify-center gap-1">
-                        <AlertTriangle className="w-3 h-3 text-orange-500" />
-                        <span>이상치 {statisticsAnalysis.gaugeData.dataQuality.outliersDetected}개 감지됨</span>
-                      </div>
-                    )}
-                    {!statisticsAnalysis.gaugeData.dataQuality.isNormalDistribution && (
-                      <div className="flex items-center justify-center gap-1">
-                        <Info className="w-3 h-3 text-blue-500" />
-                        <span>비정규분포 데이터 (해석 시 주의)</span>
-                      </div>
-                    )}
-                    {statisticsAnalysis.gaugeData.dataQuality.preprocessingApplied && (
-                      <div className="flex items-center justify-center gap-1">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span>데이터 전처리 적용됨</span>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
-            ) : null}
+            )}
           </div>
         )}
 
@@ -1446,7 +1236,7 @@ const EnhancedLogisticsTimer = () => {
 
           <button
             onClick={downloadDetailedAnalysis}
-            disabled={lapTimes.length < 3}
+            disabled={!canAnalyze.canAnalyze || lapTimes.length < 6}
             className="bg-purple-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
           >
             <PieChart className="w-4 h-4" />
@@ -1456,7 +1246,7 @@ const EnhancedLogisticsTimer = () => {
           {/* 🔧 상세분석 모달 버튼 (새로 추가) */}
           <button
             onClick={() => setShowDetailedAnalysis(true)}
-            disabled={lapTimes.length < 3}
+            disabled={lapTimes.length === 0}
             className="bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
           >
             <Info className="w-4 h-4" />
@@ -1812,9 +1602,7 @@ const EnhancedLogisticsTimer = () => {
               </p>
               <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    statisticsAnalysis.setShowRetakeModal(false);
-                  }}
+                  onClick={() => statisticsAnalysis.setShowRetakeModal(false)}
                   className={`flex-1 border py-2 rounded-lg font-medium transition-colors ${theme.border} ${theme.textSecondary} ${theme.surfaceHover}`}
                 >
                   무시
@@ -1822,18 +1610,12 @@ const EnhancedLogisticsTimer = () => {
                 <button
                   onClick={() => {
                     statisticsAnalysis.setShowRetakeModal(false);
-                    // 🔧 안전한 마지막 측정 제거
-                    if (lapTimes.length > 0) {
-                      const lastLapId = lapTimes[lapTimes.length - 1]?.id;
-                      const newLaps = lapTimes.slice(0, -1);
-                      
-                      startTransition(() => {
-                        setLapTimes(newLaps);
-                        setAllLapTimes(prev => prev.filter(lap => lap.id !== lastLapId));
-                        if (currentSession) {
-                          updateSessionLapTimes(newLaps);
-                        }
-                      });
+                    // 마지막 측정 제거
+                    const newLaps = lapTimes.slice(0, -1);
+                    setLapTimes(newLaps);
+                    setAllLapTimes(prev => prev.filter(lap => lap.id !== lapTimes[lapTimes.length - 1]?.id));
+                    if (currentSession) {
+                      updateSessionLapTimes(newLaps);
                     }
                   }}
                   className="flex-1 bg-red-500 text-white py-2 rounded-lg font-medium hover:bg-red-600 transition-colors"

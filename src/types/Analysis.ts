@@ -1,30 +1,26 @@
-
 import { QualityStatus, RiskLevel } from './Common';
 
 export interface StatisticalMetrics {
   readonly repeatability: number;
   readonly reproducibility: number;
+  readonly gageRR: number;
   readonly partVariation: number;
   readonly totalVariation: number;
   readonly gageRRPercent: number;
-  readonly icc: number;
-  readonly cv: number;
-  readonly q99: number;
-  readonly isReliableForStandard: boolean;
+  readonly ndc: number;
+  readonly cpk: number;
 }
 
 export interface ANOVAResult {
-  readonly partSS: number;
-  readonly operatorSS: number;
-  readonly interactionSS: number;
-  readonly equipmentSS: number;
-  readonly totalSS: number;
-  readonly partMS: number;
-  readonly operatorMS: number;
-  readonly interactionMS: number;
-  readonly equipmentMS: number;
-  readonly fStatistic: number;
-  readonly pValue: number;
+  readonly operator: number;
+  readonly part: number;
+  readonly interaction: number;
+  readonly error: number;
+  readonly total: number;
+  readonly operatorPercent: number;
+  readonly partPercent: number;
+  readonly interactionPercent: number;
+  readonly errorPercent: number;
 }
 
 export interface AnalysisInterpretation {
@@ -41,11 +37,23 @@ export interface GageRRAnalysis extends StatisticalMetrics {
   interpretation: AnalysisInterpretation;
 }
 
-// 분산 성분 타입 (실제 사용 구조와 일치)
+// ANOVA 분석 결과 타입
+export interface ANOVAResults {
+  fOperators: number;
+  fParts: number;
+  fInteraction: number;
+  pValueOperators: number;
+  pValueParts: number;
+}
+
+// 분산 성분 타입
 export interface VarianceComponents {
-  part: number;
-  operator: number;
+  repeatability: number;
+  reproducibility: number;
+  partToPart: number;
   interaction: number;
-  equipment: number;
   total: number;
 }
+
+// 로그 변환 타입
+export type TransformType = 'none' | 'ln' | 'log10' | 'sqrt';
