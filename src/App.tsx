@@ -861,20 +861,22 @@ const EnhancedLogisticsTimer = () => {
     setFilterOptions({ operator: '', target: '' });
   }, [resetAllSessions, setAllLapTimes]);
 
-  // 측정자/대상자 추가/삭제 함수
-  const addOperator = useCallback(() => setOperators(prev => [...prev, '']), []);
+  // 측정자/대상자 추가/삭제 함수 (상태 배치 업데이트 최적화)
+  const addOperator = useCallback(() => {
+    setOperators(prev => [...prev, '']);
+  }, []);
+  
   const removeOperator = useCallback((index: number) => {
-    if (operators.length > 1) {
-      setOperators(operators.filter((_, i) => i !== index));
-    }
-  }, [operators]);
+    setOperators(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+  }, []);
 
-  const addTarget = useCallback(() => setTargets(prev => [...prev, '']), []);
+  const addTarget = useCallback(() => {
+    setTargets(prev => [...prev, '']);
+  }, []);
+  
   const removeTarget = useCallback((index: number) => {
-    if (targets.length > 1) {
-      setTargets(targets.filter((_, i) => i !== index));
-    }
-  }, [targets]);
+    setTargets(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+  }, []);
 
   // 다운로드 함수들 (요구사항 10, 11번 - 매개변수 수정)
   const downloadMeasurementData = useCallback(() => {
@@ -965,6 +967,10 @@ const EnhancedLogisticsTimer = () => {
     const operatorCount = currentSession.operators.length;
     const targetCount = currentSession.targets.length;
     const measurementCount = lapTimes.length;
+    
+    // 현재 세션의 유효한 측정자/대상자 확인
+    const validOperators = currentSession.operators.filter(op => op.trim());
+    const validTargets = currentSession.targets.filter(tg => tg.trim());
 
     // 기본 분석 조건 (3개 이상 측정값)
     if (measurementCount < 3) {
@@ -974,18 +980,18 @@ const EnhancedLogisticsTimer = () => {
       };
     }
 
-    // 완전한 Gage R&R 분석 조건
-    if (operatorCount < 2 && targetCount < 5) {
+    // 완전한 Gage R&R 분석 조건 (유효한 데이터로 재검증)
+    if (validOperators.length < 2 && validTargets.length < 5) {
       return {
         canAnalyze: measurementCount >= 3, // 기본 분석은 가능
         message: '완전한 Gage R&R 분석을 위해서는 측정자 2명 이상, 대상자 5개 이상이 필요합니다.'
       };
-    } else if (operatorCount < 2) {
+    } else if (validOperators.length < 2) {
       return {
         canAnalyze: measurementCount >= 3,
         message: '완전한 Gage R&R 분석을 위해서는 측정자 2명 이상이 필요합니다.'
       };
-    } else if (targetCount < 5) {
+    } else if (validTargets.length < 5) {
       return {
         canAnalyze: measurementCount >= 3,
         message: '완전한 Gage R&R 분석을 위해서는 대상자 5개 이상이 필요합니다.'
@@ -996,7 +1002,7 @@ const EnhancedLogisticsTimer = () => {
       canAnalyze: true, 
       message: measurementCount >= 6 ? '' : '6회 이상 측정 시 더 정확한 분석 결과를 얻을 수 있습니다.'
     };
-  }, [currentSession, lapTimes.length]);
+  }, [currentSession?.id, currentSession?.operators, currentSession?.targets, lapTimes.length]);
 
   // 랜딩 페이지 표시 (요구사항 1번)
   if (showLanding) {

@@ -303,7 +303,7 @@ class ANOVACalculator implements IANOVACalculator {
 
     // 자유도 고려한 적응적 임계값 계산
     const dfAdjustment = Math.min(1.5, Math.max(0.8, 1.0 + (15 - df2) * 0.05));
-    
+
     const criticalValues = {
       p001: F_DISTRIBUTION_CRITICAL.ALPHA_001.small_df * dfAdjustment,
       p01: F_DISTRIBUTION_CRITICAL.ALPHA_01.small_df * dfAdjustment,
@@ -316,12 +316,12 @@ class ANOVACalculator implements IANOVACalculator {
     if (fStat > criticalValues.p01) return 0.01;
     if (fStat > criticalValues.p05) return 0.05;
     if (fStat > criticalValues.p10) return 0.1;
-    
+
     // 보간을 통한 중간값 계산 (개선된 공식)
     if (fStat > 1.0) {
       return Math.max(0.1, Math.min(0.9, 0.5 - (fStat - 1.0) * 0.15));
     }
-    
+
     return Math.max(0.5, Math.min(0.9, 0.9 - fStat * 0.4));
   }
 }
@@ -382,7 +382,7 @@ class GageRRCalculator implements IGageRRCalculator {
     const MS_between = anova.partMS;
     const MS_within = anova.equipmentMS;
     const k = nOperators;
-    
+
     const icc_denominator = MS_between + (k - 1) * MS_within;
     const icc = icc_denominator > 0 ? 
                 Math.max(0, Math.min(1, (MS_between - MS_within) / icc_denominator)) : 0;
@@ -461,10 +461,10 @@ class GageRRCalculator implements IGageRRCalculator {
 
     // Interaction Variance - 올바른 공식 적용
     const var_interaction_raw = Math.max(0, (anova.interactionMS - anova.equipmentMS) / nRepeats);
-    
+
     // Reproducibility (Operator Variance) - 올바른 공식 적용
     const var_operator_raw = Math.max(0, (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats));
-    
+
     // Part-to-Part Variance - 올바른 공식 적용
     const var_part_raw = Math.max(0, (anova.partMS - anova.interactionMS) / (nOperators * nRepeats));
 
@@ -525,6 +525,22 @@ export class AnalysisService {
 
   static calculateGageRR(lapTimes: LapTime[]): GageRRResult {
     try {
+      // 입력 데이터 기본 검증
+      if (!lapTimes || lapTimes.length === 0) {
+        throw new Error('측정 데이터가 없습니다. 최소 3회 이상 측정해주세요.');
+      }
+
+      // 데이터 타입 검증
+      const invalidLaps = lapTimes.filter(lap => !lap || typeof lap.time !== 'number' || lap.time <= 0);
+      if (invalidLaps.length > 0) {
+        throw new Error(`잘못된 측정 데이터가 ${invalidLaps.length}개 발견되었습니다. 데이터를 확인해주세요.`);
+      }
+
+      const validation = ValidationService.validateGageRRAnalysis(lapTimes);
+      if (!validation.isValid) {
+        throw new Error(validation.message || 'Gage R&R 분석 조건이 충족되지 않았습니다.');
+      }
+
       // 엣지 케이스 처리 강화 - 3개부터 기본 분석 허용
       if (!lapTimes || lapTimes.length < 3) {
         throw new Error('분석을 위해서는 최소 3개의 측정값이 필요합니다.');
@@ -551,15 +567,15 @@ export class AnalysisService {
 
       // 📊 데이터 전처리 파이프라인 적용 (Single Responsibility Principle)
       const timeValues = validLapTimes.map(lap => lap.time);
-      
+
       // 1단계: 이상치 감지 및 제거 (IQR 방법 사용)
       const outlierAnalysis = OutlierDetectionService.detectOutliersIQR(timeValues);
       console.log(`🔍 이상치 감지: ${outlierAnalysis.outliers.length}개 발견`);
-      
+
       // 2단계: 정규성 검정 (Shapiro-Wilk 테스트)
       let normalityTest = null;
       let isDataNormal = true;
-      
+
       try {
         if (outlierAnalysis.cleanData.length >= 3) {
           normalityTest = NormalityTestService.shapiroWilkTest(outlierAnalysis.cleanData);
@@ -570,11 +586,11 @@ export class AnalysisService {
         console.warn('정규성 검정 실패:', error);
         isDataNormal = false;
       }
-      
+
       // 3단계: 전처리된 데이터로 측정값 필터링 (이상치 제거된 데이터 사용)
       const cleanTimeSet = new Set(outlierAnalysis.cleanData);
       const preprocessedLapTimes = validLapTimes.filter(lap => cleanTimeSet.has(lap.time));
-      
+
       // 전처리 후 데이터 충분성 재검증
       if (preprocessedLapTimes.length < 6) {
         console.warn('⚠️ 전처리 후 데이터 부족 - 원본 데이터로 분석 진행');
@@ -596,7 +612,7 @@ export class AnalysisService {
       // 측정자 수 검증 강화
       const operatorSet = new Set();
       const operatorMeasurementCount = new Map<string, number>();
-      
+
       for (const [partKey, operatorMap] of groupedData) {
         for (const [operatorKey, measurements] of operatorMap) {
           operatorSet.add(operatorKey);
@@ -609,7 +625,7 @@ export class AnalysisService {
       // 측정자별 최소 측정 횟수 검증
       const insufficientOperators = Array.from(operatorMeasurementCount.entries())
         .filter(([operator, count]) => count < 3);
-      
+
       if (insufficientOperators.length > 0) {
         console.warn(`⚠️ 측정 횟수 부족한 측정자: ${insufficientOperators.map(([op, count]) => `${op}(${count}회)`).join(', ')}`);
       }
@@ -728,7 +744,7 @@ export class AnalysisService {
 
   private static calculateVarianceComponents(anova: ANOVAResult): VarianceComponents {
     // MSA-4 표준에 따른 분산 성분 계산 (REML 방법론)
-    
+
     // Repeatability (Equipment Variance) - 항상 양수
     const sigma2_equipment = Math.max(0, anova.equipmentMS);
 
