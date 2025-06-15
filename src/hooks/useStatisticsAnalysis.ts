@@ -71,7 +71,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const [deltaPairValue, setDeltaPairValue] = useState(0);
   const [showRetakeModal, setShowRetakeModal] = useState(false);
 
-  // 세션 변경 이벤트 리스너 (즉시 캐시 무효화) - 메모리 누수 방지 강화
+  // 세션 변경 이벤트 리스너 (즉시 캐시 무효화)
   useEffect(() => {
     const handleSessionChange = (event: CustomEvent) => {
       console.log('🔄 세션 변경 이벤트 수신:', event.detail);
@@ -81,7 +81,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         dataHash: '', 
         result: {
           grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
-          totalVariation: 0, status: 'info', cv: 0, q95: 0, q99: 0, q999: 0,
+          totalVariation: 0, status: 'info', cv: 0, q99: 0, 
           isReliableForStandard: false, 
           varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
           dataQuality: {
@@ -92,41 +92,18 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         } as GaugeData 
       };
       
-      // 상태 초기화 (React 18+ 배치 업데이트 활용)
+      // 상태 초기화
       setIccValue(0);
       setDeltaPairValue(0);
       setShowRetakeModal(false);
     };
 
-    const handleBeforeUnload = () => {
-      // 컴포넌트 언마운트 전 모든 타이머와 리스너 정리
-      window.removeEventListener('sessionChanged', handleSessionChange as EventListener);
-    };
-
     // 이벤트 리스너 등록
     window.addEventListener('sessionChanged', handleSessionChange as EventListener);
-    window.addEventListener('beforeunload', handleBeforeUnload);
     
-    // 컴포넌트 언마운트 시 이벤트 리스너 정리 (완전한 정리)
+    // 컴포넌트 언마운트 시 이벤트 리스너 정리
     return () => {
       window.removeEventListener('sessionChanged', handleSessionChange as EventListener);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      
-      // 캐시 정리
-      analysisCache.current = { 
-        dataHash: '', 
-        result: {
-          grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
-          totalVariation: 0, status: 'info', cv: 0, q95: 0, q99: 0, q999: 0,
-          isReliableForStandard: false, 
-          varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
-          dataQuality: {
-            originalCount: 0, validCount: 0, outliersDetected: 0,
-            isNormalDistribution: true, normalityTest: null,
-            outlierMethod: 'IQR', preprocessingApplied: false
-          }
-        } as GaugeData 
-      };
     };
   }, []);
 
@@ -240,16 +217,14 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
     }
 
-    // 실시간 해시 기반 캐싱 (변동계수 즉시 업데이트 보장) - 메모리 효율성 개선
+    // 실시간 해시 기반 캐싱 (변동계수 즉시 업데이트 보장)
     const latestLap = lapTimes[lapTimes.length - 1];
     const uniqueOperators = [...new Set(lapTimes.map(lap => lap.operator))].sort().join(',');
     const uniqueTargets = [...new Set(lapTimes.map(lap => lap.target))].sort().join(',');
     const uniqueSessions = [...new Set(lapTimes.map(lap => lap.sessionId))].sort().join(',');
     
-    // 해시 생성 최적화 (중복 계산 방지)
-    const coreDataHash = `${lapTimes.length}-${uniqueOperators}-${uniqueTargets}-${uniqueSessions}`;
-    const latestDataHash = latestLap ? `${latestLap.time}-${latestLap.operator}-${latestLap.target}-${latestLap.sessionId}` : '';
-    const dataHash = `${coreDataHash}-${latestDataHash}-${contextChanged ? Date.now() : ''}`;
+    // 변동계수 즉시 반영을 위한 향상된 해시 (마이크로초 단위 타임스탬프 포함)
+    const dataHash = `${lapTimes.length}-${latestLap?.time || 0}-${latestLap?.timestamp || Date.now()}-${latestLap?.operator || ''}-${latestLap?.target || ''}-${latestLap?.sessionId || ''}-${uniqueOperators}-${uniqueTargets}-${uniqueSessions}-${contextChanged ? Date.now() : ''}`;
 
     // 컨텍스트 변경 시 캐시 무시하고 즉시 재계산
     if (!contextChanged && analysisCache.current.dataHash === dataHash) {
