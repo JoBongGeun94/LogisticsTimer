@@ -1,0 +1,65 @@
+~/workspace$ npx tsc --noEmit
+src/components/UI/StatusBadge.tsx:39:22 - error TS1127: Invalid character.
+
+39     <span className={\`inline-flex items-center gap-1.5 font-medium rounded-full border \${sizeClasses[size]} \${colors.bg} \${colors.text} \${colors.border}\`}>
+                        
+
+src/components/UI/StatusBadge.tsx:39:23 - error TS1003: Identifier expected.
+
+ 39     <span className={\`inline-flex items-center gap-1.5 font-medium rounded-full border \${sizeClasses[size]} \${colors.bg} \${colors.text} \${colors.border}\`}>
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 40       <Icon className={iconSizes[size]} />
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+... 
+ 46 StatusBadge.displayName = 'StatusBadge';
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 47 
+    
+
+src/components/UI/StatusBadge.tsx:47:1 - error TS1160: Unterminated template literal.
+
+47 
+   
+
+src/components/UI/Toast.tsx:26:23 - error TS1127: Invalid character.
+
+26       <div className={\`\${style} px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm\`}>
+                         
+
+src/components/UI/Toast.tsx:26:100 - error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+
+26       <div className={\`\${style} px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm\`}>
+                                                                                                      ~
+
+src/components/UI/Toast.tsx:26:101 - error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+
+26       <div className={\`\${style} px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm\`}>
+                                                                                                       ~
+
+src/components/UI/Toast.tsx:33:5 - error TS1005: ')' expected.
+
+33     </div>
+       ~~
+
+src/components/UI/Toast.tsx:34:3 - error TS1109: Expression expected.
+
+34   );
+     ~
+
+src/components/UI/Toast.tsx:35:1 - error TS1128: Declaration or statement expected.
+
+35 });
+   ~
+
+src/components/UI/Toast.tsx:35:2 - error TS1128: Declaration or statement expected.
+
+35 });
+    ~
+
+
+Found 10 errors in 2 files.
+
+Errors  Files
+     3  src/components/UI/StatusBadge.tsx:39
+     7  src/components/UI/Toast.tsx:26
+~/workspace$ 
