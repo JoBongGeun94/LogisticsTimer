@@ -527,7 +527,12 @@ class GageRRCalculator implements IGageRRCalculator {
 
     // 분위수 계산 - 보수적 접근법 (정규성 가정 완화) - Grand Mean 기반
     const conservativeFactor = 1.2; // 20% 안전 마진
-    const q95 = grandMean + NORMAL_DISTRIBUTION.Q95 * totalStd * conservativeFactor;
+    // 분위수 계산 (정규분포 가정)
+    const z95 = 1.645; // 95% 분위수
+    const z99 = 2.326; // 99% 분위수
+    const z999 = 3.090; // 99.9% 분위수
+
+    const q95 = grandMean + z95 * totalStd * conservativeFactor;
     const q99 = grandMean + NORMAL_DISTRIBUTION.Q99 * totalStd * conservativeFactor;
     const q999 = grandMean + NORMAL_DISTRIBUTION.Q999 * totalStd * conservativeFactor;
 
