@@ -1,0 +1,51 @@
+~/workspace$ npx tsc --noEmit
+src/services/AnalysisService.ts:182:11 - error TS6133: 'totalCount' is declared but its value is never read.
+
+182     const totalCount = statistics.totalCount;
+              ~~~~~~~~~~
+
+src/services/AnalysisService.ts:315:11 - error TS6133: 'fOperator' is declared but its value is never read.
+
+315     const fOperator = equipmentMS > 0 ? operatorMS / equipmentMS : 0;
+              ~~~~~~~~~
+
+src/services/AnalysisService.ts:316:11 - error TS6133: 'fInteraction' is declared but its value is never read.
+
+316     const fInteraction = equipmentMS > 0 ? interactionMS / equipmentMS : 0;
+              ~~~~~~~~~~~~
+
+src/services/AnalysisService.ts:336:42 - error TS6133: 'df1' is declared but its value is never read.
+
+336   private calculatePValue(fStat: number, df1: number, df2: number): number {
+                                             ~~~
+
+src/services/AnalysisService.ts:377:11 - error TS6133: 'interactionVariation' is declared but its value is never read.
+
+377     const interactionVariation = 6.0 * Math.sqrt(Math.max(0, varianceComponents.interaction));
+              ~~~~~~~~~~~~~~~~~~~~
+
+src/services/AnalysisService.ts:397:102 - error TS2345: Argument of type 'Map<string, Map<string, number[]>> | undefined' is not assignable to parameter of type 'Map<string, Map<string, number[]>>'.
+  Type 'undefined' is not assignable to type 'Map<string, Map<string, number[]>>'.
+
+397     const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats, '기타', groupedData);
+                                                                                                         ~~~~~~~~~~~
+
+src/services/AnalysisService.ts:629:35 - error TS2345: Argument of type 'Map<string, number[]>' is not assignable to parameter of type 'string'.
+
+629           if (!operators.includes(operatorMap)) {
+                                      ~~~~~~~~~~~
+
+src/services/AnalysisService.ts:630:28 - error TS2345: Argument of type 'Map<string, number[]>' is not assignable to parameter of type 'string'.
+
+630             operators.push(operatorMap);
+                               ~~~~~~~~~~~
+
+src/services/AnalysisService.ts:644:7 - error TS2739: Type '{ status: "excellent" | "acceptable" | "marginal" | "unacceptable"; anova: ANOVAResult; varianceComponents: VarianceComponents; gageRRPercent: number; ... 10 more ...; isReliableForStandard: boolean; }' is missing the following properties from type 'GageRRResult': q95, q999
+
+644       return {
+          ~~~~~~
+
+
+Found 9 errors in the same file, starting at: src/services/AnalysisService.ts:182
+
+~/workspace$ 
