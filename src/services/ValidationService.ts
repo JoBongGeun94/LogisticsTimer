@@ -1,7 +1,8 @@
+
 import { LapTime, SessionData } from '../types';
 
-// 분석 상수들을 직접 정의하여 TDZ 오류 방지
-const ANALYSIS_CONSTANTS = {
+// 검증용 상수를 직접 정의 (순환 참조 방지)
+const VALIDATION_CONSTANTS = {
   MIN_OPERATORS: 2,
   MIN_TARGETS: 5,
   MIN_MEASUREMENTS: 6,
@@ -50,7 +51,10 @@ interface IGageRRValidator {
  */
 class SessionValidator implements ISessionValidator {
   validate(data: SessionCreationData): ValidationResult {
-    if (!data.sessionName?.trim()) {
+    const { sessionName, workType, operators, targets } = data;
+
+    // 세션명 검증
+    if (!sessionName?.trim()) {
       return {
         isValid: false,
         message: '세션명을 입력해주세요.',
@@ -58,7 +62,8 @@ class SessionValidator implements ISessionValidator {
       };
     }
 
-    if (!data.workType?.trim()) {
+    // 작업 유형 검증
+    if (!workType?.trim()) {
       return {
         isValid: false,
         message: '작업 유형을 선택해주세요.',
@@ -66,9 +71,8 @@ class SessionValidator implements ISessionValidator {
       };
     }
 
-    const validOperators = data.operators.filter(op => op?.trim());
-    const validTargets = data.targets.filter(tg => tg?.trim());
-
+    // 측정자 검증
+    const validOperators = operators.filter(op => op?.trim());
     if (validOperators.length === 0) {
       return {
         isValid: false,
@@ -77,6 +81,8 @@ class SessionValidator implements ISessionValidator {
       };
     }
 
+    // 대상자 검증
+    const validTargets = targets.filter(tg => tg?.trim());
     if (validTargets.length === 0) {
       return {
         isValid: false,
@@ -89,11 +95,11 @@ class SessionValidator implements ISessionValidator {
     let canAnalyze = true;
     let analysisMessage = '';
 
-    if (validOperators.length < ANALYSIS_CONSTANTS.MIN_OPERATORS || validTargets.length < ANALYSIS_CONSTANTS.MIN_TARGETS) {
+    if (validOperators.length < VALIDATION_CONSTANTS.MIN_OPERATORS || validTargets.length < VALIDATION_CONSTANTS.MIN_TARGETS) {
       canAnalyze = false;
-      if (validOperators.length < ANALYSIS_CONSTANTS.MIN_OPERATORS && validTargets.length < ANALYSIS_CONSTANTS.MIN_TARGETS) {
+      if (validOperators.length < VALIDATION_CONSTANTS.MIN_OPERATORS && validTargets.length < VALIDATION_CONSTANTS.MIN_TARGETS) {
         analysisMessage = 'Gage R&R 분석을 위해서는 측정자 2명 이상, 대상자 5개 이상이 필요합니다.';
-      } else if (validOperators.length < ANALYSIS_CONSTANTS.MIN_OPERATORS) {
+      } else if (validOperators.length < VALIDATION_CONSTANTS.MIN_OPERATORS) {
         analysisMessage = 'Gage R&R 분석을 위해서는 측정자 2명 이상이 필요합니다.';
       } else {
         analysisMessage = 'Gage R&R 분석을 위해서는 대상자 5개 이상이 필요합니다.';
@@ -103,7 +109,7 @@ class SessionValidator implements ISessionValidator {
     return {
       isValid: true,
       canAnalyze,
-      analysisMessage
+      analysisMessage: canAnalyze ? undefined : analysisMessage
     };
   }
 }
@@ -112,24 +118,20 @@ class SessionValidator implements ISessionValidator {
  * Gage R&R 검증기 (Single Responsibility Principle)
  */
 class GageRRValidator implements IGageRRValidator {
-  private static readonly MIN_MEASUREMENTS = 6;
-  private static readonly MIN_OPERATORS = 2;
-  private static readonly MIN_TARGETS = 2;
-
   validate(lapTimes: LapTime[]): ValidationResult {
-    if (lapTimes.length < GageRRValidator.MIN_MEASUREMENTS) {
+    if (!lapTimes || lapTimes.length < VALIDATION_CONSTANTS.MIN_MEASUREMENTS) {
       return {
         isValid: false,
-        message: 'Gage R&R 분석을 위해서는 최소 6개의 측정 기록이 필요합니다.',
+        message: `Gage R&R 분석을 위해서는 최소 ${VALIDATION_CONSTANTS.MIN_MEASUREMENTS}개의 측정값이 필요합니다.`,
         canAnalyze: false,
-        analysisMessage: '더 많은 측정을 수행한 후 분석해주세요.'
+        analysisMessage: '더 많은 측정을 수행해주세요.'
       };
     }
 
     const operators = [...new Set(lapTimes.map(lap => lap.operator))];
     const targets = [...new Set(lapTimes.map(lap => lap.target))];
 
-    if (operators.length < GageRRValidator.MIN_OPERATORS || targets.length < GageRRValidator.MIN_TARGETS) {
+    if (operators.length < VALIDATION_CONSTANTS.MIN_OPERATORS || targets.length < VALIDATION_CONSTANTS.MIN_TARGETS) {
       return {
         isValid: false,
         message: 'Gage R&R 분석을 위해서는 최소 2명의 측정자와 2개의 대상자가 필요합니다.',
@@ -153,23 +155,31 @@ class MeasurementValidator implements IMeasurementValidator {
     if (!data.currentSession) {
       return {
         isValid: false,
-        message: '먼저 작업 세션을 생성해주세요.',
+        message: '측정하기 전에 작업 세션을 생성해주세요.',
         canAnalyze: false
       };
     }
 
-    if (!data.currentOperator || !data.currentTarget) {
+    if (!data.currentOperator?.trim()) {
       return {
         isValid: false,
-        message: '측정자와 대상자를 선택해주세요.',
+        message: '측정자를 선택해주세요.',
         canAnalyze: false
       };
     }
 
-    if (data.currentTime === 0) {
+    if (!data.currentTarget?.trim()) {
       return {
         isValid: false,
-        message: '측정 시간이 0입니다. 타이머를 시작해주세요.',
+        message: '대상자를 선택해주세요.',
+        canAnalyze: false
+      };
+    }
+
+    if (data.currentTime <= 0) {
+      return {
+        isValid: false,
+        message: '유효한 측정 시간이 없습니다. 타이머를 시작해주세요.',
         canAnalyze: false
       };
     }
@@ -182,7 +192,7 @@ class MeasurementValidator implements IMeasurementValidator {
 }
 
 /**
- * 검증 팩토리 (Dependency Inversion Principle)
+ * 검증 팩토리 (Factory Pattern)
  */
 class ValidationFactory {
   static createSessionValidator(): ISessionValidator {
@@ -199,9 +209,9 @@ class ValidationFactory {
 }
 
 /**
- * 통합 검증 서비스 (Facade Pattern + Open/Closed Principle)
+ * 검증 서비스 (Facade Pattern)
  */
-export class ValidationService {
+class ValidationService {
   private static sessionValidator = ValidationFactory.createSessionValidator();
   private static measurementValidator = ValidationFactory.createMeasurementValidator();
   private static gageRRValidator = ValidationFactory.createGageRRValidator();
@@ -238,3 +248,5 @@ export class ValidationService {
     return this.gageRRValidator.validate(lapTimes);
   }
 }
+
+export { ValidationService };
