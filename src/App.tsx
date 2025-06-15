@@ -1247,6 +1247,23 @@ const EnhancedLogisticsTimer = () => {
                 <p className={`text-sm ${theme.textMuted} mt-2`}>
                   상세한 분석과 해석은 상세분석 페이지에서 확인하세요
                 </p>
+                {/* 데이터 품질 정보 표시 (기존 디자인과 조화) */}
+                {statisticsAnalysis.gaugeData.dataQuality && (
+                  <div className={`mt-2 text-xs ${theme.textMuted} space-y-1`}>
+                    {statisticsAnalysis.gaugeData.dataQuality.outliersDetected > 0 && (
+                      <div className="flex items-center justify-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-orange-500" />
+                        <span>이상치 {statisticsAnalysis.gaugeData.dataQuality.outliersDetected}개 감지됨</span>
+                      </div>
+                    )}
+                    {!statisticsAnalysis.gaugeData.dataQuality.isNormalDistribution && (
+                      <div className="flex items-center justify-center gap-1">
+                        <Info className="w-3 h-3 text-blue-500" />
+                        <span>비정규분포 데이터 (해석 시 주의)</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

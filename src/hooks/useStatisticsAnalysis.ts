@@ -28,6 +28,19 @@ interface GaugeData {
     equipment: number;
     total: number;
   };
+  dataQuality: {
+    originalCount: number;
+    validCount: number;
+    outliersDetected: number;
+    isNormalDistribution: boolean;
+    normalityTest: {
+      statistic: number;
+      pValue: number;
+      method: string;
+    } | null;
+    outlierMethod: string;
+    preprocessingApplied: boolean;
+  };
 }
 
 // 통계 계산 구현체 (Single Responsibility Principle)
@@ -81,6 +94,15 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         q99: 0,
         isReliableForStandard: false,
         varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
+        dataQuality: {
+          originalCount: 0,
+          validCount: 0,
+          outliersDetected: 0,
+          isNormalDistribution: true,
+          normalityTest: null,
+          outlierMethod: 'IQR',
+          preprocessingApplied: false
+        }
       };
     }
 
@@ -105,7 +127,16 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         cv: Math.max(0, analysis.cv),
         q99: Math.max(0, analysis.q99),
         isReliableForStandard: analysis.isReliableForStandard,
-        varianceComponents: analysis.varianceComponents
+        varianceComponents: analysis.varianceComponents,
+        dataQuality: analysis.dataQuality || {
+          originalCount: lapTimes.length,
+          validCount: lapTimes.length,
+          outliersDetected: 0,
+          isNormalDistribution: true,
+          normalityTest: null,
+          outlierMethod: 'IQR',
+          preprocessingApplied: false
+        }
       };
 
       // 캐시 업데이트

@@ -1,5 +1,7 @@
 import { LapTime, GageRRResult, ANOVAResult, VarianceComponents } from '../types';
 import { LOGISTICS_WORK_THRESHOLDS, NORMAL_DISTRIBUTION, F_DISTRIBUTION_CRITICAL } from '../constants/analysis';
+import { NormalityTestService } from './NormalityTestService';
+import { OutlierDetectionService } from './OutlierDetectionService';
 
 interface IStatisticsCalculator {
   calculateBasicStatistics(groupedData: Map<string, Map<string, number[]>>): BasicStatistics;
@@ -541,6 +543,42 @@ export class AnalysisService {
         throw new Error('유효한 측정값이 부족합니다. 최소 6개의 유효한 측정값이 필요합니다.');
       }
 
+      // 📊 데이터 전처리 파이프라인 적용 (Single Responsibility Principle)
+      const timeValues = validLapTimes.map(lap => lap.time);
+      
+      // 1단계: 이상치 감지 및 제거 (IQR 방법 사용)
+      const outlierAnalysis = OutlierDetectionService.detectOutliersIQR(timeValues);
+      console.log(`🔍 이상치 감지: ${outlierAnalysis.outliers.length}개 발견`);
+      
+      // 2단계: 정규성 검정 (Shapiro-Wilk 테스트)
+      let normalityTest = null;
+      let isDataNormal = true;
+      
+      try {
+        if (outlierAnalysis.cleanData.length >= 3) {
+          normalityTest = NormalityTestService.shapiroWilkTest(outlierAnalysis.cleanData);
+          isDataNormal = normalityTest.isNormal;
+          console.log(`📈 정규성 검정: W=${normalityTest.statistic.toFixed(4)}, p=${normalityTest.pValue.toFixed(4)}, 정규분포=${isDataNormal ? 'Yes' : 'No'}`);
+        }
+      } catch (error) {
+        console.warn('정규성 검정 실패:', error);
+        isDataNormal = false;
+      }
+      
+      // 3단계: 전처리된 데이터로 측정값 필터링 (이상치 제거된 데이터 사용)
+      const cleanTimeSet = new Set(outlierAnalysis.cleanData);
+      const preprocessedLapTimes = validLapTimes.filter(lap => cleanTimeSet.has(lap.time));
+      
+      // 전처리 후 데이터 충분성 재검증
+      if (preprocessedLapTimes.length < 6) {
+        console.warn('⚠️ 전처리 후 데이터 부족 - 원본 데이터로 분석 진행');
+        // 원본 데이터로 폴백
+      } else {
+        console.log(`✅ 데이터 전처리 완료: ${validLapTimes.length} → ${preprocessedLapTimes.length}개 측정값`);
+        // 전처리된 데이터 사용
+        validLapTimes.splice(0, validLapTimes.length, ...preprocessedLapTimes);
+      }
+
       // 데이터 그룹화
       const groupedData = DataGrouper.groupSafely(validLapTimes);
 
@@ -591,7 +629,21 @@ export class AnalysisService {
         ...metrics,
         status: StatusEvaluator.determineStatus(metrics.gageRRPercent),
         anova,
-        varianceComponents
+        varianceComponents,
+        // 데이터 전처리 결과 추가 (Interface Segregation Principle)
+        dataQuality: {
+          originalCount: lapTimes.length,
+          validCount: validLapTimes.length,
+          outliersDetected: outlierAnalysis?.outliers.length || 0,
+          isNormalDistribution: isDataNormal,
+          normalityTest: normalityTest ? {
+            statistic: normalityTest.statistic,
+            pValue: normalityTest.pValue,
+            method: 'Shapiro-Wilk'
+          } : null,
+          outlierMethod: 'IQR',
+          preprocessingApplied: (outlierAnalysis?.outliers.length || 0) > 0
+        }
       };
     } catch (error) {
       throw error;

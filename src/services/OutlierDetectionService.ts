@@ -2,7 +2,7 @@
 /**
  * 이상치 감지 서비스
  */
-export class OutlierDetectionService {
+export export class OutlierDetectionService {
   /**
    * IQR 방법을 사용한 이상치 감지
    */

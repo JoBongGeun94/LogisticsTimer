@@ -2,7 +2,7 @@
 /**
  * 정규성 검정 서비스 (Shapiro-Wilk Test)
  */
-export class NormalityTestService {
+export export class NormalityTestService {
   /**
    * Shapiro-Wilk 정규성 검정
    */
