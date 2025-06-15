@@ -51,6 +51,11 @@ export const WORK_TYPE_THRESHOLDS_MAP: Record<string, WorkTypeThreshold> = {
   '기타': { icc: 0.60, cv: 15, basis: 'MSA-4 최소 허용 기준' }
 };
 
+// AnalysisService에서 참조하는 LOGISTICS_WORK_THRESHOLDS export
+export const LOGISTICS_WORK_THRESHOLDS = {
+  BY_WORK_TYPE: WORK_TYPE_THRESHOLDS_MAP
+} as const;
+
 // 분석 상태 타입
 export type AnalysisStatus = 'excellent' | 'acceptable' | 'marginal' | 'unacceptable' | 'info';
 
