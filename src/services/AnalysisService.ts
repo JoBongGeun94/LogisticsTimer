@@ -46,7 +46,9 @@ interface GageRRMetrics {
   // 작업시간 분석용 추가 지표
   icc: number;           // 급내상관계수 - 측정자간 신뢰성
   cv: number;            // 변동계수 - 일관성 지표  
+  q95: number;           // 95% 달성가능 시간
   q99: number;           // 99% 달성가능 시간
+  q999: number;          // 99.9% 달성가능 시간
   isReliableForStandard: boolean; // 표준시간 설정 가능 여부
 }
 
