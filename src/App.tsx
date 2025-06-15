@@ -876,7 +876,7 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [targets]);
 
-  // 다운로드 함수들 (요구사항 10, 11번 - 오류 수정)
+  // 다운로드 함수들 (요구사항 10, 11번 - 매개변수 수정)
   const downloadMeasurementData = useCallback(() => {
     if (lapTimes.length === 0) {
       showToast('다운로드할 측정 기록이 없습니다.', 'warning');
@@ -896,7 +896,7 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [lapTimes, currentSession, showToast]);
 
-  // 상세분석 다운로드
+  // 상세분석 다운로드 (올바른 매개변수 사용)
   const downloadDetailedAnalysis = useCallback(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     if (!validation.isValid) {
@@ -910,7 +910,7 @@ const EnhancedLogisticsTimer = () => {
     }
 
     try {
-      const analysis = AnalysisService.calculateGageRR(lapTimes, 'none');
+      const analysis = AnalysisService.calculateGageRR(lapTimes);
       const success = ExportService.exportDetailedAnalysis(currentSession, lapTimes, analysis);
       if (success) {
         showToast('상세 분석 보고서가 다운로드되었습니다.', 'success');
@@ -931,18 +931,19 @@ const EnhancedLogisticsTimer = () => {
     });
   }, [lapTimes, filterOptions]);
 
-  // Gage R&R 분석
+  // Gage R&R 분석 (최적화된 오류 처리)
   const analysis = useMemo(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     if (!validation.isValid) return null;
 
     try {
-      return AnalysisService.calculateGageRR(lapTimes, 'none');
+      return AnalysisService.calculateGageRR(lapTimes);
     } catch (error) {
       console.error('분석 오류:', error);
+      showToast('분석 중 오류가 발생했습니다.', 'error');
       return null;
     }
-  }, [lapTimes]);
+  }, [lapTimes, showToast]);
 
   // 분석 가능 여부 확인 (요구사항 6번)
   const canAnalyze = useMemo(() => {
@@ -1247,7 +1248,7 @@ const EnhancedLogisticsTimer = () => {
                 <p className={`text-sm ${theme.textMuted} mt-2`}>
                   상세한 분석과 해석은 상세분석 페이지에서 확인하세요
                 </p>
-                {/* 데이터 품질 정보 표시 (기존 디자인과 조화) */}
+                {/* 데이터 품질 정보 표시 (기존 디자인과 조화) - 개선된 표시 */}
                 {statisticsAnalysis.gaugeData.dataQuality && (
                   <div className={`mt-2 text-xs ${theme.textMuted} space-y-1`}>
                     {statisticsAnalysis.gaugeData.dataQuality.outliersDetected > 0 && (
@@ -1260,6 +1261,12 @@ const EnhancedLogisticsTimer = () => {
                       <div className="flex items-center justify-center gap-1">
                         <Info className="w-3 h-3 text-blue-500" />
                         <span>비정규분포 데이터 (해석 시 주의)</span>
+                      </div>
+                    )}
+                    {statisticsAnalysis.gaugeData.dataQuality.preprocessingApplied && (
+                      <div className="flex items-center justify-center gap-1">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        <span>데이터 전처리 적용됨</span>
                       </div>
                     )}
                   </div>

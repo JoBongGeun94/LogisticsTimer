@@ -156,6 +156,15 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         q99: 0,
         isReliableForStandard: false,
         varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
+        dataQuality: {
+          originalCount: lapTimes.length,
+          validCount: 0,
+          outliersDetected: 0,
+          isNormalDistribution: false,
+          normalityTest: null,
+          outlierMethod: 'IQR',
+          preprocessingApplied: false
+        }
       };
     }
   }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, calculator]);
@@ -178,7 +187,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         // 임계값 비교 최적화 - 물류작업 특성 반영
         const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
         const threshold = workTimeMean * LOGISTICS_WORK_THRESHOLDS.DELTA_PAIR_THRESHOLD;
-        
+
         // 연속 측정값 차이가 15% 초과 시 재측정 권고
         if (deltaPair > threshold && allLaps.length > 2) {
           setShowRetakeModal(true);
