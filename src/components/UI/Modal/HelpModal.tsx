@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { X, Book, Keyboard, BarChart3 } from "lucide-react";
 
@@ -27,7 +28,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm sm:max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden"></div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm sm:max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
         {/* 헤더 */}
         <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
@@ -61,12 +62,12 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* 컨텐츠 */}
-        <div className="p-4 sm:p-6 overflow-y-auto max-h-[65vh] sm:max-h-[60vh] text-gray-900 dark:text-gray-100"></div>
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[65vh] sm:max-h-[60vh] text-gray-900 dark:text-gray-100">
           {activeTab === "usage" && (
             <div className="space-y-4 sm:space-y-6">
               <div>
                 <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">기본 사용법</h3>
-                <ol className="list-decimal list-inside space-y-2 sm:space-y-3 text-sm sm:text-base text-gray-700 dark:text-gray-300"></div>
+                <ol className="list-decimal list-inside space-y-2 sm:space-y-3 text-sm sm:text-base text-gray-700 dark:text-gray-300">
                   <li>
                     <strong>세션 생성:</strong> "새 세션" 버튼을 클릭하여 측정
                     세션을 생성합니다.
@@ -133,7 +134,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           {activeTab === "shortcuts" && (
             <div className="space-y-3 sm:space-y-4">
               <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">키보드 단축키</h3>
-              <div className="space-y-2 sm:grid sm:gap-3"></div>
+              <div className="space-y-2 sm:grid sm:gap-3">
                 <div className="flex justify-between items-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <span className="text-sm sm:text-base">타이머 시작/정지</span>
                   <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs sm:text-sm font-mono flex-shrink-0">
@@ -196,7 +197,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">
                   Gage R&R 분석 이해하기
                 </h3>
-                <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-3 sm:mb-4 leading-relaxed"></div>
+                <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-3 sm:mb-4 leading-relaxed">
                   Gage R&R(Gage Repeatability and Reproducibility)은
                   측정시스템의 변동을 평가하는 통계적 방법으로, 측정의 정확성과
                   일관성을 확인하는 데 사용됩니다.
@@ -236,7 +237,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
               <div>
                 <h4 className="font-semibold mb-2">📋 평가 기준</h4>
                 <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-                  <table className="w-full text-xs sm:text-sm border-collapse min-w-[480px] sm:min-w-0"></div>
+                  <table className="w-full text-xs sm:text-sm border-collapse min-w-[480px] sm:min-w-0">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                       <tr>
                         <th className="px-3 py-2 text-left border dark:border-gray-600">
