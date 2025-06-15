@@ -575,14 +575,16 @@ export class AnalysisService {
       const cleanTimeSet = new Set(outlierAnalysis.cleanData);
       const preprocessedLapTimes = validLapTimes.filter(lap => cleanTimeSet.has(lap.time));
       
-      // 전처리 후 데이터 충분성 재검증
+      // 🔧 전처리 후 데이터 충분성 재검증 및 일관성 보장
       if (preprocessedLapTimes.length < 6) {
         console.warn('⚠️ 전처리 후 데이터 부족 - 원본 데이터로 분석 진행');
-        // 원본 데이터로 폴백
+        // 🔧 원본 데이터 사용 시에도 전처리 정보 기록
+        outlierAnalysis.preprocessingApplied = false;
       } else {
         console.log(`✅ 데이터 전처리 완료: ${validLapTimes.length} → ${preprocessedLapTimes.length}개 측정값`);
-        // 전처리된 데이터 사용
+        // 🔧 전처리된 데이터로 완전히 교체 (일관성 보장)
         validLapTimes.splice(0, validLapTimes.length, ...preprocessedLapTimes);
+        outlierAnalysis.preprocessingApplied = true;
       }
 
       // 데이터 그룹화

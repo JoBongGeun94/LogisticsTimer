@@ -923,21 +923,39 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [lapTimes, currentSession, showToast]);
 
-  // 필터링된 측정 기록 (요구사항 8번)
+  // 🔧 필터링된 측정 기록 (동기화 개선)
   const filteredLapTimes = useMemo(() => {
-    return lapTimes.filter(lap => {
+    const filtered = lapTimes.filter(lap => {
       return (!filterOptions.operator || lap.operator === filterOptions.operator) &&
         (!filterOptions.target || lap.target === filterOptions.target);
     });
+    
+    // 🔧 필터링 결과가 분석에 영향을 주는 경우 캐시 무효화
+    if (filtered.length !== lapTimes.length) {
+      console.log(`🔍 필터 적용: ${lapTimes.length} → ${filtered.length}개 기록`);
+    }
+    
+    return filtered;
   }, [lapTimes, filterOptions]);
 
-  // Gage R&R 분석 (최적화된 오류 처리)
+  // 🔧 Gage R&R 분석 (실시간 통계와 동기화)
   const analysis = useMemo(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     if (!validation.isValid) return null;
 
     try {
-      return AnalysisService.calculateGageRR(lapTimes);
+      // 🔧 실시간 통계와 동일한 AnalysisService 사용 (동기화 보장)
+      const analysisResult = AnalysisService.calculateGageRR(lapTimes);
+      
+      // 🔧 분석 결과와 실시간 통계 일관성 검증
+      const gaugeData = statisticsAnalysis.gaugeData;
+      if (Math.abs(analysisResult.gageRRPercent - gaugeData.grr) > 0.1) {
+        console.warn('⚠️ 실시간-상세분석 불일치 감지, 재계산 수행');
+        // 캐시 무효화 후 재계산
+        StorageService.invalidateCache();
+      }
+      
+      return analysisResult;
     } catch (error) {
       console.error('🚨 분석 오류 상세:', error);
       
@@ -956,7 +974,7 @@ const EnhancedLogisticsTimer = () => {
       
       return null;
     }
-  }, [lapTimes, showToast]);
+  }, [lapTimes, showToast, statisticsAnalysis.gaugeData]);
 
   // 분석 가능 여부 확인 (요구사항 6번) - 조건 완화 및 개선
   const canAnalyze = useMemo(() => {

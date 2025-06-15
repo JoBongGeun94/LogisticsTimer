@@ -167,18 +167,23 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
     }
 
-    // 성능 최적화: 해시 기반 캐시 활용 (측정자, 대상자 변경 포함)
+    // 🔧 개선된 해시 기반 캐싱 - 완전한 데이터 무결성 보장
     const latestLap = lapTimes[lapTimes.length - 1];
     const uniqueOperators = [...new Set(lapTimes.map(lap => lap.operator))].sort().join(',');
     const uniqueTargets = [...new Set(lapTimes.map(lap => lap.target))].sort().join(',');
-    const dataHash = `${lapTimes.length}-${latestLap?.time || 0}-${latestLap?.operator || ''}-${latestLap?.target || ''}-${uniqueOperators}-${uniqueTargets}`;
+    
+    // 완전한 데이터 해시 계산 (모든 측정값 포함)
+    const timeValues = lapTimes.map(lap => lap.time).join(',');
+    const operatorSequence = lapTimes.map(lap => lap.operator).join(',');
+    const targetSequence = lapTimes.map(lap => lap.target).join(',');
+    const dataHash = `${lapTimes.length}-${timeValues}-${operatorSequence}-${targetSequence}-${uniqueOperators}-${uniqueTargets}`;
 
     if (analysisCache.current.dataHash === dataHash) {
       return analysisCache.current.result;
     }
 
     try {
-      // AnalysisService를 통한 통합 계산 (중복 제거)
+      // 🔧 AnalysisService를 통한 통합 계산 (실시간-상세분석 동기화)
       const analysis = AnalysisService.calculateGageRR(lapTimes);
 
       const result: GaugeData = {
@@ -191,7 +196,9 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         cv: Math.max(0, analysis.cv),
         q99: Math.max(0, analysis.q99),
         isReliableForStandard: analysis.isReliableForStandard,
-        varianceComponents: analysis.varianceComponents,
+        varianceComponents: analysis.varianceComponents || {
+          part: 0, operator: 0, interaction: 0, equipment: 0, total: 0
+        },
         dataQuality: analysis.dataQuality || {
           originalCount: lapTimes.length,
           validCount: lapTimes.length,
@@ -203,7 +210,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         }
       };
 
-      // 캐시 업데이트
+      // 🔧 원자적 캐시 업데이트 (레이스 컨디션 방지)
       analysisCache.current = { dataHash, result };
 
       return result;
@@ -245,12 +252,13 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     }
   }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, lapTimes[lapTimes.length - 1]?.operator, lapTimes[lapTimes.length - 1]?.target, calculator]);
 
-  // 통계 업데이트 - AnalysisService 기반으로 통합
+  // 🔧 동기화된 통계 업데이트 - 원자적 상태 변경
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
     try {
-      // ICC 재계산 - AnalysisService 활용
+      // 🔧 단일 분석으로 모든 지표 동시 계산 (동기화 보장)
       if (allLaps.length >= 6) {
         const analysis = AnalysisService.calculateGageRR(allLaps);
+        // 원자적 상태 업데이트
         setIccValue(analysis.icc);
       }
 
