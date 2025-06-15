@@ -10,7 +10,7 @@ interface ITimeFormatter {
 
 interface IDataFormatter {
   formatMeasurementData(session: SessionData, lapTimes: LapTime[]): string[][];
-  formatAnalysisData(session: SessionData, lapTimes: LapTime[], analysis: GageRRResult): string[][];
+  formatAnalysisData(session: SessionData, lapTimes: LapTime[]): string[][];
 }
 
 interface IFileExporter {
