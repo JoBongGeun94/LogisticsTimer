@@ -149,7 +149,7 @@ class StatisticsCalculator implements IStatisticsCalculator {
     }
 
     const variance = totalCount > 1 ? sumSquaredDeviations / (totalCount - 1) : 0;
-    const standardDeviation = Math.sqrt(Math.max(0, variance));
+    const standardDeviation = Math.sqrt(variance);
 
     return {
       grandMean,
@@ -449,10 +449,9 @@ class GageRRCalculator implements IGageRRCalculator {
     const grandMean = grandMeanCount > 0 ? grandMeanSum / grandMeanCount : 1000; // 1초 기본값
 
     // 총 표준편차 계산 (모든 변동 성분 포함) - 올바른 공식
-    const totalVariance = Math.max(0, 
+    const totalStd = Math.sqrt(Math.max(0, 
       varianceComponents.part + varianceComponents.operator + 
-      varianceComponents.interaction + varianceComponents.equipment);
-    const totalStd = Math.sqrt(totalVariance);
+      varianceComponents.interaction + varianceComponents.equipment));
 
     // 변동계수 계산: CV = (σ / Grand Mean) × 100 (올바른 공식)
     const cv = grandMean > 0 ? (totalStd / grandMean) * 100 : 100;

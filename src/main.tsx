@@ -3,34 +3,30 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import './index.css';
 
-// 전역 캐시 버전 설정
-const CACHE_VERSION = 'LOGISTICS_TIMER_CACHE_CLEAR_V2_0_1';
+// 캐시 무효화: 2025-06-04 07:13 KST
+// 빌드 ID: CACHE_CLEAR_V2_0_1
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error?: Error;
-}
-
-interface ErrorBoundaryProps {
-  children: React.ReactNode;
-}
-
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
+// 에러 경계 컴포넌트
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('애플리케이션 오류:', error, errorInfo);
   }
 
-  render(): React.ReactNode {
+  render() {
     if (this.state.hasError) {
       return (
         <div style={{
@@ -74,15 +70,17 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               새로고침
             </button>
             <details style={{ marginTop: '20px', textAlign: 'left' }}>
-              <summary style={{ cursor: 'pointer', color: '#6b7280' }}>오류 상세 정보</summary>
-              <pre style={{ 
-                fontSize: '12px', 
-                color: '#dc2626', 
-                backgroundColor: '#fee2e2', 
-                padding: '10px', 
+              <summary style={{ cursor: 'pointer', color: '#6b7280' }}>
+                기술 정보 보기
+              </summary>
+              <pre style={{
+                backgroundColor: '#f9fafb',
+                padding: '12px',
                 borderRadius: '4px',
+                fontSize: '12px',
+                color: '#374151',
                 overflow: 'auto',
-                marginTop: '10px'
+                marginTop: '8px'
               }}>
                 {this.state.error?.toString()}
               </pre>
