@@ -5,7 +5,7 @@ import {
   Zap, Target, RefreshCw, LogOut,
   Moon, Sun, PieChart, Info, CheckCircle,
   AlertCircle, XCircle, Timer, Activity,
-  Trash2, Filter, X, Minus, AlertTriangle
+  Trash2, Filter, X, Minus, AlertTriangle, HelpCircle
 } from 'lucide-react';
 
 // 타입 및 서비스 import
@@ -16,13 +16,11 @@ import {
   ToastProps,
   FilterOptions
 } from './types';
-import { ValidationService } from './services/ValidationService';
 import { AnalysisService } from './services/AnalysisService';
 import { ExportService } from './services/ExportService';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { useTimerLogic } from './hooks/useTimerLogic';
 import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
-import { useSessionManager } from './hooks/useSessionManager';
+import { HelpModal } from './components/UI/Modal/HelpModal';
 
 // ==================== 테마 상수 (Open/Closed Principle) ====================
 const THEME_COLORS = {
@@ -652,6 +650,7 @@ const EnhancedLogisticsTimer = () => {
 
   // 🔧 상세분석 모달 상태 (최소 변경 - 새로 추가)
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // 토스트 상태
   const [toast, setToast] = useState<{
@@ -763,6 +762,10 @@ const EnhancedLogisticsTimer = () => {
           e.preventDefault();
           resetTimer();
           break;
+          case 'F1':
+            e.preventDefault();
+            setShowHelpModal(true);
+            break;
       }
     };
 
@@ -1380,8 +1383,8 @@ const EnhancedLogisticsTimer = () => {
                 <Package className="w-5 h-5 text-gray-500" />
                 <h2 className={`font-semibold ${theme.text}`}>세션 히스토리</h2>
               </div>
-              <button
-                onClick={resetAllData}
+              <button```tool_code
+onClick={resetAllData}
                 className="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
                 title="모든 세션 히스토리 삭제"
               >
@@ -1699,6 +1702,11 @@ const EnhancedLogisticsTimer = () => {
           </div>
         </div>
       )}
+       {/* 도움말 모달 */}
+       <HelpModal
+        isVisible={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+      />
     </div>
   );
 };
