@@ -580,7 +580,7 @@ const DetailedAnalysisModal = memo<{
             )}
 
             {/* 해석 및 권장사항 */}
-            <div className={`${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'} p-4 rounded-lg border`}>
+            <div className={`${isDark ? 'bg-blue-900/20 border-blue700' : 'bg-blue-50 border-blue-200'} p-4 rounded-lg border`}>
               <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2">💡 해석 및 권장사항</h4>
               <div className={`${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 text-sm`}>
                 {analysis ? (
@@ -690,7 +690,7 @@ const EnhancedLogisticsTimer = () => {
   const [currentSessionId, setCurrentSessionId] = useLocalStorage<string | null>('logisticsTimer_currentSession', null);
   const [currentOperator, setCurrentOperator] = useState('');
   const [currentTarget, setCurrentTarget] = useState('');
-  
+
   const currentSession = useMemo(() => 
     sessions.find(session => session.id === currentSessionId) || null, 
     [sessions, currentSessionId]
@@ -723,7 +723,7 @@ const EnhancedLogisticsTimer = () => {
 
   const updateSessionLapTimes = useCallback((newLapTimes: LapTime[]) => {
     if (!currentSession) return;
-    
+
     setSessions(prev => prev.map(session => 
       session.id === currentSession.id 
         ? { ...session, lapTimes: newLapTimes }
