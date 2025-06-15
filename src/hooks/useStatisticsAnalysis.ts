@@ -122,31 +122,7 @@ function createWindowBuffer<T>(size: number): WindowBuffer<T> {
 export const useStatisticsAnalysis = (lapTimes: LapTime[] = []) => {
   const [showRetakeModal, setShowRetakeModal] = useState(false);
 
-  // 통계 분석 데이터 계산 (안전한 초기화)
-  const statisticsData = useMemo(() => {
-    if (!lapTimes || lapTimes.length === 0) {
-      return {
-        gaugeData: {
-          grr: 0,
-          cv: 0,
-          q99: 0,
-          isReliableForStandard: false,
-          repeatability: 0,
-          reproducibility: 0,
-          partVariation: 0,
-          totalVariation: 0
-        },
-        iccValue: 0,
-        deltaPairValue: 0,
-        statisticsStatus: {
-          grr: 'info' as const,
-          icc: 'info' as const,
-          deltaPair: 'info' as const
-        }
-      };
-    }
-// 의존성 배열에 lapTimes 추가
-  }, [lapTimes]);
+  
 
   const [calculator] = useState<IStatisticsCalculator>(() => new StatisticsCalculator());
   const [windowBuffer] = useState(() => createWindowBuffer<{ worker: string; observer: string; time: number }>(30));

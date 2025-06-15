@@ -619,7 +619,8 @@ const EnhancedLogisticsTimer = () => {
   // 폼 상태
   const [sessionName, setSessionName] = useState('');
   const```python
-  [workType, setWorkType] = useState('');
+  [workType,```python
+ setWorkType] = useState('');
   const [operators, setOperators] = useState<string[]>(['']);
   const [targets, setTargets] = useState<string[]>(['']);
 
@@ -676,7 +677,53 @@ const EnhancedLogisticsTimer = () => {
   });
 
   // 통계 분석 훅
-  const statisticsAnalysis = useStatisticsAnalysis(lapTimes);
+  const statisticsAnalysis = useStatisticsAnalysis(useMemo(() => {
+    try {
+      // AnalysisService를 통한 통합 계산 (중복 제거)
+      const analysis = AnalysisService.calculateGageRR(lapTimes);
+
+      return {
+        gaugeData: {
+          grr: Math.min(100, Math.max(0, analysis.gageRRPercent)),
+          cv: Math.max(0, analysis.cv),
+          q99: Math.max(0, analysis.q99),
+          isReliableForStandard: analysis.isReliableForStandard,
+          repeatability: analysis.repeatability,
+          reproducibility: analysis.reproducibility,
+          partVariation: analysis.partVariation,
+          totalVariation: analysis.totalVariation
+        },
+        iccValue: 0,
+        deltaPairValue: 0,
+        statisticsStatus: {
+          grr: 'info' as const,
+          icc: 'info' as const,
+          deltaPair: 'info' as const
+        }
+      };
+    } catch (error) {
+      console.error('통계 데이터 계산 오류:', error);
+      return {
+        gaugeData: {
+          grr: 0,
+          cv: 0,
+          q99: 0,
+          isReliableForStandard: false,
+          repeatability: 0,
+          reproducibility: 0,
+          partVariation: 0,
+          totalVariation: 0
+        },
+        iccValue: 0,
+        deltaPairValue: 0,
+        statisticsStatus: {
+          grr: 'info' as const,
+          icc: 'info' as const,
+          deltaPair: 'info' as const
+        }
+      };
+    }
+  }, [lapTimes]));
 
   // 다크모드 적용
   useEffect(() => {
