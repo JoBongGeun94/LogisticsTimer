@@ -715,7 +715,7 @@ const memoizedCache = new Map<string, any>(); // 키: 해시, 값: 통계 데이
     console.log(`🔄 캐시 미스: ${analysisCache.current.dataHash.substring(0, 20)}... → ${dataHash.substring(0, 20)}...`);
 
     try {
-      // 🔧 통합 분석 실행 - 실시간과 상세분석 완전 동기화
+      // 🔧 통합 분석 실행 - 실시간분석 완전 동기화
       const analysisStartTime = performance.now();
 
       // 🔧 동일한 AnalysisService 메서드 사용으로 완전 동기화 보장
