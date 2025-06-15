@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { SessionData, LapTime } from '../types';
 import { ValidationService } from '../services/ValidationService';
@@ -86,18 +85,24 @@ export const useSessionManager = ({ showToast }: UseSessionManagerProps) => {
   }, [currentSession, showToast, setSessions]);
 
   const switchToSession = useCallback((session: SessionData) => {
-    // 상태 업데이트를 순차적으로 처리하여 동기화 보장
-    const updateStates = () => {
-      setCurrentSession(session);
-      setCurrentOperator(session.operators[0] || '');
-      setCurrentTarget(session.targets[0] || '');
-    };
-    
-    // React 18의 자동 배치를 활용하여 한 번에 처리
-    updateStates();
-    
-    showToast('세션이 활성화되었습니다.', 'success');
-  }, [showToast]);
+    console.log(`🔄 세션 전환: ${currentSession?.name || 'None'} → ${session.name}`);
+
+    // 세션 전환 시 순서대로 상태 업데이트 (동기화 보장)
+    setCurrentSession(session);
+    setCurrentOperator(session.operators[0] || '');
+    setCurrentTarget(session.targets[0] || '');
+
+    // 통계 분석 캐시 무효화를 위한 이벤트 발생
+    window.dispatchEvent(new CustomEvent('sessionChanged', { 
+      detail: { 
+        newSessionId: session.id, 
+        newOperator: session.operators[0] || '',
+        newTarget: session.targets[0] || ''
+      } 
+    }));
+
+    showToast(`세션 '${session.name}'으로 전환되었습니다.`, 'success');
+  }, [currentSession, showToast]);
 
   const resetAllSessions = useCallback(() => {
     setSessions([]);

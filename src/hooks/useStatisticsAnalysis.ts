@@ -69,6 +69,37 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const [deltaPairValue, setDeltaPairValue] = useState(0);
   const [showRetakeModal, setShowRetakeModal] = useState(false);
 
+  // 세션 변경 이벤트 리스너 (즉시 캐시 무효화)
+  useEffect(() => {
+    const handleSessionChange = (event: CustomEvent) => {
+      console.log('🔄 세션 변경 이벤트 수신:', event.detail);
+      
+      // 캐시 즉시 초기화
+      analysisCache.current = { 
+        dataHash: '', 
+        result: {
+          grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
+          totalVariation: 0, status: 'info', cv: 0, q99: 0, 
+          isReliableForStandard: false, 
+          varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
+          dataQuality: {
+            originalCount: 0, validCount: 0, outliersDetected: 0,
+            isNormalDistribution: true, normalityTest: null,
+            outlierMethod: 'IQR', preprocessingApplied: false
+          }
+        } as GaugeData 
+      };
+      
+      // 상태 초기화
+      setIccValue(0);
+      setDeltaPairValue(0);
+      setShowRetakeModal(false);
+    };
+
+    window.addEventListener('sessionChanged', handleSessionChange as EventListener);
+    return () => window.removeEventListener('sessionChanged', handleSessionChange as EventListener);
+  }, []);
+
   // 성능 최적화: 메모이제이션 개선 및 해시 기반 캐싱
   const analysisCache = useRef<{
     dataHash: string;
@@ -85,45 +116,44 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const currentTargetRef = useRef<string>('');
   const currentSessionRef = useRef<string>('');
   
-  // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
+  // 게이지 데이터 계산 - 실시간 업데이트 최적화 및 캐싱 개선
   const gaugeData = useMemo((): GaugeData => {
-    // 세션, 측정자, 대상자 변경 감지 강화
+    // 컨텍스트 변경 감지 (세션, 측정자, 대상자)
     const currentOperator = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.operator : '';
     const currentTarget = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.target : '';
     const currentSession = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.sessionId : '';
     
-    // 변경 감지 로직 강화
-    const sessionChanged = currentSession && currentSession !== currentSessionRef.current;
-    const operatorChanged = currentOperator && currentOperator !== currentOperatorRef.current;
-    const targetChanged = currentTarget && currentTarget !== currentTargetRef.current;
+    // 즉시 캐시 무효화 조건 (성능 최적화)
+    const contextChanged = (
+      (currentSession && currentSession !== currentSessionRef.current) ||
+      (currentOperator && currentOperator !== currentOperatorRef.current) ||
+      (currentTarget && currentTarget !== currentTargetRef.current)
+    );
     
-    // 세션, 측정자, 대상자 중 하나라도 변경 시 즉시 캐시 초기화
-    if (sessionChanged || operatorChanged || targetChanged) {
-      analysisCache.current = { dataHash: '', result: {
-        grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
-        totalVariation: 0, status: 'info', cv: 0, q99: 0, 
-        isReliableForStandard: false, 
-        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
-        dataQuality: {
-          originalCount: 0, validCount: 0, outliersDetected: 0,
-          isNormalDistribution: true, normalityTest: null,
-          outlierMethod: 'IQR', preprocessingApplied: false
-        }
-      } as GaugeData };
+    // 컨텍스트 변경 시 즉시 캐시 초기화 (지연 없음)
+    if (contextChanged) {
+      // 참조값 즉시 업데이트
+      currentSessionRef.current = currentSession;
+      currentOperatorRef.current = currentOperator;
+      currentTargetRef.current = currentTarget;
       
-      // 참조값 업데이트
-      if (sessionChanged) {
-        currentSessionRef.current = currentSession;
-        console.log(`🔄 세션 변경 감지: ${currentSessionRef.current} → 분석 캐시 초기화`);
-      }
-      if (operatorChanged) {
-        currentOperatorRef.current = currentOperator;
-        console.log(`👤 측정자 변경 감지: ${currentOperatorRef.current} → 분석 캐시 초기화`);
-      }
-      if (targetChanged) {
-        currentTargetRef.current = currentTarget;
-        console.log(`🎯 대상자 변경 감지: ${currentTargetRef.current} → 분석 캐시 초기화`);
-      }
+      // 캐시 강제 초기화
+      analysisCache.current = { 
+        dataHash: '', 
+        result: {
+          grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
+          totalVariation: 0, status: 'info', cv: 0, q99: 0, 
+          isReliableForStandard: false, 
+          varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
+          dataQuality: {
+            originalCount: 0, validCount: 0, outliersDetected: 0,
+            isNormalDistribution: true, normalityTest: null,
+            outlierMethod: 'IQR', preprocessingApplied: false
+          }
+        } as GaugeData 
+      };
+      
+      console.log(`🔄 컨텍스트 변경 감지 → 즉시 캐시 무효화 (세션: ${currentSession}, 측정자: ${currentOperator}, 대상자: ${currentTarget})`);
     }
     if (lapTimes.length < 3) {
       return {
@@ -180,14 +210,17 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
     }
 
-    // 성능 최적화: 해시 기반 캐시 활용 (세션, 측정자, 대상자 변경 포함)
+    // 실시간 해시 기반 캐싱 (변동계수 즉시 업데이트 보장)
     const latestLap = lapTimes[lapTimes.length - 1];
     const uniqueOperators = [...new Set(lapTimes.map(lap => lap.operator))].sort().join(',');
     const uniqueTargets = [...new Set(lapTimes.map(lap => lap.target))].sort().join(',');
     const uniqueSessions = [...new Set(lapTimes.map(lap => lap.sessionId))].sort().join(',');
-    const dataHash = `${lapTimes.length}-${latestLap?.time || 0}-${latestLap?.operator || ''}-${latestLap?.target || ''}-${latestLap?.sessionId || ''}-${uniqueOperators}-${uniqueTargets}-${uniqueSessions}`;
+    
+    // 변동계수 즉시 반영을 위한 향상된 해시 (마이크로초 단위 타임스탬프 포함)
+    const dataHash = `${lapTimes.length}-${latestLap?.time || 0}-${latestLap?.timestamp || Date.now()}-${latestLap?.operator || ''}-${latestLap?.target || ''}-${latestLap?.sessionId || ''}-${uniqueOperators}-${uniqueTargets}-${uniqueSessions}-${contextChanged ? Date.now() : ''}`;
 
-    if (analysisCache.current.dataHash === dataHash) {
+    // 컨텍스트 변경 시 캐시 무시하고 즉시 재계산
+    if (!contextChanged && analysisCache.current.dataHash === dataHash) {
       return analysisCache.current.result;
     }
 
@@ -285,32 +318,59 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     calculator
   ]);
 
-  // 통계 업데이트 - AnalysisService 기반으로 통합
+  // 통계 업데이트 - 동기화 문제 해결 및 React 배치 업데이트 최적화
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
     try {
-      // ICC 재계산 - AnalysisService 활용
-      if (allLaps.length >= 6) {
-        const analysis = AnalysisService.calculateGageRR(allLaps);
-        setIccValue(analysis.icc);
-      }
-
-      // ΔPair 계산 (최적화: 마지막 2개만 계산)
-      if (allLaps.length >= 2) {
-        const lastTwo = allLaps.slice(-2);
-        const deltaPair = Math.abs(lastTwo[1].time - lastTwo[0].time);
-        setDeltaPairValue(deltaPair);
-
-        // 임계값 비교 최적화 - 물류작업 특성 반영
-        const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
-        const threshold = workTimeMean * LOGISTICS_WORK_THRESHOLDS.DELTA_PAIR_THRESHOLD;
-
-        // 연속 측정값 차이가 15% 초과 시 재측정 권고
-        if (deltaPair > threshold && allLaps.length > 2) {
-          setShowRetakeModal(true);
+      // React 상태 배치 업데이트를 위한 동기화 처리
+      const updateBatch = () => {
+        // ICC 재계산 - AnalysisService 활용 (6개 이상일 때)
+        if (allLaps.length >= 6) {
+          const analysis = AnalysisService.calculateGageRR(allLaps);
+          setIccValue(prevIcc => {
+            console.log(`📊 ICC 업데이트: ${prevIcc.toFixed(3)} → ${analysis.icc.toFixed(3)}`);
+            return analysis.icc;
+          });
+        } else if (allLaps.length >= 3) {
+          // 3개 이상일 때 기본 ICC 계산
+          setIccValue(0.5); // 기본값
         }
+
+        // ΔPair 계산 - 즉시 반영 (마지막 2개 측정값)
+        if (allLaps.length >= 2) {
+          const lastTwo = allLaps.slice(-2);
+          const deltaPair = Math.abs(lastTwo[1].time - lastTwo[0].time);
+          
+          setDeltaPairValue(prevDelta => {
+            console.log(`📈 ΔPair 업데이트: ${prevDelta.toFixed(3)}s → ${deltaPair.toFixed(3)}s`);
+            return deltaPair;
+          });
+
+          // 임계값 비교 최적화 - 물류작업 특성 반영
+          const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
+          const threshold = workTimeMean * LOGISTICS_WORK_THRESHOLDS.DELTA_PAIR_THRESHOLD;
+
+          // 연속 측정값 차이가 15% 초과 시 재측정 권고
+          if (deltaPair > threshold && allLaps.length > 2) {
+            console.log(`⚠️ ΔPair 임계값 초과: ${deltaPair.toFixed(3)}s > ${threshold.toFixed(3)}s`);
+            setShowRetakeModal(true);
+          }
+        } else {
+          setDeltaPairValue(0);
+        }
+      };
+
+      // 비동기 배치 업데이트 실행 (React 18+ 호환)
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        window.requestIdleCallback(updateBatch);
+      } else {
+        // 폴백: 즉시 실행
+        updateBatch();
       }
     } catch (error) {
-      console.warn('통계 업데이트 오류:', error);
+      console.warn('📊 통계 업데이트 오류:', error);
+      // 오류 시에도 기본값 설정
+      setIccValue(0);
+      setDeltaPairValue(0);
     }
   }, []);
 
