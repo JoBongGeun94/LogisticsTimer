@@ -575,7 +575,7 @@ export interface IAnalysisConfig {
   readonly maxRecursionDepth: number;
 }
 
-class AnalysisService {
+export class AnalysisService {
   private static readonly config: IAnalysisConfig = {
     maxRecursionDepth: 100
   };
