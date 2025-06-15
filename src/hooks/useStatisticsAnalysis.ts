@@ -119,12 +119,39 @@ function createWindowBuffer<T>(size: number): WindowBuffer<T> {
   };
 }
 
-export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
+export const useStatisticsAnalysis = (lapTimes: LapTime[] = []) => {
+  const [showRetakeModal, setShowRetakeModal] = useState(false);
+
+  // 통계 분석 데이터 계산 (안전한 초기화)
+  const statisticsData = useMemo(() => {
+    if (!lapTimes || lapTimes.length === 0) {
+      return {
+        gaugeData: {
+          grr: 0,
+          cv: 0,
+          q99: 0,
+          isReliableForStandard: false,
+          repeatability: 0,
+          reproducibility: 0,
+          partVariation: 0,
+          totalVariation: 0
+        },
+        iccValue: 0,
+        deltaPairValue: 0,
+        statisticsStatus: {
+          grr: 'info' as const,
+          icc: 'info' as const,
+          deltaPair: 'info' as const
+        }
+      };
+    }
+// 의존성 배열에 lapTimes 추가
+  }, [lapTimes]);
+
   const [calculator] = useState<IStatisticsCalculator>(() => new StatisticsCalculator());
   const [windowBuffer] = useState(() => createWindowBuffer<{ worker: string; observer: string; time: number }>(30));
   const [iccValue, setIccValue] = useState(0);
   const [deltaPairValue, setDeltaPairValue] = useState(0);
-  const [showRetakeModal, setShowRetakeModal] = useState(false);
 
   // 성능 최적화: 메모이제이션 개선 및 해시 기반 캐싱
   const analysisCache = useRef<{
@@ -157,7 +184,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
     // 성능 최적화: 해시 기반 캐시 활용
     const dataHash = lapTimes.map(lap => `${lap.operator}-${lap.target}-${lap.time}`).join('|');
-    
+
     if (analysisCache.current.dataHash === dataHash) {
       return analysisCache.current.result;
     }

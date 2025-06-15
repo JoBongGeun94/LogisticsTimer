@@ -28,8 +28,6 @@ import { useSessionManager } from './hooks/useSessionManager';
 
 // 테마 상수들이 별도 파일로 분리됨
 
-// === 통계 계산 함수들이 useStatisticsAnalysis 훅으로 이동됨 ===
-
 // ==================== 유틸리티 훅 ====================
 const useBackButtonPrevention = () => {
   const [backPressCount, setBackPressCount] = useState(0);
@@ -620,7 +618,8 @@ const EnhancedLogisticsTimer = () => {
 
   // 폼 상태
   const [sessionName, setSessionName] = useState('');
-  const [workType, setWorkType] = useState('');
+  const```python
+  [workType, setWorkType] = useState('');
   const [operators, setOperators] = useState<string[]>(['']);
   const [targets, setTargets] = useState<string[]>(['']);
 
@@ -658,7 +657,7 @@ const EnhancedLogisticsTimer = () => {
 
     // 통계 업데이트
     statisticsAnalysis.updateStatistics(newLap, updatedLaps);
-  }, [lapTimes, setAllLapTimes, updateSessionLapTimes]);
+  }, [lapTimes, setAllLapTimes, updateSessionLapTimes, statisticsAnalysis]);
 
   // 타이머 로직 훅
   const {
@@ -716,7 +715,7 @@ const EnhancedLogisticsTimer = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
+  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis, toggleTimer, recordLap, stopTimer, resetTimer]);
 
   // 리셋 함수 (기존 로직과 통합)
   const resetTimer = useCallback(() => {
@@ -1107,11 +1106,11 @@ const EnhancedLogisticsTimer = () => {
               />
               <MeasurementCard
                 title="변동계수"
-                value={statisticsAnalysis.gaugeData ? 
+                value={statisticsAnalysis.gaugeData ?
                   `${statisticsAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
                 }
                 icon={Activity}
-                status={statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.cv <= 12 ? 'success' : 
+                status={statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.cv <= 12 ? 'success' :
                        statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.cv <= 20 ? 'warning' : 'error'}
                 theme={theme}
                 size="sm"
@@ -1404,8 +1403,7 @@ const EnhancedLogisticsTimer = () => {
                   <div>
                     <label className={`block text-sm font-medium mb-1 ${theme.textSecondary}`}>세션명 *</label>
                     <input
-                      type="text"
-                      value={sessionName}
+                      type="text"value={sessionName}
                       onChange={(e) => setSessionName(e.target.value)}
                       placeholder="예: 검수-000-001"
                       className={`w-full p-3 border rounded-lg text-sm ${theme.input}`}
