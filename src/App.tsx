@@ -680,7 +680,25 @@ const EnhancedLogisticsTimer = () => {
     showToast
   });
 
-  
+  // 다운로드 함수들 (요구사항 10, 11번 - 오류 수정)
+  const downloadMeasurementData = useCallback(() => {
+    if (lapTimes.length === 0) {
+      showToast('다운로드할 측정 기록이 없습니다.', 'warning');
+      return;
+    }
+
+    if (!currentSession) {
+      showToast('활성 세션이 없습니다.', 'error');
+      return;
+    }
+
+    const success = ExportService.exportMeasurementData(currentSession, lapTimes);
+    if (success) {
+      showToast('측정 기록이 다운로드되었습니다.', 'success');
+    } else {
+      showToast('다운로드에 실패했습니다. 다시 시도해주세요.', 'error');
+    }
+  }, [lapTimes, currentSession, showToast]);
 
   // 다크모드 적용
   useEffect(() => {
@@ -818,26 +836,6 @@ const EnhancedLogisticsTimer = () => {
       setTargets(targets.filter((_, i) => i !== index));
     }
   }, [targets]);
-
-  // 다운로드 함수들 (요구사항 10, 11번 - 오류 수정)
-  const downloadMeasurementData = useCallback(() => {
-    if (lapTimes.length === 0) {
-      showToast('다운로드할 측정 기록이 없습니다.', 'warning');
-      return;
-    }
-
-    if (!currentSession) {
-      showToast('활성 세션이 없습니다.', 'error');
-      return;
-    }
-
-    const success = ExportService.exportMeasurementData(currentSession, lapTimes);
-    if (success) {
-      showToast('측정 기록이 다운로드되었습니다.', 'success');
-    } else {
-      showToast('다운로드에 실패했습니다. 다시 시도해주세요.', 'error');
-    }
-  }, [lapTimes, currentSession, showToast]);
 
   // 상세분석 다운로드
   const downloadDetailedAnalysis = useCallback(() => {
