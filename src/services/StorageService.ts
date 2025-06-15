@@ -273,7 +273,21 @@ export class StorageService {
 
       if (!cached) return null;
 
-      const cacheData = JSON.parse(cached);
+      // 🔧 안전한 JSON 파싱 
+      let cacheData;
+      try {
+        cacheData = JSON.parse(cached);
+      } catch (parseError) {
+        console.warn('캐시 파싱 실패:', parseError);
+        localStorage.removeItem(cacheKey); // 손상된 캐시 제거
+        return null;
+      }
+
+      // 캐시 데이터 구조 검증
+      if (!cacheData || typeof cacheData !== 'object' || !cacheData.hasOwnProperty('expiry')) {
+        localStorage.removeItem(cacheKey); // 잘못된 구조 제거
+        return null;
+      }
 
       // 만료 확인
       if (Date.now() > cacheData.expiry) {
@@ -340,30 +354,58 @@ export class StorageService {
     }
   }
 
-  // 🔧 만료된 캐시 정리
+  // 🔧 만료된 캐시 정리 - 예외 처리 강화
   static cleanExpiredCache(): void {
     try {
       const now = Date.now();
       const keysToRemove: string[] = [];
 
-      Object.keys(localStorage).forEach(key => {
+      // localStorage 키 안전하게 순회
+      const localStorageKeys = [];
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key) localStorageKeys.push(key);
+        }
+      } catch (error) {
+        console.warn('localStorage 키 순회 실패:', error);
+        return;
+      }
+
+      localStorageKeys.forEach(key => {
         if (key.startsWith(this.CACHE_PREFIX)) {
           try {
             const cached = localStorage.getItem(key);
             if (cached) {
-              const cacheData = JSON.parse(cached);
-              if (now > cacheData.expiry) {
+              let cacheData;
+              try {
+                cacheData = JSON.parse(cached);
+                // 구조 검증
+                if (cacheData && typeof cacheData === 'object' && 
+                    typeof cacheData.expiry === 'number' && 
+                    now > cacheData.expiry) {
+                  keysToRemove.push(key);
+                }
+              } catch (parseError) {
+                // 파싱 오류가 있는 캐시도 제거
                 keysToRemove.push(key);
               }
             }
           } catch (error) {
-            // 파싱 오류가 있는 캐시도 제거
+            // 액세스 오류가 있는 캐시도 제거
             keysToRemove.push(key);
           }
         }
       });
 
-      keysToRemove.forEach(key => localStorage.removeItem(key));
+      // 안전한 키 제거
+      keysToRemove.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+        } catch (error) {
+          console.warn(`캐시 키 제거 실패: ${key}`, error);
+        }
+      });
 
       if (keysToRemove.length > 0) {
         console.log(`🔄 만료된 캐시 ${keysToRemove.length}개 정리 완료`);

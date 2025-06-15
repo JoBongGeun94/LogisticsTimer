@@ -24,6 +24,7 @@ import { useTimerLogic } from './hooks/useTimerLogic';
 import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
 import { useSessionManager } from './hooks/useSessionManager';
 import { NotificationService } from './services/NotificationService';
+import { StorageService } from './services/StorageService';
 
 // ==================== 테마 상수 (Open/Closed Principle) ====================
 const THEME_COLORS = {
@@ -439,16 +440,22 @@ const DetailedAnalysisModal = memo<{
   lapTimes: LapTime[];
   statisticsAnalysis: any;
 }>(({ isVisible, onClose, analysis, theme, isDark, lapTimes, statisticsAnalysis }) => {
-  // 성능 최적화: 분석 데이터 메모이제이션
+  // 성능 최적화: 분석 데이터 메모이제이션 - 타입 안전성 강화
   const memoizedAnalysis = useMemo(() => {
-    if (!analysis || !statisticsAnalysis) return null;
-    return {
-      ...analysis,
-      iccValue: statisticsAnalysis.iccValue,
-      deltaPairValue: statisticsAnalysis.deltaPairValue,
-      gaugeData: statisticsAnalysis.gaugeData
-    };
-  }, [analysis, statisticsAnalysis.iccValue, statisticsAnalysis.deltaPairValue, statisticsAnalysis.gaugeData]);
+    if (!analysis || !statisticsAnalysis || !statisticsAnalysis.gaugeData) return null;
+    
+    try {
+      return {
+        ...analysis,
+        iccValue: statisticsAnalysis.iccValue || 0,
+        deltaPairValue: statisticsAnalysis.deltaPairValue || 0,
+        gaugeData: statisticsAnalysis.gaugeData
+      };
+    } catch (error) {
+      console.error('메모이제이션 오류:', error);
+      return null;
+    }
+  }, [analysis, statisticsAnalysis?.iccValue, statisticsAnalysis?.deltaPairValue, statisticsAnalysis?.gaugeData]);
 
   if (!isVisible) return null;
 
@@ -946,6 +953,11 @@ const EnhancedLogisticsTimer = () => {
     try {
       const analysisStartTime = performance.now();
 
+      // 🔧 데이터 유효성 검증 강화
+      if (!lapTimes || lapTimes.length < 3) {
+        return null;
+      }
+
       // 🔧 동일한 데이터셋으로 분석 실행 (완전 동기화)
       const synchronizedLapTimes = [...lapTimes]; // 불변성 보장
       const analysisResult = AnalysisService.calculateGageRR(synchronizedLapTimes);
@@ -1261,7 +1273,7 @@ const EnhancedLogisticsTimer = () => {
               />
             </div>
 
-            {/* 고급 통계 - 조건부 표시 (완화된 조건) */}
+            {/* 고급 통계 - 조건부 표시 (통일된 조건) */}
             {lapTimes.length >= 3 && (
               <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
                 <MeasurementCard
@@ -1306,8 +1318,8 @@ const EnhancedLogisticsTimer = () => {
               </div>
             )}
 
-            {/* 분석 가능 여부에 따른 메시지 */}
-            {!canAnalyze.canAnalyze && lapTimes.length < 6 ? (
+            {/* 분석 가능 여부에 따른 메시지 - 조건 통일 */}
+            {!canAnalyze.canAnalyze && lapTimes.length < 3 ? (
               <div className={`${theme.surface} p-3 rounded-lg border ${theme.border} text-center`}>
                 <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
                   <Info className={`w-6 h-6 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />

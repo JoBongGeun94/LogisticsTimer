@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { LapTime } from '../types';
 import { LOGISTICS_WORK_THRESHOLDS } from '../constants/analysis';
 import { AnalysisService } from '../services/AnalysisService';
+import { StorageService } from '../services/StorageService';
 
 // 통계 계산 인터페이스 (Interface Segregation Principle)
 interface IStatisticsCalculator {
@@ -208,7 +209,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
     const timestamp = latestLap ? new Date(latestLap.timestamp).getTime() : 0;
     const structuralInfo = `${validLapTimes.length}-${uniqueOperators}-${uniqueTargets}`;
-    const contentHash = this.simpleHash(dataElements);
+    const contentHash = simpleHash(dataElements);
     const dataHash = `${structuralInfo}-${contentHash}-${timestamp}`;
 
     // 🔧 캐시 검증 및 동기화 상태 확인
@@ -315,12 +316,9 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
     }
   }, [
-    // 🔧 정교한 의존성 배열 - 모든 변경사항 감지
+    // 🔧 최적화된 의존성 배열 - 성능 개선 및 불필요한 재계산 방지
     lapTimes.length,
-    lapTimes.map(lap => lap.time).join(','),
-    lapTimes.map(lap => lap.operator).join(','),
-    lapTimes.map(lap => lap.target).join(','),
-    lapTimes.map(lap => lap.timestamp).join(','),
+    JSON.stringify(lapTimes.map(lap => ({ time: lap.time, operator: lap.operator, target: lap.target, timestamp: lap.timestamp }))),
     calculator
   ]);
 
@@ -453,7 +451,12 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       }
 
       // 4. 작업유형별 특수 규칙
-      const workTypeMultiplier = getWorkTypeMultiplier(newLap.workType);
+      const workTypeMultipliers: Record<string, number> = {
+        '물자검수팀': 1.2,
+        '저장관리팀': 1.0,
+        '포장관리팀': 1.3
+      };
+      const workTypeMultiplier = workTypeMultipliers[newLap.workType] || 1.0;
       const workTypeAdjustedThreshold = statisticalThreshold * workTypeMultiplier;
 
       if (timeDifference > workTypeAdjustedThreshold && workTypeMultiplier !== 1) {
