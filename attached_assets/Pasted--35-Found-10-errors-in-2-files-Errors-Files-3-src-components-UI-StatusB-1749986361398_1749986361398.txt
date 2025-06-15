@@ -1,0 +1,260 @@
+
+35 });
+    ~
+
+
+Found 10 errors in 2 files.
+
+Errors  Files
+     3  src/components/UI/StatusBadge.tsx:39
+     7  src/components/UI/Toast.tsx:26
+~/workspace$ npx tsc --noEmit
+src/App.tsx:1:38 - error TS6133: 'useRef' is declared but its value is never read.
+
+1 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+                                       ~~~~~~
+
+src/App.tsx:386:52 - error TS6133: 'lapTimes' is declared but its value is never read.
+
+386 }>(({ isVisible, onClose, analysis, theme, isDark, lapTimes, statisticsAnalysis }) => {
+                                                       ~~~~~~~~
+
+src/App.tsx:659:56 - error TS2448: Block-scoped variable 'statisticsAnalysis' used before its declaration.
+
+659   }, [lapTimes, setAllLapTimes, updateSessionLapTimes, statisticsAnalysis]);
+                                                           ~~~~~~~~~~~~~~~~~~
+
+  src/App.tsx:678:9
+    678   const statisticsAnalysis = useStatisticsAnalysis(useMemo(() => {
+                ~~~~~~~~~~~~~~~~~~
+    'statisticsAnalysis' is declared here.
+
+src/App.tsx:659:56 - error TS2454: Variable 'statisticsAnalysis' is used before being assigned.
+
+659   }, [lapTimes, setAllLapTimes, updateSessionLapTimes, statisticsAnalysis]);
+                                                           ~~~~~~~~~~~~~~~~~~
+
+src/App.tsx:678:52 - error TS2345: Argument of type '{ gaugeData: { grr: number; cv: number; q99: number; isReliableForStandard: boolean; repeatability: number; reproducibility: number; partVariation: number; totalVariation: number; }; iccValue: number; deltaPairValue: number; statisticsStatus: { ...; }; }' is not assignable to parameter of type 'LapTime[]'.
+  Type '{ gaugeData: { grr: number; cv: number; q99: number; isReliableForStandard: boolean; repeatability: number; reproducibility: number; partVariation: number; totalVariation: number; }; iccValue: number; deltaPairValue: number; statisticsStatus: { ...; }; }' is missing the following properties from type 'LapTime[]': length, pop, push, concat, and 29 more.
+
+678   const statisticsAnalysis = useStatisticsAnalysis(useMemo(() => {
+                                                       ~~~~~~~~~~~~~~~
+679     try {
+    ~~~~~~~~~
+... 
+723     }
+    ~~~~~
+724   }, [lapTimes]));
+    ~~~~~~~~~~~~~~~~
+
+src/App.tsx:763:181 - error TS2448: Block-scoped variable 'resetTimer' used before its declaration.
+
+763   }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis, toggleTimer, recordLap, stopTimer, resetTimer]);
+                                                                                                                                                                                        ~~~~~~~~~~
+
+  src/App.tsx:766:9
+    766   const resetTimer = useCallback(() => {
+                ~~~~~~~~~~
+    'resetTimer' is declared here.
+
+src/App.tsx:763:181 - error TS2454: Variable 'resetTimer' is used before being assigned.
+
+763   }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis, toggleTimer, recordLap, stopTimer, resetTimer]);
+                                                                                                                                                                                        ~~~~~~~~~~
+
+src/App.tsx:1698:7 - error TS6133: 'StatCard' is declared but its value is never read.
+
+1698 const StatCard = memo<{
+           ~~~~~~~~
+
+src/components/UI/StatusBadge.tsx:1:8 - error TS6133: 'React' is declared but its value is never read.
+
+1 import React, { useMemo, memo } from 'react';
+         ~~~~~
+
+src/components/UI/Toast.tsx:1:8 - error TS6133: 'React' is declared but its value is never read.
+
+1 import React, { useEffect, memo } from 'react';
+         ~~~~~
+
+src/hooks/useLocalStorage.ts:2:20 - error TS6133: 'useEffect' is declared but its value is never read.
+
+2 import { useState, useEffect, useCallback, useRef } from 'react';
+                     ~~~~~~~~~
+
+src/hooks/useStatisticsAnalysis.ts:25:11 - error TS6196: 'ANOVAResult' is declared but never used.
+
+25 interface ANOVAResult {
+             ~~~~~~~~~~~
+
+src/hooks/useStatisticsAnalysis.ts:188:9 - error TS2322: Type '{ grr: number; repeatability: number; reproducibility: number; partVariation: number; totalVariation: number; status: "success" | "error" | "warning" | "info"; cv: number; q99: number; isReliableForStandard: boolean; varianceComponents: VarianceComponents | undefined; }' is not assignable to type 'GaugeData'.
+  Types of property 'varianceComponents' are incompatible.
+    Type 'VarianceComponents | undefined' is not assignable to type 'VarianceComponents'.
+      Type 'undefined' is not assignable to type 'VarianceComponents'.
+
+188         result: result
+            ~~~~~~
+
+  src/hooks/useStatisticsAnalysis.ts:135:5
+    135     result: GaugeData;
+            ~~~~~~
+    The expected type comes from property 'result' which is declared here on type '{ dataHash: string; result: GaugeData; }'
+
+src/hooks/useStatisticsAnalysis.ts:191:7 - error TS2322: Type '{ grr: number; repeatability: number; reproducibility: number; partVariation: number; totalVariation: number; status: "success" | "error" | "warning" | "info"; cv: number; q99: number; isReliableForStandard: boolean; varianceComponents: VarianceComponents | undefined; }' is not assignable to type 'GaugeData'.
+  Types of property 'varianceComponents' are incompatible.
+    Type 'VarianceComponents | undefined' is not assignable to type 'VarianceComponents'.
+      Type 'undefined' is not assignable to type 'VarianceComponents'.
+
+191       return result;
+          ~~~~~~
+
+src/services/AnalysisService.ts:126:17 - error TS6133: 'partKey' is declared but its value is never read.
+
+126     for (const [partKey, operators] of groupedData) {
+                    ~~~~~~~
+
+src/services/AnalysisService.ts:127:19 - error TS6133: 'operatorKey' is declared but its value is never read.
+
+127       for (const [operatorKey, measurements] of operators) {
+                      ~~~~~~~~~~~
+
+src/services/AnalysisService.ts:141:17 - error TS6133: 'partKey' is declared but its value is never read.
+
+141     for (const [partKey, operators] of groupedData) {
+                    ~~~~~~~
+
+src/services/AnalysisService.ts:142:19 - error TS6133: 'operatorKey' is declared but its value is never read.
+
+142       for (const [operatorKey, measurements] of operators) {
+                      ~~~~~~~~~~~
+
+src/services/AnalysisService.ts:173:17 - error TS6133: 'partKey' is declared but its value is never read.
+
+173     for (const [partKey, operatorMap] of groupedData) {
+                    ~~~~~~~
+
+src/services/AnalysisService.ts:182:11 - error TS6133: 'totalCount' is declared but its value is never read.
+
+182     const totalCount = statistics.totalCount;
+              ~~~~~~~~~~
+
+src/services/AnalysisService.ts:189:17 - error TS6133: 'partKey' is declared but its value is never read.
+
+189     for (const [partKey, operatorMap] of groupedData) {
+                    ~~~~~~~
+
+src/services/AnalysisService.ts:190:19 - error TS6133: 'operatorKey' is declared but its value is never read.
+
+190       for (const [operatorKey, measurements] of operatorMap) {
+                      ~~~~~~~~~~~
+
+src/services/AnalysisService.ts:212:21 - error TS6133: 'operatorKey' is declared but its value is never read.
+
+212         for (const [operatorKey, measurements] of groupedData.get(part)!) {
+                        ~~~~~~~~~~~
+
+src/services/AnalysisService.ts:230:19 - error TS6133: 'partKey' is declared but its value is never read.
+
+230       for (const [partKey, operatorMap] of groupedData) {
+                      ~~~~~~~
+
+src/services/AnalysisService.ts:256:25 - error TS6133: 'opKey' is declared but its value is never read.
+
+256             for (const [opKey, opMeasurements] of groupedData.get(part)!) {
+                            ~~~~~
+
+src/services/AnalysisService.ts:265:25 - error TS6133: 'partKey' is declared but its value is never read.
+
+265             for (const [partKey, operatorMap] of groupedData) {
+                            ~~~~~~~
+
+src/services/AnalysisService.ts:282:17 - error TS6133: 'partKey' is declared but its value is never read.
+
+282     for (const [partKey, operatorMap] of groupedData) {
+                    ~~~~~~~
+
+src/services/AnalysisService.ts:283:19 - error TS6133: 'operatorKey' is declared but its value is never read.
+
+283       for (const [operatorKey, measurements] of operatorMap) {
+                      ~~~~~~~~~~~
+
+src/services/AnalysisService.ts:315:11 - error TS6133: 'fOperator' is declared but its value is never read.
+
+315     const fOperator = equipmentMS > 0 ? operatorMS / equipmentMS : 0;
+              ~~~~~~~~~
+
+src/services/AnalysisService.ts:316:11 - error TS6133: 'fInteraction' is declared but its value is never read.
+
+316     const fInteraction = equipmentMS > 0 ? interactionMS / equipmentMS : 0;
+              ~~~~~~~~~~~~
+
+src/services/AnalysisService.ts:336:42 - error TS6133: 'df1' is declared but its value is never read.
+
+336   private calculatePValue(fStat: number, df1: number, df2: number): number {
+                                             ~~~
+
+src/services/AnalysisService.ts:377:11 - error TS6133: 'interactionVariation' is declared but its value is never read.
+
+377     const interactionVariation = 6.0 * Math.sqrt(Math.max(0, varianceComponents.interaction));
+              ~~~~~~~~~~~~~~~~~~~~
+
+src/services/AnalysisService.ts:397:102 - error TS2345: Argument of type 'Map<string, Map<string, number[]>> | undefined' is not assignable to parameter of type 'Map<string, Map<string, number[]>>'.
+  Type 'undefined' is not assignable to type 'Map<string, Map<string, number[]>>'.
+
+397     const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats, '기타', groupedData);
+                                                                                                         ~~~~~~~~~~~
+
+src/services/AnalysisService.ts:436:19 - error TS6133: 'partKey' is declared but its value is never read.
+
+436       for (const [partKey, operatorMap] of groupedData) {
+                      ~~~~~~~
+
+src/services/AnalysisService.ts:437:21 - error TS6133: 'operatorKey' is declared but its value is never read.
+
+437         for (const [operatorKey, measurements] of operatorMap) {
+                        ~~~~~~~~~~~
+
+src/services/AnalysisService.ts:620:19 - error TS6133: 'partKey' is declared but its value is never read.
+
+620       for (const [partKey, operatorMap] of groupedData) {
+                      ~~~~~~~
+
+src/services/AnalysisService.ts:637:7 - error TS2739: Type '{ status: "excellent" | "acceptable" | "marginal" | "unacceptable"; anova: ANOVAResult; varianceComponents: VarianceComponents; gageRRPercent: number; ... 10 more ...; isReliableForStandard: boolean; }' is missing the following properties from type 'GageRRResult': q95, q999
+
+637       return {
+          ~~~~~~
+
+src/services/ExportService.ts:159:40 - error TS2339: Property 'deltaPair' does not exist on type 'GageRRResult'.
+
+159       deltaPair: Number(webAppAnalysis.deltaPair) || 0,
+                                           ~~~~~~~~~
+
+src/services/ExportService.ts:214:70 - error TS2345: Argument of type 'readonly string[]' is not assignable to parameter of type 'string[]'.
+  The type 'readonly string[]' is 'readonly' and cannot be assigned to the mutable type 'string[]'.
+
+214     const operatorAnalysis = this.generateOperatorAnalysis(lapTimes, session.operators || []);
+                                                                         ~~~~~~~~~~~~~~~~~~~~~~~
+
+src/services/ExportService.ts:217:66 - error TS2345: Argument of type 'readonly string[]' is not assignable to parameter of type 'string[]'.
+  The type 'readonly string[]' is 'readonly' and cannot be assigned to the mutable type 'string[]'.
+
+217     const targetAnalysis = this.generateTargetAnalysis(lapTimes, session.targets || []);
+                                                                     ~~~~~~~~~~~~~~~~~~~~~
+
+src/types/Session.ts:1:25 - error TS2307: Cannot find module './Timer' or its corresponding type declarations.
+
+1 import { LapTime } from './Timer';
+                          ~~~~~~~~~
+
+
+Found 41 errors in 8 files.
+
+Errors  Files
+     8  src/App.tsx:1
+     1  src/components/UI/StatusBadge.tsx:1
+     1  src/components/UI/Toast.tsx:1
+     1  src/hooks/useLocalStorage.ts:2
+     3  src/hooks/useStatisticsAnalysis.ts:25
+    23  src/services/AnalysisService.ts:126
+     3  src/services/ExportService.ts:159
+     1  src/types/Session.ts:1
