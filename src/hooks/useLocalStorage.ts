@@ -174,11 +174,26 @@ export function useLocalStorage<T>(
       return;
     }
 
+    // 동시성 문제 방지: 낙관적 락
+    const timestamp = Date.now();
+    const lockKey = `${key}_lock`;
+    const existingLock = localStorage.getItem(lockKey);
+    
+    if (existingLock && (timestamp - parseInt(existingLock)) < 100) {
+      // 100ms 내 다른 업데이트가 있으면 건너뜀
+      return;
+    }
+    
+    localStorage.setItem(lockKey, timestamp.toString());
+
     setStoredValue(valueToStore);
     prevValueRef.current = valueToStore;
     
     // localStorage에 저장
     storageManager.write(key, valueToStore);
+    
+    // 락 해제
+    localStorage.removeItem(lockKey);
   }, [key, storedValue, storageManager]);
 
   return [storedValue, setValue];

@@ -75,7 +75,8 @@ class DataTransformer implements IDataTransformer {
             break;
         }
       } catch (error) {
-        console.warn('변환 실패, 원본값 사용:', error);
+        console.error('데이터 변환 실패:', error);
+        throw new Error(`데이터 변환 중 오류: ${error}`);
         transformedTime = lap.time;
       }
 
@@ -93,7 +94,8 @@ class DataGrouper {
 
     for (const lap of lapTimes) {
       if (!lap || !lap.target || !lap.operator || typeof lap.time !== 'number') {
-        console.warn('잘못된 데이터 건너뜀:', lap);
+        console.error('유효하지 않은 데이터:', lap);
+        throw new Error(`데이터 검증 실패: ${JSON.stringify(lap)}`);
         continue;
       }
 
@@ -584,7 +586,8 @@ export class AnalysisService {
   private static readonly config: IAnalysisConfig = {
     maxRecursionDepth: 100
   };
-  private static recursionCounter = 0;
+  // 스레드 안전성을 위해 심볼 기반 추적으로 변경
+  private static readonly recursionMap = new WeakMap<any, number>();
 
   private static readonly dataTransformer = AnalysisFactory.createDataTransformer();
   private static readonly statisticsCalculator = AnalysisFactory.createStatisticsCalculator();
@@ -592,13 +595,15 @@ export class AnalysisService {
   private static readonly gageRRCalculator = AnalysisFactory.createGageRRCalculator();
 
   static calculateGageRR(lapTimes: LapTime[], transformType: TransformType = 'none'): GageRRResult {
-    if (this.recursionCounter > this.config.maxRecursionDepth) {
+    const callId = { id: Math.random() };
+    const currentDepth = (this.recursionMap.get(callId) || 0) + 1;
+    
+    if (currentDepth > this.config.maxRecursionDepth) {
       console.error('재귀 깊이 초과');
-      this.recursionCounter = 0;
       throw new Error('Maximum recursion depth exceeded');
     }
 
-    this.recursionCounter++;
+    this.recursionMap.set(callId, currentDepth);
 
     try {
       if (lapTimes.length < 6) {
@@ -637,7 +642,7 @@ export class AnalysisService {
       // 분산 구성요소 계산
       const varianceComponents = this.calculateVarianceComponents(anova);
 
-      this.recursionCounter = 0;
+      this.recursionMap.delete(callId);
 
       return {
         ...metrics,
@@ -648,19 +653,23 @@ export class AnalysisService {
         q999: metrics.q999 || 0
       };
     } catch (error) {
-      this.recursionCounter = 0;
+      this.recursionMap.delete(callId);
       throw error;
     }
   }
 
   private static calculateVarianceComponents(anova: ANOVAResult): VarianceComponents {
-    const total = Math.max(0.0001, anova.partMS + anova.operatorMS + anova.interactionMS + anova.equipmentMS);
+    if (!anova) {
+      return { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0.0001 };
+    }
+    const total = Math.max(0.0001, 
+      (anova.partMS || 0) + (anova.operatorMS || 0) + (anova.interactionMS || 0) + (anova.equipmentMS || 0));
 
     return {
-      part: anova.partMS / total,
-      operator: anova.operatorMS / total,
-      interaction: anova.interactionMS / total,
-      equipment: anova.equipmentMS / total,
+      part: (anova.partMS || 0) / total,
+      operator: (anova.operatorMS || 0) / total,
+      interaction: (anova.interactionMS || 0) / total,
+      equipment: (anova.equipmentMS || 0) / total,
       total: total
     };
   }

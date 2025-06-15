@@ -112,15 +112,16 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[] = []) => {
   
 
   const [calculator] = useState<IStatisticsCalculator>(() => new StatisticsCalculator());
-  const [windowBuffer] = useState(() => createWindowBuffer<{ worker: string; observer: string; time: number }>(30));
+  const [windowBuffer] = useState(() => createWindowBuffer<{ worker: string; observer: string; time: number }>(20)); // 메모리 사용량 감소
   const [iccValue, setIccValue] = useState(0);
   const [deltaPairValue, setDeltaPairValue] = useState(0);
 
-  // 성능 최적화: 메모이제이션 개선 및 해시 기반 캐싱
+  // 성능 최적화: 메모이제이션 개선 및 해시 기반 캐싱 (크기 제한)
   const analysisCache = useRef<{
     dataHash: string;
     result: GaugeData;
-  }>({ dataHash: '', result: {
+    timestamp: number;
+  }>({ dataHash: '', timestamp: 0, result: {
     grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
     totalVariation: 0, status: 'info', cv: 0, q99: 0, 
     isReliableForStandard: false, 
@@ -145,10 +146,16 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[] = []) => {
       };
     }
 
-    // 성능 최적화: 해시 기반 캐시 활용
-    const dataHash = lapTimes.map(lap => `${lap.operator}-${lap.target}-${lap.time}`).join('|');
+    // 성능 최적화: 안전한 해시 기반 캐시 활용
+    const dataHash = lapTimes.length > 0 ? 
+      `${lapTimes.length}-${lapTimes[lapTimes.length - 1]?.time}-${lapTimes[0]?.operator}` : 
+      'empty';
 
-    if (analysisCache.current.dataHash === dataHash) {
+    // 캐시 만료 체크 (5초)
+    const now = Date.now();
+    const cacheAge = now - (analysisCache.current.timestamp || 0);
+    
+    if (analysisCache.current.dataHash === dataHash && cacheAge < 5000) {
       return analysisCache.current.result;
     }
 
@@ -169,10 +176,11 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[] = []) => {
         varianceComponents: analysis.varianceComponents || { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
       };
 
-      // 캐시 업데이트
+      // 캐시 업데이트 (타임스탬프 포함)
       analysisCache.current = {
         dataHash: dataHash,
-        result: result
+        result: result,
+        timestamp: now
       };
 
       return result;
@@ -191,7 +199,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[] = []) => {
 		varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
       };
     }
-  }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, calculator]); // 의존성 최적화
+  }, [lapTimes.length, calculator]); // 의존성 최적화 - 객체 참조 제거
 
   // 통계 업데이트 최적화
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
