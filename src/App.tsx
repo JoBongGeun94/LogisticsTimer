@@ -117,16 +117,12 @@ const useBackButtonPrevention = () => {
 
 // ==================== UI 컴포넌트들 (Single Responsibility) ====================
 
-// 토스트 컴포넌트 (메모리 누수 방지)
+// 토스트 컴포넌트
 const Toast = memo<ToastProps>(({ message, type, isVisible, onClose }) => {
   useEffect(() => {
     if (isVisible) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 3000);
-      return () => {
-        clearTimeout(timer);
-      };
+      const timer = setTimeout(onClose, 3000);
+      return () => clearTimeout(timer);
     }
   }, [isVisible, onClose]);
 
@@ -669,7 +665,7 @@ const EnhancedLogisticsTimer = () => {
     isVisible: false
   });
 
-  // NotificationService와 연결 (메모리 누수 방지)
+  // NotificationService와 연결
   useEffect(() => {
     const notificationService = NotificationService.getInstance();
     const unsubscribe = notificationService.subscribe((message: string, type: string) => {
@@ -680,15 +676,26 @@ const EnhancedLogisticsTimer = () => {
       });
     });
 
-    return () => {
-      unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
-  // 토스트 메시지 표시 함수 (간소화)
+  // 토스트 메시지 표시 함수
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info') => {
-    // NotificationService를 통해 일관된 알림 처리
-    NotificationService.getInstance()[type](message);
+    const notificationService = NotificationService.getInstance();
+    switch (type) {
+      case 'success':
+        notificationService.success(message);
+        break;
+      case 'error':
+        notificationService.error(message);
+        break;
+      case 'warning':
+        notificationService.warning(message);
+        break;
+      case 'info':
+        notificationService.info(message);
+        break;
+    }
   }, []);
 
   // 필터 상태 (요구사항 8번)
@@ -762,20 +769,11 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [isDark]);
 
-  // 키보드 이벤트 (모달 상태 완전 차단)
+  // 키보드 이벤트
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // 입력 필드에서는 키보드 이벤트 무시
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
-      // 모든 모달 및 오버레이 상태에서 키보드 이벤트 차단
-      const isModalOpen = showNewSessionModal || selectedSessionHistory || showLanding || 
-                         showDetailedAnalysis || statisticsAnalysis.showRetakeModal;
-      
-      if (isModalOpen) return;
-
-      // 세션이 없으면 타이머 관련 키 비활성화
-      if (!currentSession && ['Space', 'Enter', 'KeyR'].includes(e.code)) return;
+      if (showNewSessionModal || selectedSessionHistory || showLanding || showDetailedAnalysis) return;
 
       switch (e.code) {
         case 'Space':
@@ -798,15 +796,8 @@ const EnhancedLogisticsTimer = () => {
     };
 
     window.addEventListener('keydown', handleKeyPress);
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-    };
-  }, [
-    isRunning, currentSession, currentOperator, currentTarget, 
-    showNewSessionModal, selectedSessionHistory, showLanding, 
-    showDetailedAnalysis, statisticsAnalysis.showRetakeModal,
-    toggleTimer, recordLap, stopTimer, resetTimer
-  ]);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
 
   // 리셋 함수 (기존 로직과 통합)
   const resetTimer = useCallback(() => {
@@ -852,15 +843,13 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [createSessionFromManager, sessionName, workType, operators, targets]);
 
-  // 세션 삭제 함수 (상태 동기화 개선)
+  // 세션 삭제 함수 (요구사항 8번)
   const handleDeleteSession = useCallback((sessionId: string) => {
     deleteSession(sessionId);
     setAllLapTimes(prev => prev.filter(lap => lap.sessionId !== sessionId));
 
     if (currentSession?.id === sessionId) {
       setLapTimes([]);
-      // 필터 상태도 초기화
-      setFilterOptions({ operator: '', target: '' });
     }
   }, [deleteSession, currentSession, setAllLapTimes]);
 
@@ -1190,10 +1179,7 @@ const EnhancedLogisticsTimer = () => {
               />
               <MeasurementCard
                 title="평균 시간"
-                value={lapTimes.length > 0 ? 
-                  ExportService.formatTime(lapTimes.reduce((sum, lap) => sum + (lap.time || 0), 0) / lapTimes.length) : 
-                  '00:00.000'
-                }
+                value={ExportService.formatTime(lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)}
                 icon={Clock}
                 status="success"
                 theme={theme}
@@ -1202,13 +1188,12 @@ const EnhancedLogisticsTimer = () => {
               />
               <MeasurementCard
                 title="변동계수"
-                value={statisticsAnalysis.gaugeData?.cv !== undefined && !isNaN(statisticsAnalysis.gaugeData.cv) ? 
+                value={statisticsAnalysis.gaugeData ? 
                   `${statisticsAnalysis.gaugeData.cv.toFixed(1)}%` : '0.0%'
                 }
                 icon={Activity}
-                status={statisticsAnalysis.gaugeData?.cv !== undefined && !isNaN(statisticsAnalysis.gaugeData.cv) ? 
-                       (statisticsAnalysis.gaugeData.cv <= 12 ? 'success' : 
-                        statisticsAnalysis.gaugeData.cv <= 20 ? 'warning' : 'error') : 'error'}
+                status={statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.cv <= 12 ? 'success' : 
+                       statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.cv <= 20 ? 'warning' : 'error'}
                 theme={theme}
                 size="sm"
                 isDark={isDark}
@@ -1226,33 +1211,27 @@ const EnhancedLogisticsTimer = () => {
               <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
                 <MeasurementCard
                   title="Gage R&R"
-                  value={statisticsAnalysis.gaugeData?.grr !== undefined ? 
-                    `${statisticsAnalysis.gaugeData.grr.toFixed(1)}%` : '0.0%'
-                  }
+                  value={`${statisticsAnalysis.gaugeData.grr.toFixed(1)}%`}
                   icon={BarChart3}
-                  status={statisticsAnalysis.statisticsStatus?.grr || 'error'}
+                  status={statisticsAnalysis.statisticsStatus.grr}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
                 <MeasurementCard
                   title="ICC (2,1)"
-                  value={!isNaN(statisticsAnalysis.iccValue) ? 
-                    statisticsAnalysis.iccValue.toFixed(2) : '0.00'
-                  }
+                  value={statisticsAnalysis.iccValue.toFixed(2)}
                   icon={Target}
-                  status={statisticsAnalysis.statisticsStatus?.icc || 'error'}
+                  status={statisticsAnalysis.statisticsStatus.icc}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
                 <MeasurementCard
                   title="ΔPair"
-                  value={!isNaN(statisticsAnalysis.deltaPairValue) ? 
-                    `${statisticsAnalysis.deltaPairValue.toFixed(3)}s` : '0.000s'
-                  }
+                  value={`${statisticsAnalysis.deltaPairValue.toFixed(3)}s`}
                   icon={Calculator}
-                  status={statisticsAnalysis.statisticsStatus?.deltaPair || 'error'}
+                  status={statisticsAnalysis.statisticsStatus.deltaPair}
                   theme={theme}
                   size="sm"
                   isDark={isDark}
