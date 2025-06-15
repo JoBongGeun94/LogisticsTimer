@@ -91,15 +91,21 @@ export const useSessionManager = ({ showToast }: UseSessionManagerProps) => {
   }, [currentSession, showToast, setSessions]);
 
   const switchToSession = useCallback((session: SessionData) => {
-    // 세션 변경 이벤트 발생 (통계 캐시 무효화)
+    // React 18+ 배치 업데이트를 위한 동기화 처리
+    const updateBatch = () => {
+      setCurrentSession(session);
+      setCurrentOperator(session.operators[0] || '');
+      setCurrentTarget(session.targets[0] || '');
+    };
+
+    // 세션 변경 이벤트 발생 (통계 분석 훅과 동기화)
     const sessionChangeEvent = new CustomEvent('sessionChanged', {
       detail: { sessionId: session.id, sessionName: session.name }
     });
+
+    updateBatch();
     window.dispatchEvent(sessionChangeEvent);
 
-    setCurrentSession(session);
-    setCurrentOperator(session.operators[0]);
-    setCurrentTarget(session.targets[0]);
     showToast(`세션 '${session.name}'으로 전환되었습니다.`, 'success');
   }, [showToast]);
 

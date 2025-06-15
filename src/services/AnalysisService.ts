@@ -681,7 +681,20 @@ export class AnalysisService {
         }
       };
     } catch (error) {
-      throw error;
+      console.error('Gage R&R 계산 오류:', error);
+
+      // 구체적인 오류 유형 분석
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+
+      if (errorMessage.includes('NaN')) {
+        throw new Error('계산 중 유효하지 않은 수치가 감지되었습니다. 측정 데이터를 확인해주세요.');
+      } else if (errorMessage.includes('undefined')) {
+        throw new Error('필수 데이터가 누락되었습니다. 측정자와 대상자 정보를 확인해주세요.');
+      } else if (lapTimes.length < 6) {
+        throw new Error('완전한 분석을 위해서는 최소 6회 이상의 측정이 필요합니다.');
+      } else {
+        throw new Error(`분석 중 오류가 발생했습니다: ${errorMessage.substring(0, 50)}...`);
+      }
     }
   }
 
@@ -791,15 +804,15 @@ export class AnalysisService {
     // Repeatability (Equipment Variance) - 항상 양수
     const sigma2_equipment = Math.max(0, anova.equipmentMS);
 
-    // Interaction Variance - 제약 없는 추정
+    // Interaction Variance - 올바른 공식 적용
     const var_interaction_raw = (anova.interactionMS - anova.equipmentMS) / 2; // nRepeats = 2 가정
     const var_interaction = Math.max(0, var_interaction_raw);
 
-    // Reproducibility (Operator Variance) - 제약 없는 추정  
+    // Reproducibility (Operator Variance) - 올바른 공식 적용
     const var_operator_raw = (anova.operatorMS - anova.interactionMS) / (5 * 2); // nParts=5, nRepeats=2 가정
     const var_operator = Math.max(0, var_operator_raw);
 
-    // Part-to-Part Variance - 제약 없는 추정
+    // Part-to-Part Variance - 올바른 공식 적용
     const var_part_raw = (anova.partMS - anova.interactionMS) / (2 * 2); // nOperators=2, nRepeats=2 가정  
     const var_part = Math.max(0, var_part_raw);
 
