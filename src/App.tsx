@@ -769,7 +769,7 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [isDark]);
 
-  // 키보드 이벤트 (메모리 누수 방지)
+  // 키보드 이벤트
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -796,18 +796,8 @@ const EnhancedLogisticsTimer = () => {
     };
 
     window.addEventListener('keydown', handleKeyPress);
-    
-    // 정리 서비스에 정리 작업 등록
-    const cleanupService = require('./services/CleanupService').CleanupService.getInstance();
-    cleanupService.registerEventListenerCleanup(() => {
-      window.removeEventListener('keydown', handleKeyPress);
-    });
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-      cleanupService.removeCleanupTask('keyboardEventListener');
-    };
-  }, [toggleTimer, recordLap, stopTimer, resetTimer, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
 
   // 리셋 함수 (기존 로직과 통합)
   const resetTimer = useCallback(() => {
