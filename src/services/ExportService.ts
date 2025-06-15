@@ -1,4 +1,5 @@
 import { LapTime, SessionData, GageRRResult } from '../types';
+import { AnalysisService } from './AnalysisService';
 
 /**
  * 포맷터 인터페이스 (Interface Segregation Principle)
@@ -63,13 +64,18 @@ class DataFormatter implements IDataFormatter {
     const variance = times.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / (times.length - 1);
     const stdDev = Math.sqrt(variance);
 
+    // 웹앱과 동일한 변동계수 계산 (AnalysisService와 일치)
+    const webAppAnalysis = AnalysisService.calculateGageRR(lapTimes);
+    const webAppCV = webAppAnalysis.cv || 0;
+
     return {
       count: times.length,
       mean: mean,
       stdDev: stdDev,
       min: Math.min(...times),
       max: Math.max(...times),
-      range: Math.max(...times) - Math.min(...times)
+      range: Math.max(...times) - Math.min(...times),
+      cv: webAppCV  // 웹앱 기준 변동계수 사용
     };
   }
 
@@ -98,7 +104,7 @@ class DataFormatter implements IDataFormatter {
       ['최소 시간', this.safeFormat(stats.min / 1000, 3), '초'],
       ['최대 시간', this.safeFormat(stats.max / 1000, 3), '초'],
       ['시간 범위', this.safeFormat(stats.range / 1000, 3), '초'],
-      ['변동계수 (CV)', this.safeFormat((stats.stdDev / stats.mean) * 100, 1), '%'],
+      ['변동계수 (CV)', this.safeFormat(stats.cv, 1), '%'],
       [''],
     ];
 
@@ -135,24 +141,23 @@ class DataFormatter implements IDataFormatter {
       return [['오류', '세션 또는 측정 데이터를 불러올 수 없습니다']];
     }
 
-    // 안전한 분석 데이터 생성
+    // 웹앱과 동일한 분석 데이터 생성 (AnalysisService 직접 호출로 일치성 보장)
+    const webAppAnalysis = AnalysisService.calculateGageRR(lapTimes);
+    
     const safeAnalysis = {
-      status: analysis.status || 'unacceptable',
-      gageRRPercent: Number(analysis.gageRRPercent) || 0,
-      icc: Number(analysis.icc) || 0,
-      cv: Number(analysis.cv) || 0,
-      q95: Number(analysis.q95) || 0,
-      q99: Number(analysis.q99) || 0,
-      q999: Number(analysis.q999) || 0,
-      repeatability: Number(analysis.repeatability) || 0,
-      reproducibility: Number(analysis.reproducibility) || 0,
-      partVariation: Number(analysis.partVariation) || 0,
-      totalVariation: Number(analysis.totalVariation) || 0,
-      deltaPair: Number(analysis.deltaPair) || 0,
-      isReliableForStandard: Boolean(analysis.isReliableForStandard),
-      ndc: Number(analysis.ndc) || 0,
-      ptRatio: Number(analysis.ptRatio) || 0,
-      cpk: Number(analysis.cpk) || 0
+      status: webAppAnalysis.status || 'unacceptable',
+      gageRRPercent: Number(webAppAnalysis.gageRRPercent) || 0,
+      icc: Number(webAppAnalysis.icc) || 0,
+      cv: Number(webAppAnalysis.cv) || 0,
+      q95: Number(webAppAnalysis.q95) || 0,
+      q99: Number(webAppAnalysis.q99) || 0,
+      q999: Number(webAppAnalysis.q999) || 0,
+      repeatability: Number(webAppAnalysis.repeatability) || 0,
+      reproducibility: Number(webAppAnalysis.reproducibility) || 0,
+      partVariation: Number(webAppAnalysis.partVariation) || 0,
+      totalVariation: Number(webAppAnalysis.totalVariation) || 0,
+      deltaPair: Number(webAppAnalysis.deltaPair) || 0,
+      isReliableForStandard: Boolean(webAppAnalysis.isReliableForStandard)
     };
 
     // 보고서 헤더
@@ -202,9 +207,6 @@ class DataFormatter implements IDataFormatter {
       ['시간 예측', 'Q95 (95% 달성시간)', this.safeFormat(safeAnalysis.q95 / 1000, 2), '초', '95% 확률 달성 시간'],
       ['', 'Q99 (99% 달성시간)', this.safeFormat(safeAnalysis.q99 / 1000, 2), '초', '표준시간 설정 기준'],
       ['', 'Q99.9 (99.9% 달성시간)', this.safeFormat(safeAnalysis.q999 / 1000, 2), '초', '최대 허용시간'],
-      ['추가 지표', 'NDC (구별 범주 수)', this.safeFormat(safeAnalysis.ndc, 0), '개', '측정시스템 구별 능력'],
-      ['', 'P/T 비율', this.safeFormat(safeAnalysis.ptRatio, 3), '', '정밀도 대 공차 비율'],
-      ['', 'Cpk', this.safeFormat(safeAnalysis.cpk, 2), '', '공정 능력 지수'],
       [''],
     ];
 
@@ -214,46 +216,14 @@ class DataFormatter implements IDataFormatter {
     // 대상자별 성능 분석
     const targetAnalysis = this.generateTargetAnalysis(lapTimes, session.targets || []);
 
-    // 권장사항
-    const recommendations = [
-      ['=== 권장사항 및 조치사항 ==='],
-      ['우선순위', '조치사항', '담당', '기한', '예상 효과'],
-    ];
-
-    if (safeAnalysis.status === 'excellent') {
-      recommendations.push(
-        ['1', '현행 절차 유지', '품질관리팀', '지속', '우수한 상태 유지'],
-        ['2', '분기별 재평가', '측정팀', '3개월', '지속적 품질 관리'],
-        ['3', '우수사례 전파', '교육팀', '1개월', '조직 전체 개선']
-      );
-    } else if (safeAnalysis.status === 'acceptable') {
-      recommendations.push(
-        ['1', '측정자 재교육', '교육팀', '1주', 'ICC 향상'],
-        ['2', '장비 교정', '기술팀', '2주', '반복성 개선'],
-        ['3', '월별 모니터링', '품질팀', '1개월', '성능 추적']
-      );
-    } else if (safeAnalysis.status === 'marginal') {
-      recommendations.push(
-        ['1', '긴급 교육 실시', '교육팀', '3일', '기본 역량 재구축'],
-        ['2', '장비 전면 점검', '기술팀', '1주', '하드웨어 신뢰성'],
-        ['3', '주간 재평가', '측정팀', '매주', '개선 효과 확인']
-      );
-    } else {
-      recommendations.push(
-        ['1', '측정 중단', '관리팀', '즉시', '부정확한 데이터 방지'],
-        ['2', '전면 재교육', '교육팀', '1주', '측정자 역량 재구축'],
-        ['3', '장비 교체 검토', '기술팀', '2주', '근본적 개선'],
-        ['4', '일간 재평가', '측정팀', '매일', '빠른 개선 확인']
-      );
-    }
+    
 
     return [
       ...reportHeader,
       ...coreResults,
       ...detailedMetrics,
       ...operatorAnalysis,
-      ...targetAnalysis,
-      ...recommendations
+      ...targetAnalysis
     ];
   }
 
