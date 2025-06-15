@@ -17,6 +17,7 @@ import {
   FilterOptions
 } from './types';
 import { THEME_COLORS, STATUS_COLORS } from './constants/themes';
+import { WORK_TYPES } from './constants/workTypes';
 import { ValidationService } from './services/ValidationService';
 import { AnalysisService } from './services/AnalysisService';
 import { ExportService } from './services/ExportService';
