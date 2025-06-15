@@ -16,6 +16,7 @@ import {
   ToastProps,
   FilterOptions
 } from './types';
+import { HelpModal } from './components/UI/Modal/HelpModal';
 import { THEME_COLORS, STATUS_COLORS } from './constants/themes';
 import { WORK_TYPES } from './constants/workTypes';
 import { ValidationService } from './services/ValidationService';
@@ -597,6 +598,9 @@ const EnhancedLogisticsTimer = () => {
 
   // 🔧 상세분석 모달 상태 (최소 변경 - 새로 추가)
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
+  
+  // 도움말 모달 상태
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // 토스트 상태
   const [toast, setToast] = useState<{
@@ -704,7 +708,28 @@ const EnhancedLogisticsTimer = () => {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (showNewSessionModal || selectedSessionHistory || showLanding || showDetailedAnalysis) return;
+      if (showNewSessionModal || selectedSessionHistory || showLanding || showDetailedAnalysis || showHelpModal) return;
+
+      // F1 키 (도움말)
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setShowHelpModal(true);
+        return;
+      }
+
+      // Ctrl+E (데이터 내보내기)
+      if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault();
+        downloadMeasurementData();
+        return;
+      }
+
+      // Ctrl+H (소개 페이지)
+      if (e.ctrlKey && e.key === 'h') {
+        e.preventDefault();
+        setShowLanding(true);
+        return;
+      }
 
       switch (e.code) {
         case 'Space':
@@ -728,7 +753,7 @@ const EnhancedLogisticsTimer = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis, toggleTimer, recordLap, stopTimer, resetTimer]);
+  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis, showHelpModal, toggleTimer, recordLap, stopTimer, resetTimer, downloadMeasurementData]);
 
   // 개별 측정 기록 삭제
   const deleteLapTime = useCallback((lapId: number) => {
@@ -915,6 +940,12 @@ const EnhancedLogisticsTimer = () => {
         theme={theme}
         isDark={isDark}
         statisticsAnalysis={statisticsAnalysis}
+      />
+
+      {/* 도움말 모달 */}
+      <HelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
       />
 
       {/* 헤더 */}
