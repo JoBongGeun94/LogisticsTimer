@@ -759,21 +759,31 @@ const EnhancedLogisticsTimer = () => {
     resetAllSessions
   } = useSessionManager({ showToast });
 
-  // 랩타임 기록 콜백
+  // 랩타임 기록 콜백 (레이스 컨디션 방지)
   const handleLapRecorded = useCallback((newLap: LapTime) => {
+    // 🔧 안전한 검증
+    if (!newLap || typeof newLap.time !== 'number' || newLap.time <= 0) {
+      console.warn('잘못된 랩타임 데이터:', newLap);
+      return;
+    }
+
     // 🔧 원자적 상태 업데이트 - 배치 처리로 순서 보장
-    const updatedLaps = [...lapTimes, newLap];
-    
-    // React 18의 자동 배치 활용
     startTransition(() => {
-      setLapTimes(updatedLaps);
-      setAllLapTimes(prev => [...prev, newLap]);
-      updateSessionLapTimes(updatedLaps);
+      setLapTimes(prev => {
+        const updated = [...prev, newLap];
+        // 통계 업데이트를 같은 배치에서 처리
+        statisticsAnalysis.updateStatistics(newLap, updated);
+        return updated;
+      });
       
-      // 통계 업데이트
-      statisticsAnalysis.updateStatistics(newLap, updatedLaps);
+      setAllLapTimes(prev => [...prev, newLap]);
+      
+      // 세션 업데이트는 별도 처리
+      if (currentSession) {
+        updateSessionLapTimes([...lapTimes, newLap]);
+      }
     });
-  }, [lapTimes, setAllLapTimes, updateSessionLapTimes, statisticsAnalysis]);
+  }, [lapTimes, setAllLapTimes, updateSessionLapTimes, statisticsAnalysis, currentSession]);
 
   // 타이머 로직 훅
   const {
@@ -803,10 +813,12 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [isDark]);
 
-  // 키보드 이벤트 (최적화된 의존성 배열)
+  // 키보드 이벤트 (메모리 누수 방지 강화)
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      // 안전한 타겟 확인
+      const target = e.target as Element;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
       if (showNewSessionModal || selectedSessionHistory || showLanding || showDetailedAnalysis) return;
 
       switch (e.code) {
@@ -831,16 +843,21 @@ const EnhancedLogisticsTimer = () => {
 
     // 🔧 AbortController를 사용한 안전한 이벤트 관리
     const controller = new AbortController();
-    window.addEventListener('keydown', handleKeyPress, { 
+    const eventOptions = { 
       passive: false, 
-      signal: controller.signal 
-    });
+      signal: controller.signal,
+      capture: false
+    };
+    
+    window.addEventListener('keydown', handleKeyPress, eventOptions);
     
     return () => {
       controller.abort();
+      // 추가 정리 작업
+      window.removeEventListener('keydown', handleKeyPress);
     };
   }, [
-    // 🔧 최소한의 의존성만 포함
+    // 🔧 안전한 의존성 배열
     showNewSessionModal, 
     selectedSessionHistory, 
     showLanding, 
@@ -975,9 +992,12 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [lapTimes, currentSession, showToast]);
 
-  // 🔧 필터링된 측정 기록 (동기화 개선)
+  // 🔧 필터링된 측정 기록 (안전한 배열 접근)
   const filteredLapTimes = useMemo(() => {
+    if (!lapTimes || lapTimes.length === 0) return [];
+    
     const filtered = lapTimes.filter(lap => {
+      if (!lap || !lap.operator || !lap.target) return false;
       return (!filterOptions.operator || lap.operator === filterOptions.operator) &&
         (!filterOptions.target || lap.target === filterOptions.target);
     });

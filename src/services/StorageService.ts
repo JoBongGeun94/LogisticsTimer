@@ -93,7 +93,7 @@ class CachedLocalStorageOperations implements ICachedStorageOperations {
       }
 
       const serializedData = JSON.stringify(data);
-      
+
       // 🔧 로컬스토리지 용량 검사 및 예외 처리
       try {
         localStorage.setItem(key, serializedData);
@@ -438,6 +438,33 @@ export class StorageService {
       }
     } catch (error) {
       console.warn('만료된 캐시 정리 실패:', error);
+    }
+  }
+
+  static getItem<T>(key: string, defaultValue: T): T {
+    try {
+      const item = localStorage.getItem(key);
+      if (!item || item === 'undefined' || item === 'null') {
+        return defaultValue;
+      }
+
+      const parsed = JSON.parse(item);
+
+      // 추가 유효성 검증
+      if (parsed === null || parsed === undefined) {
+        return defaultValue;
+      }
+
+      return parsed;
+    } catch (error) {
+      console.warn(`LocalStorage 읽기 실패: ${key}`, error);
+      // 손상된 데이터 제거
+      try {
+        localStorage.removeItem(key);
+      } catch (removeError) {
+        console.warn(`손상된 데이터 제거 실패: ${key}`, removeError);
+      }
+      return defaultValue;
     }
   }
 }

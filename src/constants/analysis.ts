@@ -21,13 +21,6 @@ export const STATISTICAL_CONFIDENCE = {
 } as const;
 
 // 임계값 설정 근거: MSA-4 표준 및 물류작업 특성 연구 기반
-// 정규분포 분위수 상수
-export const NORMAL_DISTRIBUTION = {
-  Q95: 1.645,   // 95% 분위수
-  Q99: 2.326,   // 99% 분위수
-  Q999: 3.090   // 99.9% 분위수
-};
-
 export const LOGISTICS_WORK_THRESHOLDS = {
   // ICC (급내상관계수) 임계값
   ICC_EXCELLENT: 0.8,
@@ -50,13 +43,6 @@ export const LOGISTICS_WORK_THRESHOLDS = {
     '저장관리팀': 1.1,
     '포장관리팀': 1.2
   } as const
-} as const;
-
-// 정규분포 분위수 상수
-export const NORMAL_DISTRIBUTION = {
-  Q95: 1.645,   // 95% 분위수
-  Q99: 2.326,   // 99% 분위수
-  Q999: 3.090   // 99.9% 분위수
 } as const;
 
 // F-분포 임계값 (개선된 근사)
