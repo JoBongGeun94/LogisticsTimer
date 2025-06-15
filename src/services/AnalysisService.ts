@@ -546,9 +546,9 @@ export class AnalysisService {
         throw new Error('분석을 위해서는 최소 3개의 측정값이 필요합니다.');
       }
 
-      // 6개 미만일 때 즉시 기본 분석 제공 (변동계수 포함)
+      // 6개 미만일 때 기본 분석 제공
       if (lapTimes.length < 6) {
-        console.log('📊 기본 분석 모드: 변동계수 및 기본 통계 제공');
+        console.warn('⚠️ 완전한 Gage R&R 분석을 위해서는 6개 이상의 측정값이 권장됩니다. 기본 분석을 제공합니다.');
         return this.calculateBasicAnalysis(lapTimes);
       }
 
@@ -686,71 +686,28 @@ export class AnalysisService {
   }
 
   /**
-   * 기본 분석 메서드 (6개 미만 데이터용) - 실시간 변동계수 계산
+   * 기본 분석 메서드 (6개 미만 데이터용)
    */
   private static calculateBasicAnalysis(lapTimes: LapTime[]): GageRRResult {
     const validLapTimes = lapTimes.filter(lap => 
       lap && typeof lap.time === 'number' && lap.time > 0 && lap.operator && lap.target
     );
 
-    if (validLapTimes.length < 1) {
-      throw new Error('유효한 측정값이 없습니다.');
+    if (validLapTimes.length < 3) {
+      throw new Error('유효한 측정값이 부족합니다.');
     }
 
-    // 단일 측정값 처리
-    if (validLapTimes.length === 1) {
-      const singleTime = validLapTimes[0].time;
-      return {
-        gageRRPercent: 0,
-        repeatability: 0,
-        reproducibility: 0,
-        partVariation: 0,
-        totalVariation: 0,
-        icc: 0,
-        cv: 0, // 단일 값은 변동계수 0
-        q95: singleTime,
-        q99: singleTime,
-        q999: singleTime,
-        isReliableForStandard: false,
-        status: 'marginal',
-        anova: {
-          partSS: 0, operatorSS: 0, interactionSS: 0, equipmentSS: 0,
-          totalSS: 0, partMS: 0, operatorMS: 0, interactionMS: 0,
-          equipmentMS: 0, fStatistic: 0, pValue: 1.0
-        },
-        varianceComponents: {
-          part: 0, operator: 0, interaction: 0, equipment: 0, total: 0
-        },
-        dataQuality: {
-          originalCount: lapTimes.length,
-          validCount: 1,
-          outliersDetected: 0,
-          isNormalDistribution: true,
-          normalityTest: null,
-          outlierMethod: 'IQR',
-          preprocessingApplied: false
-        }
-      };
-    }
-
-    // 실시간 기본 통계 계산 (2개 이상)
+    // 기본 통계 계산
     const times = validLapTimes.map(lap => lap.time);
     const mean = times.reduce((sum, time) => sum + time, 0) / times.length;
-    
-    // 표본 분산 계산 (n-1로 나누기)
-    const variance = times.length > 1 ? 
-      times.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / (times.length - 1) : 0;
+    const variance = times.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / (times.length - 1);
     const std = Math.sqrt(variance);
-    
-    // 변동계수 즉시 계산 (실시간 반영)
     const cv = mean > 0 ? (std / mean) * 100 : 0;
-    console.log(`📊 실시간 변동계수: ${cv.toFixed(1)}% (평균: ${mean.toFixed(0)}ms, 표준편차: ${std.toFixed(1)}ms)`);
 
-    // 보수적 분위수 계산 (안전 마진 포함)
-    const safetyFactor = 1.2; // 20% 안전 마진
-    const q95 = mean + 1.645 * std * safetyFactor;
-    const q99 = mean + 2.576 * std * safetyFactor;
-    const q999 = mean + 3.291 * std * safetyFactor;
+    // 기본 분위수 계산
+    const q95 = mean + 1.645 * std;
+    const q99 = mean + 2.576 * std;
+    const q999 = mean + 3.291 * std;
 
     return {
       gageRRPercent: 0,

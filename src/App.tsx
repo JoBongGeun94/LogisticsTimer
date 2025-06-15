@@ -933,44 +933,27 @@ const EnhancedLogisticsTimer = () => {
     });
   }, [lapTimes, filterOptions]);
 
-  // Gage R&R 분석 (향상된 오류 처리 및 사용자 피드백)
+  // Gage R&R 분석 (최적화된 오류 처리)
   const analysis = useMemo(() => {
-    // 기본 데이터 유효성 검증
-    if (lapTimes.length === 0) return null;
-    
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
-    if (!validation.isValid && lapTimes.length < 6) {
-      // 6개 미만일 때는 기본 분석만 시도
-      try {
-        return AnalysisService.calculateGageRR(lapTimes);
-      } catch (error) {
-        console.warn('📊 기본 분석 실패:', error);
-        return null;
-      }
-    }
-    
     if (!validation.isValid) return null;
 
     try {
-      const result = AnalysisService.calculateGageRR(lapTimes);
-      console.log(`✅ 분석 성공: Gage R&R ${result.gageRRPercent.toFixed(1)}%, CV ${result.cv.toFixed(1)}%`);
-      return result;
+      return AnalysisService.calculateGageRR(lapTimes);
     } catch (error) {
       console.error('🚨 분석 오류 상세:', error);
       
-      // 구체적이고 사용자 친화적인 오류 메시지
+      // 구체적인 오류 메시지 제공
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
       
-      if (errorMessage.includes('측정자') || errorMessage.includes('operator')) {
-        showToast(`측정자가 부족합니다. 최소 2명 이상 필요합니다.`, 'warning');
-      } else if (errorMessage.includes('대상자') || errorMessage.includes('target')) {
-        showToast(`대상자가 부족합니다. 최소 5개 이상 필요합니다.`, 'warning');
-      } else if (errorMessage.includes('측정값') || errorMessage.includes('measurement')) {
-        showToast(`측정 데이터에 문제가 있습니다. 유효한 값을 확인해주세요.`, 'error');
-      } else if (errorMessage.includes('유효한 측정값이 부족')) {
-        showToast(`측정 횟수가 부족합니다. 더 많은 측정을 진행해주세요.`, 'info');
+      if (errorMessage.includes('측정자')) {
+        showToast(`측정자 설정 문제: ${errorMessage}`, 'warning');
+      } else if (errorMessage.includes('대상자')) {
+        showToast(`대상자 설정 문제: ${errorMessage}`, 'warning');
+      } else if (errorMessage.includes('측정값')) {
+        showToast(`측정 데이터 문제: ${errorMessage}`, 'error');
       } else {
-        showToast(`분석 중 오류: ${errorMessage.substring(0, 50)}...`, 'error');
+        showToast('분석 중 오류가 발생했습니다. 데이터를 확인해주세요.', 'error');
       }
       
       return null;
@@ -1248,17 +1231,16 @@ const EnhancedLogisticsTimer = () => {
               />
             </div>
 
-            {/* 고급 통계 - 실시간 업데이트 최적화 (2개 이상부터 표시) */}
-            {lapTimes.length >= 2 && (
+            {/* 고급 통계 - 조건부 표시 (완화된 조건) */}
+            {lapTimes.length >= 3 && (
               <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
                 <MeasurementCard
                   title="Gage R&R"
-                  value={lapTimes.length >= 6 && statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.grr > 0 ? 
-                    `${statisticsAnalysis.gaugeData.grr.toFixed(1)}%` : 
-                    lapTimes.length >= 3 ? '분석중' : 'N/A'
+                  value={statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.grr > 0 ? 
+                    `${statisticsAnalysis.gaugeData.grr.toFixed(1)}%` : 'N/A'
                   }
                   icon={BarChart3}
-                  status={lapTimes.length >= 6 && statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.grr > 0 ? 
+                  status={statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.grr > 0 ? 
                     statisticsAnalysis.statisticsStatus.grr : 'info'
                   }
                   theme={theme}
@@ -1267,12 +1249,11 @@ const EnhancedLogisticsTimer = () => {
                 />
                 <MeasurementCard
                   title="ICC (2,1)"
-                  value={lapTimes.length >= 6 && statisticsAnalysis.iccValue > 0 ? 
-                    statisticsAnalysis.iccValue.toFixed(3) : 
-                    lapTimes.length >= 3 ? '계산중' : 'N/A'
+                  value={statisticsAnalysis.iccValue > 0 ? 
+                    statisticsAnalysis.iccValue.toFixed(2) : 'N/A'
                   }
                   icon={Target}
-                  status={lapTimes.length >= 6 && statisticsAnalysis.iccValue > 0 ? 
+                  status={statisticsAnalysis.iccValue > 0 ? 
                     statisticsAnalysis.statisticsStatus.icc : 'info'
                   }
                   theme={theme}
@@ -1281,11 +1262,11 @@ const EnhancedLogisticsTimer = () => {
                 />
                 <MeasurementCard
                   title="ΔPair"
-                  value={lapTimes.length >= 2 && statisticsAnalysis.deltaPairValue >= 0 ? 
+                  value={statisticsAnalysis.deltaPairValue > 0 ? 
                     `${statisticsAnalysis.deltaPairValue.toFixed(3)}s` : 'N/A'
                   }
                   icon={Calculator}
-                  status={lapTimes.length >= 2 && statisticsAnalysis.deltaPairValue >= 0 ? 
+                  status={statisticsAnalysis.deltaPairValue > 0 ? 
                     statisticsAnalysis.statisticsStatus.deltaPair : 'info'
                   }
                   theme={theme}
