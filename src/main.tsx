@@ -4,8 +4,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// 캐시 무효화: 2025-06-04 07:13 KST
-// 빌드 ID: CACHE_CLEAR_V2_0_1
+// 전역 캐시 버전 설정
+const CACHE_VERSION = 'LOGISTICS_TIMER_CACHE_CLEAR_V2_0_1';
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -96,6 +96,7 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
+
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
