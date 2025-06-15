@@ -36,7 +36,7 @@ export const StatusBadge = memo<StatusBadgeProps>(({ status, size = 'md', isDark
   const Icon = config.icon;
 
   return (
-    <span className={\`inline-flex items-center gap-1.5 font-medium rounded-full border \${sizeClasses[size]} \${colors.bg} \${colors.text} \${colors.border}\`}>
+    <span className={`inline-flex items-center gap-1.5 font-medium rounded-full border ${sizeClasses[size]} ${colors.bg} ${colors.text} ${colors.border}`}>
       <Icon className={iconSizes[size]} />
       {config.text}
     </span>
