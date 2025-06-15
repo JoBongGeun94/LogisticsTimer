@@ -179,7 +179,6 @@ class ANOVACalculator implements IANOVACalculator {
     }
 
     const grandMean = statistics.grandMean;
-    const totalCount = statistics.totalCount;
     const nParts = parts.length;
     const nOperators = operators.length;
 
@@ -312,8 +311,6 @@ class ANOVACalculator implements IANOVACalculator {
 
     // F 통계량 계산 (올바른 공식)
     const fStatistic = equipmentMS > 0 ? partMS / equipmentMS : 0;
-    const fOperator = equipmentMS > 0 ? operatorMS / equipmentMS : 0;
-    const fInteraction = equipmentMS > 0 ? interactionMS / equipmentMS : 0;
 
     // p-value 계산 (F 분포 기반)
     const pValue = this.calculatePValue(fStatistic, partDF, equipmentDF);
@@ -333,7 +330,7 @@ class ANOVACalculator implements IANOVACalculator {
     };
   }
 
-  private calculatePValue(fStat: number, df1: number, df2: number): number {
+  private calculatePValue(fStat: number, _df1: number, df2: number): number {
     // 간단하고 직관적인 p-value 근사 계산
     if (fStat <= 0) return 1.0;
     if (fStat < 0.5) return 0.9;
@@ -374,7 +371,6 @@ class GageRRCalculator implements IGageRRCalculator {
     const reproducibility = 6.0 * Math.sqrt(reproducibilityVariance);
 
     const partVariation = 6.0 * Math.sqrt(Math.max(0, varianceComponents.part));
-    const interactionVariation = 6.0 * Math.sqrt(Math.max(0, varianceComponents.interaction));
 
     // MSA 표준 Total Gage R&R = √(반복성² + 재현성²)
     const gageRR = Math.sqrt(
@@ -394,7 +390,7 @@ class GageRRCalculator implements IGageRRCalculator {
     // 기존 P/T, NDC, Cpk 제거 - 현재 분석에서 사용하지 않음
 
     // 작업시간 분석용 추가 지표 계산 (작업 유형 고려)
-    const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats, '기타', groupedData);
+    const workTimeMetrics = this.calculateWorkTimeMetrics(anova, nParts, nOperators, nRepeats, '기타', groupedData || new Map());
 
     return {
       gageRRPercent: Math.min(100, Math.max(0, gageRRPercent)),
@@ -625,9 +621,9 @@ export class AnalysisService {
       let maxRepeats = 0;
 
       for (const [, operatorMap] of groupedData) {
-        for (const [, measurements] of operatorMap) {
-          if (!operators.includes(operatorMap)) {
-            operators.push(operatorMap);
+        for (const [operatorKey, measurements] of operatorMap) {
+          if (!operators.includes(operatorKey)) {
+            operators.push(operatorKey);
           }
           maxRepeats = Math.max(maxRepeats, measurements.length);
         }
@@ -645,7 +641,9 @@ export class AnalysisService {
         ...metrics,
         status: StatusEvaluator.getGRRStatus(metrics.gageRRPercent),
         anova,
-        varianceComponents
+        varianceComponents,
+        q95: metrics.q95 || 0,
+        q999: metrics.q999 || 0
       };
     } catch (error) {
       this.recursionCounter = 0;
