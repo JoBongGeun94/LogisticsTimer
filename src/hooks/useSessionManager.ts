@@ -49,10 +49,16 @@ export const useSessionManager = ({ showToast }: UseSessionManagerProps) => {
       isActive: true
     };
 
+    // 세션 변경 이벤트 발생 (통계 캐시 무효화)
+    const sessionChangeEvent = new CustomEvent('sessionChanged', {
+      detail: { sessionId: newSession.id, sessionName: sessionName }
+    });
+    window.dispatchEvent(sessionChangeEvent);
+
     setSessions(prev => [...prev, newSession]);
     setCurrentSession(newSession);
-    setCurrentOperator(newSession.operators[0]);
-    setCurrentTarget(newSession.targets[0]);
+    setCurrentOperator(operators.filter(op => op.trim())[0]);
+    setCurrentTarget(targets.filter(tg => tg.trim())[0]);
 
     showToast('새 세션이 생성되었습니다.', 'success');
     return true;
@@ -85,24 +91,17 @@ export const useSessionManager = ({ showToast }: UseSessionManagerProps) => {
   }, [currentSession, showToast, setSessions]);
 
   const switchToSession = useCallback((session: SessionData) => {
-    console.log(`🔄 세션 전환: ${currentSession?.name || 'None'} → ${session.name}`);
+    // 세션 변경 이벤트 발생 (통계 캐시 무효화)
+    const sessionChangeEvent = new CustomEvent('sessionChanged', {
+      detail: { sessionId: session.id, sessionName: session.name }
+    });
+    window.dispatchEvent(sessionChangeEvent);
 
-    // 세션 전환 시 순서대로 상태 업데이트 (동기화 보장)
     setCurrentSession(session);
-    setCurrentOperator(session.operators[0] || '');
-    setCurrentTarget(session.targets[0] || '');
-
-    // 통계 분석 캐시 무효화를 위한 이벤트 발생
-    window.dispatchEvent(new CustomEvent('sessionChanged', { 
-      detail: { 
-        newSessionId: session.id, 
-        newOperator: session.operators[0] || '',
-        newTarget: session.targets[0] || ''
-      } 
-    }));
-
+    setCurrentOperator(session.operators[0]);
+    setCurrentTarget(session.targets[0]);
     showToast(`세션 '${session.name}'으로 전환되었습니다.`, 'success');
-  }, [currentSession, showToast]);
+  }, [showToast]);
 
   const resetAllSessions = useCallback(() => {
     setSessions([]);

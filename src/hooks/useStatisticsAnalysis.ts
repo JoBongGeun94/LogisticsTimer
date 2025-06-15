@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { LapTime } from '../types';
 import { LOGISTICS_WORK_THRESHOLDS } from '../constants/analysis';
 import { AnalysisService } from '../services/AnalysisService';
@@ -19,7 +19,9 @@ interface GaugeData {
   totalVariation: number;
   status: 'success' | 'warning' | 'error' | 'info';
   cv: number;
+  q95: number;
   q99: number;
+  q999: number;
   isReliableForStandard: boolean;
   varianceComponents: {
     part: number;
@@ -96,8 +98,13 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       setShowRetakeModal(false);
     };
 
+    // 이벤트 리스너 등록
     window.addEventListener('sessionChanged', handleSessionChange as EventListener);
-    return () => window.removeEventListener('sessionChanged', handleSessionChange as EventListener);
+    
+    // 컴포넌트 언마운트 시 이벤트 리스너 정리
+    return () => {
+      window.removeEventListener('sessionChanged', handleSessionChange as EventListener);
+    };
   }, []);
 
   // 성능 최적화: 메모이제이션 개선 및 해시 기반 캐싱
@@ -270,7 +277,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         console.warn('📊 유효한 측정 데이터가 없습니다.');
         return {
           grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
-          totalVariation: 0, status: 'error' as const, cv: 0, q99: 0, 
+          totalVariation: 0, status: 'error' as const, cv: 0, q95: 0, q99: 0, q999: 0,
           isReliableForStandard: false, 
           varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
           dataQuality: {
@@ -295,12 +302,14 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         totalVariation: fallbackStats.std,
         status: 'error' as const,
         cv: fallbackStats.mean > 0 ? (fallbackStats.std / fallbackStats.mean) * 100 : 0,
+        q95: fallbackStats.mean + 1.645 * fallbackStats.std,
         q99: fallbackStats.mean + 2.576 * fallbackStats.std,
+        q999: fallbackStats.mean + 3.291 * fallbackStats.std,
         isReliableForStandard: false,
-        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: fallbackStats.std * fallbackStats.std, total: fallbackStats.std * fallbackStats.std },
+        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: fallbackStats.variance, total: fallbackStats.variance },
         dataQuality: {
           originalCount: lapTimes.length,
-          validCount: times.length,
+          validCount: validTimes.length,
           outliersDetected: 0,
           isNormalDistribution: false,
           normalityTest: null,
@@ -359,13 +368,8 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         }
       };
 
-      // 비동기 배치 업데이트 실행 (React 18+ 호환)
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-        window.requestIdleCallback(updateBatch);
-      } else {
-        // 폴백: 즉시 실행
-        updateBatch();
-      }
+      // React 18+ 자동 배치 업데이트 활용
+      updateBatch();
     } catch (error) {
       console.warn('📊 통계 업데이트 오류:', error);
       // 오류 시에도 기본값 설정

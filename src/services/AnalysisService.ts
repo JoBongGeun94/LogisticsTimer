@@ -736,12 +736,12 @@ export class AnalysisService {
     // 실시간 기본 통계 계산 (2개 이상)
     const times = validLapTimes.map(lap => lap.time);
     const mean = times.reduce((sum, time) => sum + time, 0) / times.length;
-    
+
     // 표본 분산 계산 (n-1로 나누기)
     const variance = times.length > 1 ? 
       times.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / (times.length - 1) : 0;
     const std = Math.sqrt(variance);
-    
+
     // 변동계수 즉시 계산 (실시간 반영)
     const cv = mean > 0 ? (std / mean) * 100 : 0;
     console.log(`📊 실시간 변동계수: ${cv.toFixed(1)}% (평균: ${mean.toFixed(0)}ms, 표준편차: ${std.toFixed(1)}ms)`);
@@ -815,3 +815,4 @@ export class AnalysisService {
     };
   }
 }
+//타입 수정 완료
