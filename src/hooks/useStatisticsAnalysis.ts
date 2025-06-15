@@ -82,7 +82,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
   // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
   const gaugeData = useMemo((): GaugeData => {
-    if (lapTimes.length < 6) {
+    if (lapTimes.length < 3) {
       return {
         grr: 0,
         repeatability: 0,
@@ -95,8 +95,39 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         isReliableForStandard: false,
         varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
         dataQuality: {
-          originalCount: 0,
+          originalCount: lapTimes.length,
           validCount: 0,
+          outliersDetected: 0,
+          isNormalDistribution: true,
+          normalityTest: null,
+          outlierMethod: 'IQR',
+          preprocessingApplied: false
+        }
+      };
+    }
+
+    // 기본 통계 계산 (3개 이상 데이터)
+    if (lapTimes.length < 6) {
+      const times = lapTimes.map(lap => lap.time);
+      const mean = times.reduce((sum, time) => sum + time, 0) / times.length;
+      const variance = times.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / (times.length - 1);
+      const std = Math.sqrt(variance);
+      const cv = mean > 0 ? (std / mean) * 100 : 0;
+
+      return {
+        grr: 0,
+        repeatability: 0,
+        reproducibility: 0,
+        partVariation: 0,
+        totalVariation: std,
+        status: 'info',
+        cv: Math.max(0, cv),
+        q99: mean + 2.576 * std, // 99% 분위수 근사
+        isReliableForStandard: false,
+        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: variance, total: variance },
+        dataQuality: {
+          originalCount: lapTimes.length,
+          validCount: lapTimes.length,
           outliersDetected: 0,
           isNormalDistribution: true,
           normalityTest: null,

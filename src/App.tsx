@@ -1157,7 +1157,6 @@ const EnhancedLogisticsTimer = () => {
 
         {/* 실시간 분석 섹션 */}
         {lapTimes.length > 0 && (
-
           <div className={`${theme.card} rounded-lg p-4 shadow-sm border ${theme.border}`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
@@ -1166,8 +1165,7 @@ const EnhancedLogisticsTimer = () => {
               </div>
             </div>
 
-
-
+            {/* 기본 통계 - 항상 표시 */}
             <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
               <MeasurementCard
                 title="측정 횟수"
@@ -1201,54 +1199,74 @@ const EnhancedLogisticsTimer = () => {
               />
             </div>
 
-            {/* === NEW 3-카드 영역 시작 === */}
-            {!canAnalyze.canAnalyze ? (
-              <AnalysisUnavailableMessage
-                theme={theme}
-                isDark={isDark}
-                message={canAnalyze.message}
-              />
-            ) : lapTimes.length >= 6 ? (
+            {/* 고급 통계 - 조건부 표시 (완화된 조건) */}
+            {lapTimes.length >= 3 && (
               <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
                 <MeasurementCard
                   title="Gage R&R"
-                  value={`${statisticsAnalysis.gaugeData.grr.toFixed(1)}%`}
+                  value={statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.grr > 0 ? 
+                    `${statisticsAnalysis.gaugeData.grr.toFixed(1)}%` : 'N/A'
+                  }
                   icon={BarChart3}
-                  status={statisticsAnalysis.statisticsStatus.grr}
+                  status={statisticsAnalysis.gaugeData && statisticsAnalysis.gaugeData.grr > 0 ? 
+                    statisticsAnalysis.statisticsStatus.grr : 'info'
+                  }
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
                 <MeasurementCard
                   title="ICC (2,1)"
-                  value={statisticsAnalysis.iccValue.toFixed(2)}
+                  value={statisticsAnalysis.iccValue > 0 ? 
+                    statisticsAnalysis.iccValue.toFixed(2) : 'N/A'
+                  }
                   icon={Target}
-                  status={statisticsAnalysis.statisticsStatus.icc}
+                  status={statisticsAnalysis.iccValue > 0 ? 
+                    statisticsAnalysis.statisticsStatus.icc : 'info'
+                  }
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
                 <MeasurementCard
                   title="ΔPair"
-                  value={`${statisticsAnalysis.deltaPairValue.toFixed(3)}s`}
+                  value={statisticsAnalysis.deltaPairValue > 0 ? 
+                    `${statisticsAnalysis.deltaPairValue.toFixed(3)}s` : 'N/A'
+                  }
                   icon={Calculator}
-                  status={statisticsAnalysis.statisticsStatus.deltaPair}
+                  status={statisticsAnalysis.deltaPairValue > 0 ? 
+                    statisticsAnalysis.statisticsStatus.deltaPair : 'info'
+                  }
                   theme={theme}
                   size="sm"
                   isDark={isDark}
                 />
               </div>
-            ) : null}
-            {/* === NEW 3-카드 영역 끝 === */}
+            )}
 
-            {/* 간략한 상태 표시 */}
-            {analysis && lapTimes.length >= 6 && canAnalyze.canAnalyze && (
+            {/* 분석 가능 여부에 따른 메시지 */}
+            {!canAnalyze.canAnalyze && lapTimes.length < 6 ? (
+              <div className={`${theme.surface} p-3 rounded-lg border ${theme.border} text-center`}>
+                <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
+                  <Info className={`w-6 h-6 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                </div>
+                <p className={`text-sm ${theme.text} font-medium mb-1`}>
+                  기본 분석 진행 중
+                </p>
+                <p className={`text-xs ${theme.textMuted}`}>
+                  {canAnalyze.message}
+                </p>
+                <p className={`text-xs ${theme.textMuted} mt-1`}>
+                  💡 현재까지의 기본 통계는 참고용으로 활용 가능합니다.
+                </p>
+              </div>
+            ) : analysis && lapTimes.length >= 6 ? (
               <div className={`${theme.surface} p-3 rounded-lg border ${theme.border} text-center`}>
                 <StatusBadge status={analysis.status} size="md" isDark={isDark} />
                 <p className={`text-sm ${theme.textMuted} mt-2`}>
                   상세한 분석과 해석은 상세분석 페이지에서 확인하세요
                 </p>
-                {/* 데이터 품질 정보 표시 (기존 디자인과 조화) - 개선된 표시 */}
+                {/* 데이터 품질 정보 표시 */}
                 {statisticsAnalysis.gaugeData.dataQuality && (
                   <div className={`mt-2 text-xs ${theme.textMuted} space-y-1`}>
                     {statisticsAnalysis.gaugeData.dataQuality.outliersDetected > 0 && (
@@ -1272,7 +1290,7 @@ const EnhancedLogisticsTimer = () => {
                   </div>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -1289,7 +1307,7 @@ const EnhancedLogisticsTimer = () => {
 
           <button
             onClick={downloadDetailedAnalysis}
-            disabled={!canAnalyze.canAnalyze || lapTimes.length < 6}
+            disabled={lapTimes.length < 3}
             className="bg-purple-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
           >
             <PieChart className="w-4 h-4" />
@@ -1299,7 +1317,7 @@ const EnhancedLogisticsTimer = () => {
           {/* 🔧 상세분석 모달 버튼 (새로 추가) */}
           <button
             onClick={() => setShowDetailedAnalysis(true)}
-            disabled={lapTimes.length === 0}
+            disabled={lapTimes.length < 3}
             className="bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
           >
             <Info className="w-4 h-4" />

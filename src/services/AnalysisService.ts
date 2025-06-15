@@ -525,9 +525,15 @@ export class AnalysisService {
 
   static calculateGageRR(lapTimes: LapTime[]): GageRRResult {
     try {
-      // 엣지 케이스 처리 강화
-      if (!lapTimes || lapTimes.length < 6) {
-        throw new Error('Gage R&R 분석을 위해서는 최소 6개의 측정값이 필요합니다.');
+      // 엣지 케이스 처리 강화 - 3개부터 기본 분석 허용
+      if (!lapTimes || lapTimes.length < 3) {
+        throw new Error('분석을 위해서는 최소 3개의 측정값이 필요합니다.');
+      }
+
+      // 6개 미만일 때 기본 분석 제공
+      if (lapTimes.length < 6) {
+        console.warn('⚠️ 완전한 Gage R&R 분석을 위해서는 6개 이상의 측정값이 권장됩니다. 기본 분석을 제공합니다.');
+        return this.calculateBasicAnalysis(lapTimes);
       }
 
       // 데이터 유효성 검증 강화
@@ -648,6 +654,63 @@ export class AnalysisService {
     } catch (error) {
       throw error;
     }
+  }
+
+  /**
+   * 기본 분석 메서드 (6개 미만 데이터용)
+   */
+  private static calculateBasicAnalysis(lapTimes: LapTime[]): GageRRResult {
+    const validLapTimes = lapTimes.filter(lap => 
+      lap && typeof lap.time === 'number' && lap.time > 0 && lap.operator && lap.target
+    );
+
+    if (validLapTimes.length < 3) {
+      throw new Error('유효한 측정값이 부족합니다.');
+    }
+
+    // 기본 통계 계산
+    const times = validLapTimes.map(lap => lap.time);
+    const mean = times.reduce((sum, time) => sum + time, 0) / times.length;
+    const variance = times.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / (times.length - 1);
+    const std = Math.sqrt(variance);
+    const cv = mean > 0 ? (std / mean) * 100 : 0;
+
+    // 기본 분위수 계산
+    const q95 = mean + 1.645 * std;
+    const q99 = mean + 2.576 * std;
+    const q999 = mean + 3.291 * std;
+
+    return {
+      gageRRPercent: 0,
+      repeatability: std,
+      reproducibility: 0,
+      partVariation: 0,
+      totalVariation: std,
+      icc: 0,
+      cv: Math.max(0, cv),
+      q95,
+      q99,
+      q999,
+      isReliableForStandard: false,
+      status: 'marginal',
+      anova: {
+        partSS: 0, operatorSS: 0, interactionSS: 0, equipmentSS: variance * (times.length - 1),
+        totalSS: variance * (times.length - 1), partMS: 0, operatorMS: 0, interactionMS: 0,
+        equipmentMS: variance, fStatistic: 0, pValue: 1.0
+      },
+      varianceComponents: {
+        part: 0, operator: 0, interaction: 0, equipment: variance, total: variance
+      },
+      dataQuality: {
+        originalCount: lapTimes.length,
+        validCount: validLapTimes.length,
+        outliersDetected: 0,
+        isNormalDistribution: true,
+        normalityTest: null,
+        outlierMethod: 'IQR',
+        preprocessingApplied: false
+      }
+    };
   }
 
   private static calculateVarianceComponents(anova: ANOVAResult): VarianceComponents {
