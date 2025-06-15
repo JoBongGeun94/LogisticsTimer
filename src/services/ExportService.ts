@@ -1,3 +1,4 @@
+
 import { LapTime, SessionData, GageRRResult } from '../types';
 
 /**
@@ -188,13 +189,19 @@ class DataFormatter implements IDataFormatter {
     }
 
     actionPlan.push(
-        ['장기 개선 계획 (3개월):', '', '', ''],
-        ['목표', '세부사항', '측정지표', '목표값', ''],
-        ['측정시스템 신뢰성 향상', 'Gage R&R 개선', 'R&R %', '< 10%', ''],
-        ['측정자간 일치도 향상', '교육 및 표준화', 'ICC', '>= 0.80', ''],
-        ['작업 일관성 확보', '공정 표준화', 'CV', '<= 6%', ''],
-        ['', '', '', '', ''],
-        ['지원 체계:', '', '', '']
+      ['', '', '', '', ''],
+      ['📋 장기 개선 계획 (3개월):', '', '', ''],
+      ['목표', '세부사항', '측정지표', '목표값', ''],
+      ['측정시스템 신뢰성 향상', 'Gage R&R 개선', 'R&R %', '< 10%', ''],
+      ['측정자간 일치도 향상', '교육 및 표준화', 'ICC', '≥ 0.80', ''],
+      ['작업 일관성 확보', '공정 표준화', 'CV', '≤ 6%', ''],
+      ['', '', '', '', ''],
+      ['📞 지원 체계:', '', '', ''],
+      ['구분', '담당부서', '연락처', '역할', ''],
+      ['기술 지원', '시스템관리팀', '내선 1234', '장비 및 소프트웨어 지원', ''],
+      ['교육 지원', '인력개발팀', '내선 5678', '측정자 교육 프로그램', ''],
+      ['품질 관리', '품질보증팀', '내선 9012', '분석 결과 검토 및 승인', ''],
+      ['', '', '', '', '']
     );
 
     return actionPlan;
@@ -203,7 +210,7 @@ class DataFormatter implements IDataFormatter {
   private classifyMeasurement(time: number, analysis: any): string {
     const mean = analysis.q99 / 2; // 대략적인 평균 추정
     const std = analysis.totalVariation || 1000;
-
+    
     if (time < mean - 2 * std) return '매우 빠름';
     if (time < mean - std) return '빠름';
     if (time > mean + 2 * std) return '매우 느림';
@@ -376,7 +383,7 @@ class DataFormatter implements IDataFormatter {
 
     // 📊 측정 기록 상세 데이터
     const measurementDetails = [
-      ['측정 데이터 통계', '', '', '', '', ''],
+      ['=== 📊 측정 기록 상세 데이터 ===', '', '', ''],
       ['', '', '', ''],
       ['번호', '측정자', '대상자', '측정시간(초)', '타임스탬프', '비고'],
       ...lapTimes.map((lap, index) => [
@@ -388,7 +395,7 @@ class DataFormatter implements IDataFormatter {
         this.classifyMeasurement(lap.time, safeAnalysis)
       ]),
       ['', '', '', '', '', ''],
-      ['측정 데이터 통계', '', '', '', '', ''],
+      ['📈 측정 데이터 통계', '', '', '', '', ''],
       ['평균', this.safeFormat(lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length / 1000, 3) + '초', '', '', '', ''],
       ['표준편차', this.safeFormat(safeAnalysis.totalVariation / 1000, 3) + '초', '', '', '', ''],
       ['최솟값', this.safeFormat(Math.min(...lapTimes.map(lap => lap.time)) / 1000, 3) + '초', '', '', '', ''],
@@ -435,7 +442,7 @@ class CSVFileExporter implements IFileExporter {
     try {
       // 데이터 유효성 검증 및 정리
       const validData = data.filter(row => Array.isArray(row) && row.length > 0);
-
+      
       if (validData.length === 0) {
         console.warn('내보낼 데이터가 없습니다.');
         return false;
@@ -451,40 +458,40 @@ class CSVFileExporter implements IFileExporter {
               Number.isFinite(Number(cell))) {
             cellStr = String(cell).trim();
           }
-
+          
           // 빈 문자열이나 잘못된 값 처리
           if (cellStr === '' || cellStr === 'undefined' || cellStr === 'null') {
             return '""';
           }
-
+          
           // 특수문자 및 한글 처리 개선
           if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('\r') || 
               cellStr.includes('"') || cellStr.includes(';') || /[가-힣]/.test(cellStr)) {
             return `"${cellStr.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
           }
-
+          
           return cellStr;
         }).join(',')
       ).join('\r\n');
-
+      
       // UTF-8 BOM 추가 + 강화된 인코딩
       const BOM = '\uFEFF';
       const blob = new Blob([BOM + csvContent], { 
         type: 'text/csv;charset=utf-8;' 
       });
-
+      
       // 파일명 안전성 검증
       const safeFilename = filename.replace(/[<>:"/\\|?*]/g, '_');
-
+      
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
-
+      
       link.setAttribute('href', url);
       link.setAttribute('download', safeFilename);
       link.style.visibility = 'hidden';
-
+      
       document.body.appendChild(link);
-
+      
       // 클릭 이벤트 처리 개선
       setTimeout(() => {
         link.click();
@@ -493,7 +500,7 @@ class CSVFileExporter implements IFileExporter {
           URL.revokeObjectURL(url);
         }, 100);
       }, 100);
-
+      
       return true;
     } catch (error) {
       console.error('CSV 내보내기 오류:', error);
@@ -558,7 +565,7 @@ export class ExportService {
 
       const data = this.dataFormatter.formatMeasurementData(session, lapTimes);
       const filename = FilenameGenerator.generateMeasurementFilename(session.name);
-
+      
       return this.fileExporter.export(data, filename);
     } catch (error) {
       console.error('측정 데이터 내보내기 오류:', error);
@@ -585,7 +592,7 @@ export class ExportService {
 
       const data = this.dataFormatter.formatAnalysisData(session, lapTimes, enhancedAnalysis);
       const filename = FilenameGenerator.generateAnalysisFilename(session.name);
-
+      
       return this.fileExporter.export(data, filename);
     } catch (error) {
       console.error('상세분석 보고서 내보내기 오류:', error);

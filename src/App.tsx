@@ -23,60 +23,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTimerLogic } from './hooks/useTimerLogic';
 import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
 import { useSessionManager } from './hooks/useSessionManager';
-import NotificationServiceInstance from './services/NotificationService';
-
-// 시간 포맷팅 유틸리티 함수
-const formatTime = (milliseconds: number): string => {
-  const totalSeconds = Math.floor(milliseconds / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  const ms = Math.floor((milliseconds % 1000) / 10);
-
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
-};
-
-// NotificationService와 연결된 Toast 시스템
-const useNotificationService = () => {
-  const [toasts, setToasts] = useState<Array<{
-    id: number;
-    message: string;
-    type: 'success' | 'error' | 'warning' | 'info';
-    timestamp: number;
-  }>>([]);
-
-  useEffect(() => {
-    const unsubscribe = NotificationServiceInstance.subscribe((notification) => {
-      const newToast = {
-        id: Date.now(),
-        message: notification.message,
-        type: notification.type,
-        timestamp: Date.now()
-      };
-
-      setToasts(prev => [...prev, newToast]);
-
-      // 자동 제거 (3초 후)
-      setTimeout(() => {
-        setToasts(prev => prev.filter(toast => toast.id !== newToast.id));
-      }, 3000);
-    });
-
-    return unsubscribe;
-  }, []);
-
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-    NotificationServiceInstance.show(message, type);
-  }, []);
-
-  const removeToast = useCallback((id: number) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
-
-  return { toasts, showToast, removeToast };
-};
-
-// 테마 타입 정의
-type ThemeType = 'light' | 'dark';
+import { NotificationService } from './services/NotificationService';
 
 // ==================== 테마 상수 (Open/Closed Principle) ====================
 const THEME_COLORS = {
@@ -278,20 +225,14 @@ const ConsolidatedSupplyLogo = memo<{ isDark?: boolean; size?: 'sm' | 'md' | 'lg
           filter: isDark ? 'brightness(1.1)' : 'none'
         }}
         onError={(e) => {
-          try {
-            const target = e.target as HTMLImageElement;
-            if (target) {
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent && !parent.querySelector('.logo-fallback')) {
-                const fallback = document.createElement('div');
-                fallback.className = 'logo-fallback flex items-center justify-center w-full h-full bg-blue-600 text-white rounded-full text-sm font-bold';
-                fallback.textContent = '종합보급창';
-                parent.appendChild(fallback);
-              }
-            }
-          } catch (error) {
-            console.warn('Logo fallback error:', error);
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          const parent = target.parentElement;
+          if (parent && !parent.querySelector('.logo-fallback')) {
+            const fallback = document.createElement('div');
+            fallback.className = 'logo-fallback flex items-center justify-center w-full h-full bg-blue-600 text-white rounded-full text-sm font-bold';
+            fallback.textContent = '종합보급창';
+            parent.appendChild(fallback);
           }
         }}
       />
@@ -598,7 +539,8 @@ const DetailedAnalysisModal = memo<{
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className={theme.textSecondary}>총 변동 (Total Variation)</span>                    <span className={theme.text}>
+                    <span className={theme.textSecondary}>총 변동 (Total Variation)</span>
+                    <span className={theme.text}>
                       {memoizedAnalysis.gaugeData ? 
                         memoizedAnalysis.gaugeData.totalVariation.toFixed(4) : 
                         (memoizedAnalysis.totalVariation?.toFixed(4) || '0.0000')
@@ -712,8 +654,49 @@ const EnhancedLogisticsTimer = () => {
   // 🔧 상세분석 모달 상태 (최소 변경 - 새로 추가)
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
 
-  // NotificationService 연결
-  const { toasts, showToast, removeToast } = useNotificationService();
+  // 토스트 상태
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    isVisible: boolean;
+  }>({
+    message: '',
+    type: 'info',
+    isVisible: false
+  });
+
+  // NotificationService와 연결
+  useEffect(() => {
+    const notificationService = NotificationService.getInstance();
+    const unsubscribe = notificationService.subscribe((message: string, type: string) => {
+      setToast({ 
+        message, 
+        type: type as 'success' | 'error' | 'warning' | 'info', 
+        isVisible: true 
+      });
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // 토스트 메시지 표시 함수
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    const notificationService = NotificationService.getInstance();
+    switch (type) {
+      case 'success':
+        notificationService.success(message);
+        break;
+      case 'error':
+        notificationService.error(message);
+        break;
+      case 'warning':
+        notificationService.warning(message);
+        break;
+      case 'info':
+        notificationService.info(message);
+        break;
+    }
+  }, []);
 
   // 필터 상태 (요구사항 8번)
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
@@ -754,9 +737,9 @@ const EnhancedLogisticsTimer = () => {
     setAllLapTimes(prev => [...prev, newLap]);
     updateSessionLapTimes(updatedLaps);
 
-    // 통계 업데이트 (순환 참조 방지)
-    updateStatistics(newLap, updatedLaps);
-  }, [lapTimes, setAllLapTimes, updateSessionLapTimes, updateStatistics]);
+    // 통계 업데이트
+    statisticsAnalysis.updateStatistics(newLap, updatedLaps);
+  }, [lapTimes, setAllLapTimes, updateSessionLapTimes]);
 
   // 타이머 로직 훅
   const {
@@ -774,19 +757,8 @@ const EnhancedLogisticsTimer = () => {
     showToast
   });
 
-  // 통계 분석 훅 - 안전한 초기화
+  // 통계 분석 훅
   const statisticsAnalysis = useStatisticsAnalysis(lapTimes);
-
-  // 통계 업데이트 함수 별도 정의 (순환 참조 방지) - 안전한 참조
-  const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
-    try {
-      if (statisticsAnalysis && typeof statisticsAnalysis.updateStatistics === 'function') {
-        statisticsAnalysis.updateStatistics(newLap, allLaps);
-      }
-    } catch (error) {
-      console.warn('통계 업데이트 실패:', error);
-    }
-  }, [statisticsAnalysis]);
 
   // 다크모드 적용
   useEffect(() => {
@@ -797,16 +769,11 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [isDark]);
 
-  // 키보드 단축키 설정 - 모달 상태 고려 및 메모리 누수 방지
+  // 키보드 이벤트 (메모리 누수 방지)
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // 모달이 열려있으면 단축키 비활성화
-      if (showNewSessionModal || showDetailedAnalysis) {
-        return;
-      }
-
-      // 입력 필드에서는 단축키 비활성화
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (showNewSessionModal || selectedSessionHistory || showLanding || showDetailedAnalysis) return;
 
       switch (e.code) {
         case 'Space':
@@ -829,8 +796,18 @@ const EnhancedLogisticsTimer = () => {
     };
 
     window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis, toggleTimer, recordLap, stopTimer, resetTimer]);
+    
+    // 정리 서비스에 정리 작업 등록
+    const cleanupService = require('./services/CleanupService').CleanupService.getInstance();
+    cleanupService.registerEventListenerCleanup(() => {
+      window.removeEventListener('keydown', handleKeyPress);
+    });
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+      cleanupService.removeCleanupTask('keyboardEventListener');
+    };
+  }, [toggleTimer, recordLap, stopTimer, resetTimer, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
 
   // 리셋 함수 (기존 로직과 통합)
   const resetTimer = useCallback(() => {
@@ -1011,18 +988,13 @@ const EnhancedLogisticsTimer = () => {
 
   return (
     <div className={`min-h-screen ${theme.bg}`}>
-      {/* Toast 알림 - NotificationService 연동 */}
-      {toasts.map(toast => (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          isVisible={true}
-          onClose={() => removeToast(toast.id)}
-          theme={theme}
-          isDark={isDark}
-        />
-      ))}
+      {/* 토스트 메시지 */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+      />
 
       {/* 뒤로가기 경고 */}
       <BackWarning isVisible={showBackWarning} />
@@ -1150,7 +1122,7 @@ const EnhancedLogisticsTimer = () => {
 
           <div className="text-center">
             <div className={`text-4xl sm:text-5xl font-mono font-bold mb-6 ${theme.text} tracking-wider`}>
-              {formatTime(currentTime)}
+              {ExportService.formatTime(currentTime)}
             </div>
 
             <div className={`text-sm ${theme.textMuted} mb-6`}>
@@ -1217,7 +1189,7 @@ const EnhancedLogisticsTimer = () => {
               />
               <MeasurementCard
                 title="평균 시간"
-                value={formatTime(lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)}
+                value={ExportService.formatTime(lapTimes.reduce((sum, lap) => sum + lap.time, 0) / lapTimes.length)}
                 icon={Clock}
                 status="success"
                 theme={theme}
@@ -1395,7 +1367,7 @@ const EnhancedLogisticsTimer = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           <div className="font-mono text-lg font-bold text-blue-600 mb-2">
-                            {formatTime(lap.time)}
+                            {ExportService.formatTime(lap.time)}
                           </div>
                           <div className={`text-xs ${theme.textMuted} space-y-1`}>
                             <div className="flex items-center gap-2">

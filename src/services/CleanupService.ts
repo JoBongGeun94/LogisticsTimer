@@ -1,68 +1,127 @@
 /**
- * 메모리 및 성능 최적화 서비스 (Single Responsibility Principle)
+ * 메모리 및 리소스 정리 서비스 (Single Responsibility Principle)
  */
 export class CleanupService {
+  private static instance: CleanupService;
+  private cleanupTasks: Map<string, () => void> = new Map();
+  private intervalCleanups: Set<NodeJS.Timeout> = new Set();
+  private eventListenerCleanups: Set<() => void> = new Set();
+
+  private constructor() {
+    // 페이지 언로드 시 자동 정리
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', () => this.executeCleanup());
+    }
+  }
+
+  static getInstance(): CleanupService {
+    if (!CleanupService.instance) {
+      CleanupService.instance = new CleanupService();
+    }
+    return CleanupService.instance;
+  }
+
   /**
-   * 브라우저 메모리 최적화
+   * 정리 작업 등록 (이름으로 관리)
    */
-  static optimizeMemory(): void {
-    // 가비지 컬렉션 힌트 (브라우저 지원 시)
-    if (window.gc) {
+  registerCleanupTask(name: string, task: () => void): void {
+    this.cleanupTasks.set(name, task);
+    console.log(`정리 작업 등록됨: ${name}. 총 ${this.cleanupTasks.size}개 작업`);
+  }
+
+  /**
+   * 인터벌 정리 등록
+   */
+  registerIntervalCleanup(interval: NodeJS.Timeout): void {
+    this.intervalCleanups.add(interval);
+  }
+
+  /**
+   * 이벤트 리스너 정리 등록
+   */
+  registerEventListenerCleanup(cleanup: () => void): void {
+    this.eventListenerCleanups.add(cleanup);
+  }
+
+  /**
+   * 모든 정리 작업 실행
+   */
+  executeCleanup(): void {
+    console.log(`${this.cleanupTasks.size}개의 정리 작업 실행 중...`);
+
+    // 등록된 정리 작업 실행
+    this.cleanupTasks.forEach((task, name) => {
       try {
-        window.gc();
-        console.debug('가비지 컬렉션 실행 완료');
+        task();
+        console.log(`정리 작업 완료: ${name}`);
       } catch (error) {
-        console.debug('가비지 컬렉션 실행 불가');
+        console.error(`정리 작업 실패 (${name}):`, error);
+      }
+    });
+
+    // 인터벌 정리
+    this.intervalCleanups.forEach(interval => {
+      try {
+        clearInterval(interval);
+      } catch (error) {
+        console.error('인터벌 정리 실패:', error);
+      }
+    });
+
+    // 이벤트 리스너 정리
+    this.eventListenerCleanups.forEach(cleanup => {
+      try {
+        cleanup();
+      } catch (error) {
+        console.error('이벤트 리스너 정리 실패:', error);
+      }
+    });
+
+    // 모든 작업 초기화
+    this.cleanupTasks.clear();
+    this.intervalCleanups.clear();
+    this.eventListenerCleanups.clear();
+
+    console.log('모든 정리 작업 완료');
+  }
+
+  /**
+   * 특정 정리 작업 제거
+   */
+  removeCleanupTask(name: string): boolean {
+    const removed = this.cleanupTasks.delete(name);
+    if (removed) {
+      console.log(`정리 작업 제거됨: ${name}. 남은 작업: ${this.cleanupTasks.size}개`);
+    }
+    return removed;
+  }
+
+  /**
+   * 정리 작업 개수 반환
+   */
+  getTaskCount(): number {
+    return this.cleanupTasks.size + this.intervalCleanups.size + this.eventListenerCleanups.size;
+  }
+
+  /**
+   * 메모리 사용량 체크 및 정리 (브라우저 환경에서만)
+   */
+  checkMemoryAndCleanup(): void {
+    if (typeof window !== 'undefined' && 'performance' in window && 'memory' in (window.performance as any)) {
+      const memory = (window.performance as any).memory;
+      const usedMB = memory.usedJSHeapSize / (1024 * 1024);
+      const limitMB = memory.jsHeapSizeLimit / (1024 * 1024);
+
+      // 메모리 사용률이 80% 초과 시 정리 실행
+      if (usedMB / limitMB > 0.8) {
+        console.warn(`메모리 사용률 높음: ${(usedMB/limitMB*100).toFixed(1)}% - 정리 실행`);
+        this.executeCleanup();
+
+        // 가비지 컬렉션 요청 (가능한 경우)
+        if ('gc' in window) {
+          (window as any).gc();
+        }
       }
     }
   }
-
-  /**
-   * 성능 정보 로깅
-   */
-  static logPerformanceMetrics(): void {
-    if (performance.memory) {
-      const { usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit } = performance.memory;
-      console.debug('메모리 사용량:', {
-        used: `${Math.round(usedJSHeapSize / 1024 / 1024)} MB`,
-        total: `${Math.round(totalJSHeapSize / 1024 / 1024)} MB`,
-        limit: `${Math.round(jsHeapSizeLimit / 1024 / 1024)} MB`
-      });
-    }
-  }
-
-  /**
-   * 로컬 스토리지 정리
-   */
-  static cleanupLocalStorage(keepSessionData: boolean = true): void {
-    try {
-      const keys = Object.keys(localStorage);
-      keys.forEach(key => {
-        if (!keepSessionData || !key.startsWith('logisticsTimer_')) {
-          localStorage.removeItem(key);
-        }
-      });
-      console.debug('로컬 스토리지 정리 완료');
-    } catch (error) {
-      console.warn('로컬 스토리지 정리 실패:', error);
-    }
-  }
-
-  /**
-   * 이벤트 리스너 정리
-   */
-  static cleanupEventListeners(): void {
-    // 정리할 수 있는 전역 이벤트 리스너들 정리
-    window.removeEventListener('beforeunload', this.handleBeforeUnload);
-    window.removeEventListener('unload', this.handleUnload);
-    console.debug('이벤트 리스너 정리 완료');
-  }
-
-  private static handleBeforeUnload = () => {
-    // 페이지 떠나기 전 정리 작업
-  };
-
-  private static handleUnload = () => {
-    // 페이지 언로드 시 정리 작업
-  };
 }

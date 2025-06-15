@@ -1,97 +1,110 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
 import App from './App.tsx';
+import './index.css';
+import './index.css';
+
+// 캐시 무효화: 2025-06-04 07:13 KST
+// 빌드 ID: CACHE_CLEAR_V2_0_1
+
+// 에러 경계 컴포넌트
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('애플리케이션 오류:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          padding: '20px',
+          backgroundColor: '#f3f4f6',
+          fontFamily: 'system-ui, -apple-system, sans-serif'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '40px',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            textAlign: 'center',
+            maxWidth: '500px'
+          }}>
+            <h1 style={{ color: '#dc2626', marginBottom: '16px', fontSize: '24px' }}>
+              애플리케이션 로딩 오류
+            </h1>
+            <p style={{ color: '#6b7280', marginBottom: '24px', lineHeight: '1.6' }}>
+              페이지 로딩 중 문제가 발생했습니다.<br />
+              페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                padding: '12px 24px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                cursor: 'pointer',
+                marginRight: '12px'
+              }}
+            >
+              새로고침
+            </button>
+            <details style={{ marginTop: '20px', textAlign: 'left' }}>
+              <summary style={{ cursor: 'pointer', color: '#6b7280' }}>
+                기술 정보 보기
+              </summary>
+              <pre style={{
+                backgroundColor: '#f9fafb',
+                padding: '12px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#374151',
+                overflow: 'auto',
+                marginTop: '8px'
+              }}>
+                {this.state.error?.toString()}
+              </pre>
+            </details>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error('Root element not found');
 }
 
-// 전역 에러 핸들러 설정
-window.addEventListener('error', (event) => {
-  console.error('Global error:', event.error);
-});
+const root = ReactDOM.createRoot(rootElement);
 
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('Unhandled promise rejection:', event.reason);
-});
-
-try {
-  const root = ReactDOM.createRoot(rootElement);
-  
-  // 에러 경계 컴포넌트
-  const ErrorBoundary = ({ children }: { children: React.ReactNode }) => {
-    const [hasError, setHasError] = React.useState(false);
-    
-    React.useEffect(() => {
-      if (hasError) {
-        // 5초 후 자동 재시도
-        const timer = setTimeout(() => {
-          setHasError(false);
-          window.location.reload();
-        }, 5000);
-        return () => clearTimeout(timer);
-      }
-    }, [hasError]);
-
-    if (hasError) {
-      return (
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          height: '100vh', 
-          fontFamily: 'sans-serif',
-          backgroundColor: '#f3f4f6',
-          color: '#374151'
-        }}>
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            <h1 style={{ marginBottom: '16px' }}>앱 로딩 중 오류가 발생했습니다</h1>
-            <p style={{ marginBottom: '20px' }}>5초 후 자동으로 재시도됩니다.</p>
-            <button 
-              onClick={() => window.location.reload()}
-              style={{ 
-                padding: '10px 20px', 
-                backgroundColor: '#3b82f6', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              지금 새로고침
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    try {
-      return <>{children}</>;
-    } catch (error) {
-      console.error('Render error:', error);
-      setHasError(true);
-      return null;
-    }
-  };
-  
-  root.render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </React.StrictMode>
-  );
-} catch (error) {
-  console.error('Failed to render app:', error);
-  rootElement.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; background-color: #f3f4f6;">
-      <div style="text-align: center; padding: 20px;">
-        <h1 style="color: #dc2626; margin-bottom: 16px;">앱 초기화 실패</h1>
-        <p style="color: #374151; margin-bottom: 20px;">브라우저 호환성 문제이거나 JavaScript가 비활성화되어 있을 수 있습니다.</p>
-        <button onclick="window.location.reload()" style="padding: 10px 20px; background-color: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">새로고침</button>
-      </div>
-    </div>
-  `;
-}
+root.render(
+  <React.StrictMode>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </React.StrictMode>
+);

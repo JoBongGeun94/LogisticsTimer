@@ -1,8 +1,6 @@
 export class NotificationService {
   private static instance: NotificationService;
-  private callbacks: ((notification: { message: string; type: 'success' | 'error' | 'warning' | 'info' }) => void)[] = [];
-
-  private constructor() {}
+  private callbacks: ((message: string, type: string) => void)[] = [];
 
   static getInstance(): NotificationService {
     if (!NotificationService.instance) {
@@ -11,25 +9,15 @@ export class NotificationService {
     return NotificationService.instance;
   }
 
-  subscribe(callback: (notification: { message: string; type: 'success' | 'error' | 'warning' | 'info' }) => void): () => void {
+  subscribe(callback: (message: string, type: string) => void): () => void {
     this.callbacks.push(callback);
     return () => {
       this.callbacks = this.callbacks.filter(cb => cb !== callback);
     };
   }
 
-  private notify(message: string, type: 'success' | 'error' | 'warning' | 'info'): void {
-    this.callbacks.forEach(callback => {
-      try {
-        callback({ message, type });
-      } catch (error) {
-        console.error('NotificationService callback error:', error);
-      }
-    });
-  }
-
-  show(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info'): void {
-    this.notify(message, type);
+  private notify(message: string, type: string): void {
+    this.callbacks.forEach(callback => callback(message, type));
   }
 
   success(message: string): void {
@@ -48,12 +36,3 @@ export class NotificationService {
     this.notify(message, 'info');
   }
 }
-
-// 기본 인스턴스 export
-const NotificationServiceInstance = NotificationService.getInstance();
-
-export { NotificationService };
-export default NotificationServiceInstance;
-
-// Singleton 인스턴스를 기본 export로 제공
-export default NotificationService.getInstance();
