@@ -1,3 +1,4 @@
+
 export class NotificationService {
   private static instance: NotificationService;
   private callbacks: ((message: string, type: string) => void)[] = [];
@@ -36,3 +37,6 @@ export class NotificationService {
     this.notify(message, 'info');
   }
 }
+
+// 기본 export로 싱글톤 인스턴스 제공
+export default NotificationService.getInstance();
