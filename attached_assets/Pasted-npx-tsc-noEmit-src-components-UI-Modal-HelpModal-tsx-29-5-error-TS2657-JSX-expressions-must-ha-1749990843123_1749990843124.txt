@@ -1,0 +1,161 @@
+npx tsc --noEmit
+src/components/UI/Modal/HelpModal.tsx:29:5 - error TS2657: JSX expressions must have one parent element.
+
+ 29     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 30       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm sm:max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden"></div>
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+... 
+128                 </ul>
+    ~~~~~~~~~~~~~~~~~~~~~
+129               </div>
+    ~~~~~~~~~~~~~~~~~~~~
+
+src/components/UI/Modal/HelpModal.tsx:69:18 - error TS17008: JSX element 'ol' has no corresponding closing tag.
+
+69                 <ol className="list-decimal list-inside space-y-2 sm:space-y-3 text-sm sm:text-base text-gray-700 dark:text-gray-300"></div>
+                    ~~
+
+src/components/UI/Modal/HelpModal.tsx:116:19 - error TS17002: Expected corresponding JSX closing tag for 'div'.
+
+116                 </ol>
+                      ~~
+
+src/components/UI/Modal/HelpModal.tsx:117:15 - error TS1005: ')' expected.
+
+117               </div>
+                  ~~
+
+src/components/UI/Modal/HelpModal.tsx:130:13 - error TS1005: ')' expected.
+
+130             </div>
+                ~~
+
+src/components/UI/Modal/HelpModal.tsx:131:11 - error TS1109: Expression expected.
+
+131           )}
+              ~
+
+src/components/UI/Modal/HelpModal.tsx:131:12 - error TS1128: Declaration or statement expected.
+
+131           )}
+               ~
+
+src/components/UI/Modal/HelpModal.tsx:134:13 - error TS2657: JSX expressions must have one parent element.
+
+134             <div className="space-y-3 sm:space-y-4">
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+135               <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">키보드 단축키</h3>
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+... 
+188                 </p>
+    ~~~~~~~~~~~~~~~~~~~~
+189               </div>
+    ~~~~~~~~~~~~~~~~~~~~
+
+src/components/UI/Modal/HelpModal.tsx:190:13 - error TS1005: ')' expected.
+
+190             </div>
+                ~~
+
+src/components/UI/Modal/HelpModal.tsx:191:11 - error TS1109: Expression expected.
+
+191           )}
+              ~
+
+src/components/UI/Modal/HelpModal.tsx:199:18 - error TS17008: JSX element 'p' has no corresponding closing tag.
+
+199                 <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-3 sm:mb-4 leading-relaxed"></div>
+                     ~
+
+src/components/UI/Modal/HelpModal.tsx:203:19 - error TS17002: Expected corresponding JSX closing tag for 'div'.
+
+203                 </p>
+                      ~
+
+src/components/UI/Modal/HelpModal.tsx:204:15 - error TS1005: ')' expected.
+
+204               </div>
+                  ~~
+
+src/components/UI/Modal/HelpModal.tsx:206:15 - error TS2657: JSX expressions must have one parent element.
+
+206               <div>
+                  ~~~~~
+207                 <h4 className="font-semibold mb-3">📊 핵심 지표 설명</h4>
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+... 
+306                     </tbody>
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+307                   </table>
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/components/UI/Modal/HelpModal.tsx:239:20 - error TS17008: JSX element 'table' has no corresponding closing tag.
+
+239                   <table className="w-full text-xs sm:text-sm border-collapse min-w-[480px] sm:min-w-0"></div>
+                       ~~~~~
+
+src/components/UI/Modal/HelpModal.tsx:307:21 - error TS17002: Expected corresponding JSX closing tag for 'div'.
+
+307                   </table>
+                        ~~~~~
+
+src/components/UI/Modal/HelpModal.tsx:308:17 - error TS1128: Declaration or statement expected.
+
+308                 </div>
+                    ~~
+
+src/components/UI/Modal/HelpModal.tsx:309:15 - error TS1109: Expression expected.
+
+309               </div>
+                  ~~
+
+src/components/UI/Modal/HelpModal.tsx:332:13 - error TS1128: Declaration or statement expected.
+
+332             </div>
+                ~~
+
+src/components/UI/Modal/HelpModal.tsx:333:11 - error TS1109: Expression expected.
+
+333           )}
+              ~
+
+src/components/UI/Modal/HelpModal.tsx:334:9 - error TS1128: Declaration or statement expected.
+
+334         </div>
+            ~~
+
+src/components/UI/Modal/HelpModal.tsx:337:14 - error TS1005: ';' expected.
+
+337         <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                 ~~~~~~~~~
+
+src/components/UI/Modal/HelpModal.tsx:349:9 - error TS1128: Declaration or statement expected.
+
+349         </div>
+            ~~
+
+src/components/UI/Modal/HelpModal.tsx:350:7 - error TS1109: Expression expected.
+
+350       </div>
+          ~~
+
+src/components/UI/Modal/HelpModal.tsx:351:5 - error TS1109: Expression expected.
+
+351     </div>
+        ~~
+
+src/components/UI/Modal/HelpModal.tsx:352:3 - error TS1109: Expression expected.
+
+352   );
+      ~
+
+src/components/UI/Modal/HelpModal.tsx:353:1 - error TS1128: Declaration or statement expected.
+
+353 };
+    ~
+
+
+Found 27 errors in the same file, starting at: src/components/UI/Modal/HelpModal.tsx:29
+
+~/workspace$ 
