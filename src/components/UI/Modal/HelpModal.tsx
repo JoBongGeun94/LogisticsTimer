@@ -26,46 +26,47 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm sm:max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden"></div>
         {/* 헤더 */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+        <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
             도움말
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 -m-2"
+            aria-label="닫기"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
         {/* 탭 네비게이션 */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700">
+        <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1 sm:gap-2 px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-colors flex-shrink-0 min-w-0 ${
                 activeTab === tab.id
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400"
                   : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
-              {tab.icon}
-              {tab.label}
+              <span className="flex-shrink-0">{tab.icon}</span>
+              <span className="truncate">{tab.label}</span>
             </button>
           ))}
         </div>
 
         {/* 컨텐츠 */}
-        <div className="p-6 overflow-y-auto max-h-[60vh] text-gray-900 dark:text-gray-100">
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[65vh] sm:max-h-[60vh] text-gray-900 dark:text-gray-100"></div>
           {activeTab === "usage" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-3">기본 사용법</h3>
-                <ol className="list-decimal list-inside space-y-3 text-gray-700 dark:text-gray-300">
+                <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">기본 사용법</h3>
+                <ol className="list-decimal list-inside space-y-2 sm:space-y-3 text-sm sm:text-base text-gray-700 dark:text-gray-300"></div>
                   <li>
                     <strong>세션 생성:</strong> "새 세션" 버튼을 클릭하여 측정
                     세션을 생성합니다.
@@ -130,48 +131,48 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           )}
 
           {activeTab === "shortcuts" && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold mb-3">키보드 단축키</h3>
-              <div className="grid gap-3">
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <span>타이머 시작/정지</span>
-                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-sm font-mono">
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">키보드 단축키</h3>
+              <div className="space-y-2 sm:grid sm:gap-3"></div>
+                <div className="flex justify-between items-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className="text-sm sm:text-base">타이머 시작/정지</span>
+                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs sm:text-sm font-mono flex-shrink-0">
                     스페이스바
                   </kbd>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <span>측정 완료 (랩타임 기록)</span>
-                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-sm font-mono">
+                <div className="flex justify-between items-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className="text-sm sm:text-base">측정 완료 (랩타임 기록)</span>
+                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs sm:text-sm font-mono flex-shrink-0">
                     Enter
                   </kbd>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <span>타이머 중지</span>
-                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-sm font-mono">
+                <div className="flex justify-between items-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className="text-sm sm:text-base">타이머 중지</span>
+                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs sm:text-sm font-mono flex-shrink-0">
                     ESC
                   </kbd>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <span>타이머 리셋 (전체 초기화)</span>
-                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-sm font-mono">
+                <div className="flex justify-between items-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className="text-sm sm:text-base">타이머 리셋 (전체 초기화)</span>
+                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs sm:text-sm font-mono flex-shrink-0">
                     R
                   </kbd>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <span>데이터 내보내기 (CSV)</span>
-                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-sm font-mono">
+                <div className="flex justify-between items-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className="text-sm sm:text-base">데이터 내보내기 (CSV)</span>
+                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs sm:text-sm font-mono flex-shrink-0">
                     Ctrl + E
                   </kbd>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <span>소개 페이지로 이동</span>
-                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-sm font-mono">
+                <div className="flex justify-between items-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className="text-sm sm:text-base">소개 페이지로 이동</span>
+                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs sm:text-sm font-mono flex-shrink-0">
                     Ctrl + H
                   </kbd>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <span>도움말 열기</span>
-                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-sm font-mono">
+                <div className="flex justify-between items-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className="text-sm sm:text-base">도움말 열기</span>
+                  <kbd className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs sm:text-sm font-mono flex-shrink-0">
                     F1
                   </kbd>
                 </div>
@@ -190,12 +191,12 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           )}
 
           {activeTab === "analysis" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-3">
+                <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">
                   Gage R&R 분석 이해하기
                 </h3>
-                <p className="text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
+                <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-3 sm:mb-4 leading-relaxed"></div>
                   Gage R&R(Gage Repeatability and Reproducibility)은
                   측정시스템의 변동을 평가하는 통계적 방법으로, 측정의 정확성과
                   일관성을 확인하는 데 사용됩니다.
@@ -234,8 +235,8 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
 
               <div>
                 <h4 className="font-semibold mb-2">📋 평가 기준</h4>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse">
+                <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                  <table className="w-full text-xs sm:text-sm border-collapse min-w-[480px] sm:min-w-0"></div>
                     <thead className="bg-gray-50 dark:bg-gray-700">
                       <tr>
                         <th className="px-3 py-2 text-left border dark:border-gray-600">
@@ -333,14 +334,14 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* 푸터 */}
-        <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+        <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
               더 자세한 도움이 필요하시면 경영혁신실에 문의하세요.
             </div>
             <button
               onClick={onClose}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium min-w-[80px]"
             >
               닫기
             </button>
