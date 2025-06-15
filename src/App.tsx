@@ -618,9 +618,7 @@ const EnhancedLogisticsTimer = () => {
 
   // 폼 상태
   const [sessionName, setSessionName] = useState('');
-  const```python
-  [workType,```python
- setWorkType] = useState('');
+  const [workType, setWorkType] = useState('');
   const [operators, setOperators] = useState<string[]>(['']);
   const [targets, setTargets] = useState<string[]>(['']);
 
