@@ -606,8 +606,15 @@ export class AnalysisService {
     this.recursionMap.set(callId, currentDepth);
 
     try {
+      if (lapTimes.length < 2) {
+        throw new Error('분석을 위해서는 최소 2개의 측정값이 필요합니다.');
+      }
+
+      // 1인 측정 등 최소 요구사항 미충족 시 기본 분석 제공
       if (lapTimes.length < 6) {
-        throw new Error('Gage R&R 분석을 위해서는 최소 6개의 측정값이 필요합니다.');
+        const basicResult = this.calculateBasicAnalysis(lapTimes);
+        this.recursionMap.delete(callId);
+        return basicResult;
       }
 
       // 데이터 변환
@@ -656,6 +663,53 @@ export class AnalysisService {
       this.recursionMap.delete(callId);
       throw error;
     }
+  }
+
+  /**
+   * 1인 측정 등 최소 요구사항 미충족 시 기본 분석 제공
+   */
+  private static calculateBasicAnalysis(lapTimes: LapTime[]): GageRRResult {
+    const times = lapTimes.map(lap => lap.time);
+    const mean = times.reduce((sum, time) => sum + time, 0) / times.length;
+    const variance = times.length > 1 ? 
+      times.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / (times.length - 1) : 0;
+    const stdDev = Math.sqrt(variance);
+    const cv = mean > 0 ? (stdDev / mean) * 100 : 0;
+
+    // 기본 분위수 계산 (정규분포 가정)
+    const q95 = mean + 1.645 * stdDev;
+    const q99 = mean + 2.326 * stdDev;
+    const q999 = mean + 3.090 * stdDev;
+
+    // 측정시스템 신뢰성 평가 (1인 측정은 기본적으로 부적절)
+    const operators = new Set(lapTimes.map(lap => lap.operator)).size;
+    const targets = new Set(lapTimes.map(lap => lap.target)).size;
+    
+    return {
+      gageRRPercent: 100, // 1인 측정은 측정시스템 신뢰성 부족
+      repeatability: 0, // 측정자간 비교 불가
+      reproducibility: 0, // 측정자간 비교 불가
+      partVariation: 0, // 대상자간 변동 분석 제한적
+      totalVariation: stdDev * 6, // 6σ 기준
+      icc: 0, // 측정자간 신뢰성 계산 불가
+      cv: cv,
+      q95: q95,
+      q99: q99,
+      q999: q999,
+      isReliableForStandard: false, // 표준시간 설정 부적절
+      ndc: 0,
+      ptRatio: 0,
+      cpk: 0,
+      status: operators < 2 ? 'unacceptable' : 'marginal', // 측정자 수에 따른 상태
+      anova: {
+        partSS: 0, operatorSS: 0, interactionSS: 0, equipmentSS: variance * times.length,
+        totalSS: variance * times.length, partMS: 0, operatorMS: 0, interactionMS: 0,
+        equipmentMS: variance, fStatistic: 0, pValue: 1.0
+      },
+      varianceComponents: {
+        part: 0, operator: 0, interaction: 0, equipment: 1.0, total: 1.0
+      }
+    };
   }
 
   private static calculateVarianceComponents(anova: ANOVAResult): VarianceComponents {

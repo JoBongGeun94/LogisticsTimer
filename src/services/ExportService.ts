@@ -64,9 +64,20 @@ class DataFormatter implements IDataFormatter {
     const variance = times.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / (times.length - 1);
     const stdDev = Math.sqrt(variance);
 
-    // 웹앱과 동일한 변동계수 계산 (AnalysisService와 일치)
-    const webAppAnalysis = AnalysisService.calculateGageRR(lapTimes);
-    const webAppCV = webAppAnalysis.cv || 0;
+    // 웹앱과 완전 동일한 분석 결과 사용 (일관성 보장)
+    let webAppCV = 0;
+    try {
+      if (lapTimes.length >= 6) {
+        const webAppAnalysis = AnalysisService.calculateGageRR(lapTimes);
+        webAppCV = webAppAnalysis.cv || 0;
+      } else {
+        // 1인 측정 등 최소 요구사항 미충족 시 기본 CV 계산
+        webAppCV = times.length > 1 ? (stdDev / mean) * 100 : 0;
+      }
+    } catch (error) {
+      console.warn('웹앱 분석 실패, 기본 CV 계산:', error);
+      webAppCV = times.length > 1 ? (stdDev / mean) * 100 : 0;
+    }
 
     return {
       count: times.length,
@@ -75,7 +86,7 @@ class DataFormatter implements IDataFormatter {
       min: Math.min(...times),
       max: Math.max(...times),
       range: Math.max(...times) - Math.min(...times),
-      cv: webAppCV  // 웹앱 기준 변동계수 사용
+      cv: webAppCV  // 웹앱과 완전 동일한 변동계수
     };
   }
 
@@ -133,16 +144,41 @@ class DataFormatter implements IDataFormatter {
 
   formatAnalysisData(session: SessionData, lapTimes: LapTime[], analysis: GageRRResult): string[][] {
     // 데이터 유효성 검증
-    if (!analysis || typeof analysis !== 'object') {
-      return [['오류', '분석 결과를 불러올 수 없습니다']];
-    }
-
     if (!session || !lapTimes || lapTimes.length === 0) {
       return [['오류', '세션 또는 측정 데이터를 불러올 수 없습니다']];
     }
 
-    // 웹앱과 동일한 분석 데이터 생성 (AnalysisService 직접 호출로 일치성 보장)
-    const webAppAnalysis = AnalysisService.calculateGageRR(lapTimes);
+    // 웹앱과 완전 동일한 분석 결과 사용 (1인 측정 지원)
+    let webAppAnalysis;
+    let analysisType = '';
+    
+    try {
+      if (lapTimes.length >= 6) {
+        webAppAnalysis = AnalysisService.calculateGageRR(lapTimes);
+        analysisType = 'Gage R&R 완전 분석';
+      } else {
+        // 1인 측정 등 최소 요구사항 미충족 시 기본 분석 제공
+        const basicStats = this.calculateBasicStats(lapTimes);
+        webAppAnalysis = {
+          status: 'unacceptable',
+          gageRRPercent: 100, // 1인 측정은 측정시스템 신뢰성 부족
+          icc: 0, // 측정자간 신뢰성 계산 불가
+          cv: basicStats.cv,
+          q95: basicStats.mean + 1.645 * basicStats.stdDev,
+          q99: basicStats.mean + 2.326 * basicStats.stdDev,
+          q999: basicStats.mean + 3.090 * basicStats.stdDev,
+          repeatability: 0,
+          reproducibility: 0,
+          partVariation: 0,
+          totalVariation: basicStats.stdDev * 6,
+          isReliableForStandard: false
+        };
+        analysisType = '기본 통계 분석 (Gage R&R 요구사항 미충족)';
+      }
+    } catch (error) {
+      console.error('분석 실패:', error);
+      return [['오류', `분석 중 오류 발생: ${error}`]];
+    }
     
     const safeAnalysis = {
       status: webAppAnalysis.status || 'unacceptable',
@@ -157,13 +193,15 @@ class DataFormatter implements IDataFormatter {
       partVariation: Number(webAppAnalysis.partVariation) || 0,
       totalVariation: Number(webAppAnalysis.totalVariation) || 0,
       deltaPair: 0,
-      isReliableForStandard: Boolean(webAppAnalysis.isReliableForStandard)
+      isReliableForStandard: Boolean(webAppAnalysis.isReliableForStandard),
+      analysisType: analysisType
     };
 
     // 보고서 헤더
     const reportHeader = [
-      ['=== Gage R&R 분석 보고서 ==='],
+      ['=== 측정시스템 분석 보고서 ==='],
       ['생성일시', new Date().toLocaleString('ko-KR')],
+      ['분석 유형', safeAnalysis.analysisType || 'Gage R&R 분석'],
       ['세션명', session.name || ''],
       ['작업유형', session.workType || ''],
       ['측정자', (session.operators || []).join(', ')],
