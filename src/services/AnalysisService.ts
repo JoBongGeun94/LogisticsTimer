@@ -517,22 +517,11 @@ class AnalysisFactory {
  * 통합 분석 서비스 (Facade Pattern + Open/Closed Principle)
  */
 export class AnalysisService {
-  private static readonly MAX_RECURSION_DEPTH = 100;
-  private static recursionCounter = 0;
-
   private static statisticsCalculator = AnalysisFactory.createStatisticsCalculator();
   private static anovaCalculator = AnalysisFactory.createANOVACalculator();
   private static gageRRCalculator = AnalysisFactory.createGageRRCalculator();
 
   static calculateGageRR(lapTimes: LapTime[]): GageRRResult {
-    if (this.recursionCounter > this.MAX_RECURSION_DEPTH) {
-      console.error('재귀 깊이 초과');
-      this.recursionCounter = 0;
-      throw new Error('Maximum recursion depth exceeded');
-    }
-
-    this.recursionCounter++;
-
     try {
       // 엣지 케이스 처리 강화
       if (!lapTimes || lapTimes.length < 6) {
@@ -598,8 +587,6 @@ export class AnalysisService {
       // 분산 구성요소 계산
       const varianceComponents = this.calculateVarianceComponents(anova);
 
-      this.recursionCounter = 0;
-
       return {
         ...metrics,
         status: StatusEvaluator.determineStatus(metrics.gageRRPercent),
@@ -607,7 +594,6 @@ export class AnalysisService {
         varianceComponents
       };
     } catch (error) {
-      this.recursionCounter = 0;
       throw error;
     }
   }
