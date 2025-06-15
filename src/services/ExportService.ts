@@ -142,7 +142,7 @@ class DataFormatter implements IDataFormatter {
     ];
   }
 
-  formatAnalysisData(session: SessionData, lapTimes: LapTime[], analysis: GageRRResult): string[][] {
+  formatAnalysisData(session: SessionData, lapTimes: LapTime[]): string[][] {
     // 데이터 유효성 검증
     if (!session || !lapTimes || lapTimes.length === 0) {
       return [['오류', '세션 또는 측정 데이터를 불러올 수 없습니다']];
@@ -479,7 +479,7 @@ export class ExportService {
         return false;
       }
 
-      const data = this.dataFormatter.formatAnalysisData(session, lapTimes, analysis);
+      const data = this.dataFormatter.formatAnalysisData(session, lapTimes);
       const filename = FilenameGenerator.generateAnalysisFilename(session.name);
 
       return this.fileExporter.export(data, filename);

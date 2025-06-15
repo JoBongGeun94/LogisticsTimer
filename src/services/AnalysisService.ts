@@ -683,7 +683,6 @@ export class AnalysisService {
 
     // 측정시스템 신뢰성 평가 (1인 측정은 기본적으로 부적절)
     const operators = new Set(lapTimes.map(lap => lap.operator)).size;
-    const targets = new Set(lapTimes.map(lap => lap.target)).size;
     
     return {
       gageRRPercent: 100, // 1인 측정은 측정시스템 신뢰성 부족
@@ -697,9 +696,6 @@ export class AnalysisService {
       q99: q99,
       q999: q999,
       isReliableForStandard: false, // 표준시간 설정 부적절
-      ndc: 0,
-      ptRatio: 0,
-      cpk: 0,
       status: operators < 2 ? 'unacceptable' : 'marginal', // 측정자 수에 따른 상태
       anova: {
         partSS: 0, operatorSS: 0, interactionSS: 0, equipmentSS: variance * times.length,

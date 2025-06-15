@@ -56,7 +56,7 @@ export interface GageRRResult {
   reproducibility: number;
   partVariation: number;
   totalVariation: number;
-  // 물류작업 특성에 맞는 추가 지표
+  // 작업시간 분석용 추가 지표
   icc: number;
   cv: number;
   q95: number;
