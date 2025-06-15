@@ -442,28 +442,29 @@ const DetailedAnalysisModal = memo<{
 }>(({ isVisible, onClose, analysis, theme, isDark, lapTimes, statisticsAnalysis }) => {
   // 성능 최적화: 분석 데이터 메모이제이션 - 타입 안전성 강화
   const memoizedAnalysis = useMemo(() => {
-    if (!analysis || !statisticsAnalysis || !statisticsAnalysis.gaugeData) return null;
+    if (!analysis || !statisticsAnalysis?.gaugeData) return null;
     
     try {
-      // 🔧 깊은 복사 방지 및 참조 안정성 보장
-      const stableResult = {
-        gageRRPercent: analysis.gageRRPercent || 0,
+      // 🔧 안전한 참조 생성 - 순환 참조 방지
+      return {
+        gageRRPercent: Number(analysis.gageRRPercent) || 0,
         status: analysis.status || 'info',
-        iccValue: statisticsAnalysis.iccValue || 0,
-        deltaPairValue: statisticsAnalysis.deltaPairValue || 0,
+        iccValue: Number(statisticsAnalysis.iccValue) || 0,
+        deltaPairValue: Number(statisticsAnalysis.deltaPairValue) || 0,
         gaugeData: {
-          grr: statisticsAnalysis.gaugeData.grr || 0,
-          cv: statisticsAnalysis.gaugeData.cv || 0,
-          q99: statisticsAnalysis.gaugeData.q99 || 0,
-          repeatability: statisticsAnalysis.gaugeData.repeatability || 0,
-          reproducibility: statisticsAnalysis.gaugeData.reproducibility || 0,
-          partVariation: statisticsAnalysis.gaugeData.partVariation || 0,
-          totalVariation: statisticsAnalysis.gaugeData.totalVariation || 0,
-          isReliableForStandard: statisticsAnalysis.gaugeData.isReliableForStandard || false,
-          dataQuality: statisticsAnalysis.gaugeData.dataQuality || null
+          grr: Number(statisticsAnalysis.gaugeData.grr) || 0,
+          cv: Number(statisticsAnalysis.gaugeData.cv) || 0,
+          q99: Number(statisticsAnalysis.gaugeData.q99) || 0,
+          repeatability: Number(statisticsAnalysis.gaugeData.repeatability) || 0,
+          reproducibility: Number(statisticsAnalysis.gaugeData.reproducibility) || 0,
+          partVariation: Number(statisticsAnalysis.gaugeData.partVariation) || 0,
+          totalVariation: Number(statisticsAnalysis.gaugeData.totalVariation) || 0,
+          isReliableForStandard: Boolean(statisticsAnalysis.gaugeData.isReliableForStandard),
+          dataQuality: statisticsAnalysis.gaugeData.dataQuality ? {
+            ...statisticsAnalysis.gaugeData.dataQuality
+          } : null
         }
       };
-      return stableResult;
     } catch (error) {
       console.error('메모이제이션 오류:', error);
       return null;
@@ -474,7 +475,8 @@ const DetailedAnalysisModal = memo<{
     statisticsAnalysis?.iccValue, 
     statisticsAnalysis?.deltaPairValue, 
     statisticsAnalysis?.gaugeData?.grr,
-    statisticsAnalysis?.gaugeData?.cv
+    statisticsAnalysis?.gaugeData?.cv,
+    statisticsAnalysis?.gaugeData?.q99
   ]);
 
   if (!isVisible) return null;
@@ -801,7 +803,7 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [isDark]);
 
-  // 키보드 이벤트
+  // 키보드 이벤트 (최적화된 의존성 배열)
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -827,14 +829,27 @@ const EnhancedLogisticsTimer = () => {
       }
     };
 
-    // 🔧 이벤트 리스너 중복 방지 및 안전한 제거
-    const currentHandler = handleKeyPress;
-    window.addEventListener('keydown', currentHandler, { passive: false });
+    // 🔧 AbortController를 사용한 안전한 이벤트 관리
+    const controller = new AbortController();
+    window.addEventListener('keydown', handleKeyPress, { 
+      passive: false, 
+      signal: controller.signal 
+    });
     
     return () => {
-      window.removeEventListener('keydown', currentHandler);
+      controller.abort();
     };
-  }, [isRunning, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis, toggleTimer, recordLap, stopTimer, resetTimer]);
+  }, [
+    // 🔧 최소한의 의존성만 포함
+    showNewSessionModal, 
+    selectedSessionHistory, 
+    showLanding, 
+    showDetailedAnalysis,
+    toggleTimer,
+    recordLap,
+    stopTimer,
+    resetTimer
+  ]);
 
   // 리셋 함수 (기존 로직과 통합)
   const resetTimer = useCallback(() => {
@@ -1777,7 +1792,9 @@ const EnhancedLogisticsTimer = () => {
               </p>
               <div className="flex gap-3">
                 <button
-                  onClick={() => statisticsAnalysis.setShowRetakeModal(false)}
+                  onClick={() => {
+                    statisticsAnalysis.setShowRetakeModal(false);
+                  }}
                   className={`flex-1 border py-2 rounded-lg font-medium transition-colors ${theme.border} ${theme.textSecondary} ${theme.surfaceHover}`}
                 >
                   무시
@@ -1785,12 +1802,18 @@ const EnhancedLogisticsTimer = () => {
                 <button
                   onClick={() => {
                     statisticsAnalysis.setShowRetakeModal(false);
-                    // 마지막 측정 제거
-                    const newLaps = lapTimes.slice(0, -1);
-                    setLapTimes(newLaps);
-                    setAllLapTimes(prev => prev.filter(lap => lap.id !== lapTimes[lapTimes.length - 1]?.id));
-                    if (currentSession) {
-                      updateSessionLapTimes(newLaps);
+                    // 🔧 안전한 마지막 측정 제거
+                    if (lapTimes.length > 0) {
+                      const lastLapId = lapTimes[lapTimes.length - 1]?.id;
+                      const newLaps = lapTimes.slice(0, -1);
+                      
+                      startTransition(() => {
+                        setLapTimes(newLaps);
+                        setAllLapTimes(prev => prev.filter(lap => lap.id !== lastLapId));
+                        if (currentSession) {
+                          updateSessionLapTimes(newLaps);
+                        }
+                      });
                     }
                   }}
                   className="flex-1 bg-red-500 text-white py-2 rounded-lg font-medium hover:bg-red-600 transition-colors"

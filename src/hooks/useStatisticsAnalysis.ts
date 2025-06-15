@@ -356,6 +356,16 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
           if (deltaPairUpdate > threshold && allLaps.length > 2) {
             showRetakeUpdate = true;
             console.log(`🚨 재측정 임계값 초과: ${(deltaPairUpdate/1000).toFixed(1)}초 > ${(threshold/1000).toFixed(1)}초`);
+
+            // 🔧 재측정 모달 자동 닫기 타이머 (3초 후)
+            const timeoutId = setTimeout(() => {
+              if (showRetakeUpdate) {
+                setShowRetakeModal(false);
+              }
+            }, 3000);
+
+            // 🔧 타이머 정리를 위한 참조 저장
+            (window as any).__retakeModalTimeout = timeoutId;
           }
         }
 
