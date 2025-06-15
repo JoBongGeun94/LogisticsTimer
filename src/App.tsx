@@ -965,6 +965,13 @@ const EnhancedLogisticsTimer = () => {
             </div>
             <div className="flex items-center space-x-2 flex-shrink-0">
               <button
+                onClick={() => setShowHelpModal(true)}
+                className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:${theme.textSecondary} ${theme.surfaceHover}`}
+                title="도움말 (F1)"
+              >
+                <Info className="w-5 h-5" />
+              </button>
+              <button
                 onClick={() => setIsDark(!isDark)}
                 className={`p-2 rounded-lg transition-colors ${theme.textMuted} hover:${theme.textSecondary} ${theme.surfaceHover}`}
               >
