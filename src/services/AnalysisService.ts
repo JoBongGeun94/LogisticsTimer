@@ -565,7 +565,7 @@ export class AnalysisService {
         throw new Error('유효한 측정값이 부족합니다. 최소 6개의 유효한 측정값이 필요합니다.');
       }
 
-      // 📊 데이터 전처리 파이프라인 적용 (Single Responsibility Principle)
+      // 📊 데이터 전처리 파이프라인 적용
       const timeValues = validLapTimes.map(lap => lap.time);
 
       // 1단계: 이상치 감지 및 제거 (IQR 방법 사용)
