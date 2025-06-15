@@ -1,75 +1,4 @@
-
-<old_str>import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App.tsx';
-import './index.css';
-import './index.css';
-
-// 캐시 무효화: 2025-06-04 07:13 KST
-// 빌드 ID: CACHE_CLEAR_V2_0_1
-
-케이션 오류:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          padding: '20px',
-          backgroundColor: '#f3f4f6',
-          fontFamily: 'system-ui, -apple-system, sans-serif'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '40px',
-            borderRadius: '12px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-            textAlign: 'center',
-            maxWidth: '500px'
-          }}>
-            <h1 style={{ color: '#dc2626', marginBottom: '16px', fontSize: '24px' }}>
-              애플리케이션 로딩 오류
-            </h1>
-            <p style={{ color: '#6b7280', marginBottom: '24px', lineHeight: '1.6' }}>
-              페이지 로딩 중 문제가 발생했습니다.<br />
-              페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                padding: '12px 24px',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                cursor: 'pointer',
-                marginRight: '12px'
-
-his.state.error?.toString()}
-              </pre>
-            </details>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error('Root element not found');
-}
-
-c</old_str>
-<new_str>import React from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
@@ -172,4 +101,4 @@ root.render(
       <App />
     </ErrorBoundary>
   </React.StrictMode>
-);</new_str>
+);
