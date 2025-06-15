@@ -5,7 +5,7 @@ import {
   Zap, Target, RefreshCw, LogOut,
   Moon, Sun, PieChart, Info, CheckCircle,
   AlertCircle, XCircle, Timer, Activity,
-  Trash2, Filter, X, Minus, AlertTriangle, TrendingUp
+  Trash2, Filter, X, Minus, AlertTriangle
 } from 'lucide-react';
 
 // 타입 및 서비스 import
@@ -912,17 +912,7 @@ const EnhancedLogisticsTimer = () => {
     return { canAnalyze: true, message: '' };
   }, [currentSession]);
 
-  // 실시간 Gage R&R 분석 (요구사항: 화면 실시간 최신화)
-  const realtimeAnalysis = useMemo(() => {
-    if (!canAnalyze.canAnalyze || lapTimes.length < 6) return null;
-
-    try {
-      return AnalysisService.calculateGageRR(lapTimes, 'none');
-    } catch (error) {
-      console.error('실시간 분석 오류:', error);
-      return null;
-    }
-  }, [lapTimes, canAnalyze]);
+  
 
   // 랜딩 페이지 표시 (요구사항 1번)
   if (showLanding) {
