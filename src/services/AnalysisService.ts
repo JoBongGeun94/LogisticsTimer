@@ -533,8 +533,8 @@ class GageRRCalculator implements IGageRRCalculator {
     const z999 = 3.090; // 99.9% 분위수
 
     const q95 = grandMean + z95 * totalStd * conservativeFactor;
-    const q99 = grandMean + NORMAL_DISTRIBUTION.Q99 * totalStd * conservativeFactor;
-    const q999 = grandMean + NORMAL_DISTRIBUTION.Q999 * totalStd * conservativeFactor;
+    const q99 = grandMean + z99 * totalStd * conservativeFactor;
+    const q999 = grandMean + z999 * totalStd * conservativeFactor;
 
     // 물류작업 특성에 맞는 표준시간 설정 신뢰성 판단
     const isReliableForStandard = (cv <= thresholds.cv) && (icc >= thresholds.icc);
