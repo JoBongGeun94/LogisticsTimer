@@ -83,7 +83,7 @@ interface AnalysisCache {
   result: GaugeData;
 }
 
-export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
+export const useStatisticsAnalysis = (lapTimes: LapTime[] = []) => {
   const [calculator] = useState<IStatisticsCalculator>(() => new StatisticsCalculator());
   const [iccValue, setIccValue] = useState(0);
   const [deltaPairValue, setDeltaPairValue] = useState(0);
@@ -146,7 +146,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
   // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
   const gaugeData = useMemo((): GaugeData => {
-    if (lapTimes.length < 6) {
+    if (!lapTimes || !Array.isArray(lapTimes) || lapTimes.length < 6) {
       return {
         grr: 0,
         repeatability: 0,

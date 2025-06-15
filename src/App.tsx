@@ -23,7 +23,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTimerLogic } from './hooks/useTimerLogic';
 import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
 import { useSessionManager } from './hooks/useSessionManager';
-import { NotificationServiceInstance as NotificationService } from './services';
+import NotificationServiceInstance from './services/NotificationService';
 
 // 시간 포맷팅 유틸리티 함수
 const formatTime = (milliseconds: number): string => {
@@ -45,7 +45,7 @@ const useNotificationService = () => {
   }>>([]);
 
   useEffect(() => {
-    const unsubscribe = NotificationService.subscribe((notification) => {
+    const unsubscribe = NotificationServiceInstance.subscribe((notification) => {
       const newToast = {
         id: Date.now(),
         message: notification.message,
@@ -65,7 +65,7 @@ const useNotificationService = () => {
   }, []);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-    NotificationService.show(message, type);
+    NotificationServiceInstance.show(message, type);
   }, []);
 
   const removeToast = useCallback((id: number) => {

@@ -49,5 +49,11 @@ export class NotificationService {
   }
 }
 
+// 기본 인스턴스 export
+const NotificationServiceInstance = NotificationService.getInstance();
+
+export { NotificationService };
+export default NotificationServiceInstance;
+
 // Singleton 인스턴스를 기본 export로 제공
 export default NotificationService.getInstance();
