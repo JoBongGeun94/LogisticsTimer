@@ -565,7 +565,7 @@ export class AnalysisService {
         throw new Error('유효한 측정값이 부족합니다. 최소 6개의 유효한 측정값이 필요합니다.');
       }
 
-      // 📊 데이터 전처리 파이프라인 적용
+      // 📊 데이터 전처리 파이프라인 적용 (Single Responsibility Principle)
       const timeValues = validLapTimes.map(lap => lap.time);
 
       // 1단계: 이상치 감지 및 제거 (IQR 방법 사용)
@@ -736,12 +736,12 @@ export class AnalysisService {
     // 실시간 기본 통계 계산 (2개 이상)
     const times = validLapTimes.map(lap => lap.time);
     const mean = times.reduce((sum, time) => sum + time, 0) / times.length;
-
+    
     // 표본 분산 계산 (n-1로 나누기)
     const variance = times.length > 1 ? 
       times.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / (times.length - 1) : 0;
     const std = Math.sqrt(variance);
-
+    
     // 변동계수 즉시 계산 (실시간 반영)
     const cv = mean > 0 ? (std / mean) * 100 : 0;
     console.log(`📊 실시간 변동계수: ${cv.toFixed(1)}% (평균: ${mean.toFixed(0)}ms, 표준편차: ${std.toFixed(1)}ms)`);
@@ -815,4 +815,3 @@ export class AnalysisService {
     };
   }
 }
-//타입 수정 완료

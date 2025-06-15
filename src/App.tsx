@@ -24,7 +24,6 @@ import { useTimerLogic } from './hooks/useTimerLogic';
 import { useStatisticsAnalysis } from './hooks/useStatisticsAnalysis';
 import { useSessionManager } from './hooks/useSessionManager';
 import { NotificationService } from './services/NotificationService';
-import HelpModal from './components/UI/Modal/HelpModal';
 
 // ==================== 테마 상수 (Open/Closed Principle) ====================
 const THEME_COLORS = {
@@ -88,7 +87,6 @@ const WORK_TYPES = ['물자검수팀', '저장관리팀', '포장관리팀'] as 
 const useBackButtonPrevention = () => {
   const [backPressCount, setBackPressCount] = useState(0);
   const [showBackWarning, setShowBackWarning] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
@@ -97,16 +95,9 @@ const useBackButtonPrevention = () => {
         setBackPressCount(1);
         setShowBackWarning(true);
         window.history.pushState(null, '', window.location.href);
-        
-        // 기존 타이머가 있으면 클리어
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-        
-        timeoutRef.current = setTimeout(() => {
+        setTimeout(() => {
           setBackPressCount(0);
           setShowBackWarning(false);
-          timeoutRef.current = null;
         }, 2000);
       } else {
         window.history.back();
@@ -118,11 +109,6 @@ const useBackButtonPrevention = () => {
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      // cleanup 시 타이머도 정리
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
     };
   }, [backPressCount]);
 
@@ -783,69 +769,20 @@ const EnhancedLogisticsTimer = () => {
     }
   }, [isDark]);
 
-  // 도움말 모달 상태 추가
-  const [showHelpModal, setShowHelpModal] = useState(false);
-
-  // 키보드 이벤트 (완전한 단축키 구현)
+  // 키보드 이벤트
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // 입력 필드에서는 단축키 비활성화
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
-      // 모달이 열려있을 때는 기본 단축키만 허용
-      if (showNewSessionModal || selectedSessionHistory || showLanding || showDetailedAnalysis || showHelpModal) {
-        if (e.code === 'Escape') {
-          e.preventDefault();
-          if (showHelpModal) setShowHelpModal(false);
-          else if (showDetailedAnalysis) setShowDetailedAnalysis(false);
-          else if (selectedSessionHistory) setSelectedSessionHistory(null);
-          else if (showNewSessionModal) setShowNewSessionModal(false);
-        }
-        return;
-      }
+      if (showNewSessionModal || selectedSessionHistory || showLanding || showDetailedAnalysis) return;
 
-      // F1: 도움말 열기
-      if (e.code === 'F1') {
-        e.preventDefault();
-        setShowHelpModal(true);
-        return;
-      }
-
-      // Ctrl+E: 데이터 내보내기
-      if (e.ctrlKey && e.code === 'KeyE') {
-        e.preventDefault();
-        if (lapTimes.length > 0) {
-          downloadMeasurementData();
-        } else {
-          showToast('내보낼 측정 데이터가 없습니다.', 'warning');
-        }
-        return;
-      }
-
-      // Ctrl+H: 소개 페이지로 이동
-      if (e.ctrlKey && e.code === 'KeyH') {
-        e.preventDefault();
-        setShowLanding(true);
-        return;
-      }
-
-      // 기본 타이머 단축키들
       switch (e.code) {
         case 'Space':
           e.preventDefault();
-          if (currentSession) {
-            toggleTimer();
-          } else {
-            showToast('세션을 먼저 생성해주세요.', 'warning');
-          }
+          toggleTimer();
           break;
         case 'Enter':
           e.preventDefault();
-          if (currentSession) {
-            recordLap();
-          } else {
-            showToast('세션을 먼저 생성해주세요.', 'warning');
-          }
+          recordLap();
           break;
         case 'Escape':
           e.preventDefault();
@@ -860,13 +797,7 @@ const EnhancedLogisticsTimer = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [
-    isRunning, currentSession, currentOperator, currentTarget, 
-    showNewSessionModal, selectedSessionHistory, showLanding, 
-    showDetailedAnalysis, showHelpModal, lapTimes.length,
-    toggleTimer, recordLap, stopTimer, resetTimer, 
-    downloadMeasurementData, showToast
-  ]);
+  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
 
   // 리셋 함수 (기존 로직과 통합)
   const resetTimer = useCallback(() => {
@@ -1117,14 +1048,6 @@ const EnhancedLogisticsTimer = () => {
         isDark={isDark}
         lapTimes={lapTimes}
         statisticsAnalysis={statisticsAnalysis}
-      />
-
-      {/* 도움말 모달 */}
-      <HelpModal
-        isVisible={showHelpModal}
-        onClose={() => setShowHelpModal(false)}
-        theme={theme}
-        isDark={isDark}
       />
 
       {/* 헤더 */}
@@ -1901,5 +1824,56 @@ const EnhancedLogisticsTimer = () => {
     </div>
   );
 };
+
+// 통계 카드 컴포넌트 (Single Responsibility Principle)
+const StatCard = memo<{
+  title: string;
+  value: string | number;
+  unit?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  status: 'success' | 'warning' | 'error' | 'info';
+  theme: Theme;
+  isDark: boolean;
+  size?: 'sm' | 'md';
+}>(({ title, value, unit, icon: Icon, status, theme, isDark, size = 'md' }) => {
+  const colors = {
+    text: status === 'success' ? (isDark ? 'text-green-400' : 'text-green-600') :
+          status === 'warning' ? (isDark ? 'text-yellow-400' : 'text-yellow-600') :
+          status === 'error' ? (isDark ? 'text-red-400' : 'text-red-600') :
+          theme.textSecondary,
+    icon: status === 'success' ? (isDark ? 'text-green-400' : 'text-green-500') :
+          status === 'warning' ? (isDark ? 'text-yellow-400' : 'text-yellow-500') :
+          status === 'error' ? (isDark ? 'text-red-400' : 'text-red-500') :
+          theme.textMuted
+  };
+
+  const sizes = {
+    sm: {
+      icon: 'w-4 h-4',
+      title: 'text-xs',
+      value: 'text-sm'
+    },
+    md: {
+      icon: 'w-5 h-5',
+      title: 'text-sm',
+      value: 'text-lg'
+    }
+  };
+
+  return (
+    <div className={`rounded-lg p-3 ${theme.surface} shadow-sm border ${theme.border} flex flex-col`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon className={`${sizes[size].icon} ${colors.icon}`} />
+          <span className={`${sizes[size].title} font-medium ${theme.textSecondary}`}>{title}</span>
+        </div>
+        <div className={`${sizes[size].value} font-bold ${colors.text} font-mono`}>
+          {value}
+          {unit && <span className="text-xs font-normal ml-1">{unit}</span>}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default EnhancedLogisticsTimer;

@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { LapTime, SessionData } from '../types';
 import { ValidationService } from '../services/ValidationService';
@@ -24,39 +25,19 @@ export const useTimerLogic = ({
 
   // 타이머 로직
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    let animationFrame: number | null = null;
-
-    if (isRunning && startTimeRef.current > 0) {
-      // RAF를 사용하여 더 정확한 타이밍 구현
-      const updateTimer = () => {
-        const elapsed = Date.now() - startTimeRef.current;
-        setCurrentTime(elapsed);
-
-        if (isRunning) {
-          animationFrame = requestAnimationFrame(updateTimer);
-        }
-      };
-
-      animationFrame = requestAnimationFrame(updateTimer);
-
-      // 백업 인터벌 (RAF가 멈춘 경우 대비)
-      interval = setInterval(() => {
-        if (isRunning && startTimeRef.current > 0) {
-          const elapsed = Date.now() - startTimeRef.current;
-          setCurrentTime(elapsed);
-        }
-      }, 100);
+    if (isRunning) {
+      intervalRef.current = window.setInterval(() => {
+        setCurrentTime(Date.now() - startTimeRef.current);
+      }, 10);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     }
 
     return () => {
-      if (interval) {
-        clearInterval(interval);
-        interval = null;
-      }
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-        animationFrame = null;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
       }
     };
   }, [isRunning]);
