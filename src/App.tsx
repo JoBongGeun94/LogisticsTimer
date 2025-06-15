@@ -1383,8 +1383,8 @@ const EnhancedLogisticsTimer = () => {
                 <Package className="w-5 h-5 text-gray-500" />
                 <h2 className={`font-semibold ${theme.text}`}>세션 히스토리</h2>
               </div>
-              <button```tool_code
-onClick={resetAllData}
+              <button
+                onClick={resetAllData}
                 className="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
                 title="모든 세션 히스토리 삭제"
               >
