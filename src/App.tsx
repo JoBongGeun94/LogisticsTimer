@@ -939,38 +939,64 @@ const EnhancedLogisticsTimer = () => {
     try {
       return AnalysisService.calculateGageRR(lapTimes);
     } catch (error) {
-      console.error('분석 오류:', error);
-      showToast('분석 중 오류가 발생했습니다.', 'error');
+      console.error('🚨 분석 오류 상세:', error);
+      
+      // 구체적인 오류 메시지 제공
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+      
+      if (errorMessage.includes('측정자')) {
+        showToast(`측정자 설정 문제: ${errorMessage}`, 'warning');
+      } else if (errorMessage.includes('대상자')) {
+        showToast(`대상자 설정 문제: ${errorMessage}`, 'warning');
+      } else if (errorMessage.includes('측정값')) {
+        showToast(`측정 데이터 문제: ${errorMessage}`, 'error');
+      } else {
+        showToast('분석 중 오류가 발생했습니다. 데이터를 확인해주세요.', 'error');
+      }
+      
       return null;
     }
   }, [lapTimes, showToast]);
 
-  // 분석 가능 여부 확인 (요구사항 6번)
+  // 분석 가능 여부 확인 (요구사항 6번) - 조건 완화 및 개선
   const canAnalyze = useMemo(() => {
-    if (!currentSession) return { canAnalyze: false, message: '' };
+    if (!currentSession) return { canAnalyze: false, message: '활성 세션이 없습니다.' };
 
     const operatorCount = currentSession.operators.length;
     const targetCount = currentSession.targets.length;
+    const measurementCount = lapTimes.length;
 
-    if (operatorCount < 2 && targetCount < 5) {
+    // 기본 분석 조건 (3개 이상 측정값)
+    if (measurementCount < 3) {
       return {
         canAnalyze: false,
-        message: 'Gage R&R 분석을 위해서는 측정자 2명 이상, 대상자 5개 이상이 필요합니다.'
-      };
-    } else if (operatorCount < 2) {
-      return {
-        canAnalyze: false,
-        message: 'Gage R&R 분석을 위해서는 측정자 2명 이상이 필요합니다.'
-      };
-    } else if (targetCount < 5) {
-      return {
-        canAnalyze: false,
-        message: 'Gage R&R 분석을 위해서는 대상자 5개 이상이 필요합니다.'
+        message: '기본 분석을 위해서는 최소 3회 이상의 측정이 필요합니다.'
       };
     }
 
-    return { canAnalyze: true, message: '' };
-  }, [currentSession]);
+    // 완전한 Gage R&R 분석 조건
+    if (operatorCount < 2 && targetCount < 5) {
+      return {
+        canAnalyze: measurementCount >= 3, // 기본 분석은 가능
+        message: '완전한 Gage R&R 분석을 위해서는 측정자 2명 이상, 대상자 5개 이상이 필요합니다.'
+      };
+    } else if (operatorCount < 2) {
+      return {
+        canAnalyze: measurementCount >= 3,
+        message: '완전한 Gage R&R 분석을 위해서는 측정자 2명 이상이 필요합니다.'
+      };
+    } else if (targetCount < 5) {
+      return {
+        canAnalyze: measurementCount >= 3,
+        message: '완전한 Gage R&R 분석을 위해서는 대상자 5개 이상이 필요합니다.'
+      };
+    }
+
+    return { 
+      canAnalyze: true, 
+      message: measurementCount >= 6 ? '' : '6회 이상 측정 시 더 정확한 분석 결과를 얻을 수 있습니다.'
+    };
+  }, [currentSession, lapTimes.length]);
 
   // 랜딩 페이지 표시 (요구사항 1번)
   if (showLanding) {

@@ -80,8 +80,23 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
   }});
 
+  // 측정자 변경 감지를 위한 현재 측정자 추적
+  const currentOperatorRef = useRef<string>('');
+  
   // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
   const gaugeData = useMemo((): GaugeData => {
+    // 측정자 변경 시 캐시 초기화
+    const currentOperator = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.operator : '';
+    if (currentOperator && currentOperator !== currentOperatorRef.current) {
+      analysisCache.current = { dataHash: '', result: {
+        grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
+        totalVariation: 0, status: 'info', cv: 0, q99: 0, 
+        isReliableForStandard: false, 
+        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
+      } as GaugeData };
+      currentOperatorRef.current = currentOperator;
+      console.log(`🔄 측정자 변경 감지: ${currentOperatorRef.current} → 분석 캐시 초기화`);
+    }
     if (lapTimes.length < 3) {
       return {
         grr: 0,
@@ -175,21 +190,33 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
       return result;
     } catch (error) {
-      console.warn('실시간 Gauge 데이터 계산 오류:', error);
+      console.error('실시간 Gauge 데이터 계산 오류:', error);
+      
+      // 구체적인 오류 메시지 제공
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+      console.warn(`📊 분석 실패 원인: ${errorMessage}`);
+      
+      // 오류 정보를 포함한 기본 통계 반환 (폴백 매커니즘)
+      const times = lapTimes.map(lap => lap.time).filter(time => typeof time === 'number' && time > 0);
+      const fallbackStats = times.length > 0 ? {
+        mean: times.reduce((sum, time) => sum + time, 0) / times.length,
+        std: Math.sqrt(times.reduce((sum, time) => sum + Math.pow(time - (times.reduce((s, t) => s + t, 0) / times.length), 2), 0) / Math.max(1, times.length - 1))
+      } : { mean: 0, std: 0 };
+      
       return {
         grr: 0,
-        repeatability: 0,
+        repeatability: fallbackStats.std,
         reproducibility: 0,
         partVariation: 0,
-        totalVariation: 0,
-        status: 'error',
-        cv: 0,
-        q99: 0,
+        totalVariation: fallbackStats.std,
+        status: 'error' as const,
+        cv: fallbackStats.mean > 0 ? (fallbackStats.std / fallbackStats.mean) * 100 : 0,
+        q99: fallbackStats.mean + 2.576 * fallbackStats.std,
         isReliableForStandard: false,
-        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
+        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: fallbackStats.std * fallbackStats.std, total: fallbackStats.std * fallbackStats.std },
         dataQuality: {
           originalCount: lapTimes.length,
-          validCount: 0,
+          validCount: times.length,
           outliersDetected: 0,
           isNormalDistribution: false,
           normalityTest: null,

@@ -593,16 +593,29 @@ export class AnalysisService {
         throw new Error('분석을 위해서는 최소 2개 이상의 대상자가 필요합니다.');
       }
 
-      // 측정자 수 검증
+      // 측정자 수 검증 강화
       const operatorSet = new Set();
+      const operatorMeasurementCount = new Map<string, number>();
+      
       for (const [partKey, operatorMap] of groupedData) {
-        for (const operatorKey of operatorMap.keys()) {
+        for (const [operatorKey, measurements] of operatorMap) {
           operatorSet.add(operatorKey);
+          operatorMeasurementCount.set(operatorKey, 
+            (operatorMeasurementCount.get(operatorKey) || 0) + measurements.length
+          );
         }
       }
 
+      // 측정자별 최소 측정 횟수 검증
+      const insufficientOperators = Array.from(operatorMeasurementCount.entries())
+        .filter(([operator, count]) => count < 3);
+      
+      if (insufficientOperators.length > 0) {
+        console.warn(`⚠️ 측정 횟수 부족한 측정자: ${insufficientOperators.map(([op, count]) => `${op}(${count}회)`).join(', ')}`);
+      }
+
       if (operatorSet.size < 2) {
-        throw new Error('분석을 위해서는 최소 2명 이상의 측정자가 필요합니다.');
+        throw new Error(`분석을 위해서는 최소 2명 이상의 측정자가 필요합니다. 현재: ${operatorSet.size}명`);
       }
 
       // 기본 통계 계산
