@@ -21,20 +21,7 @@ interface VarianceComponents {
   total: number;
 }
 
-// ANOVA 결과 인터페이스
-interface ANOVAResult {
-  partSS: number;
-  operatorSS: number;
-  interactionSS: number;
-  equipmentSS: number;
-  totalSS: number;
-  partMS: number;
-  operatorMS: number;
-  interactionMS: number;
-  equipmentMS: number;
-  fStatistic: number;
-  pValue: number;
-}
+
 
 // 게이지 데이터 인터페이스 (Interface Segregation Principle)
 interface GaugeData {
@@ -179,7 +166,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[] = []) => {
         cv: Math.max(0, analysis.cv),
         q99: Math.max(0, analysis.q99),
         isReliableForStandard: analysis.isReliableForStandard,
-		varianceComponents: analysis.varianceComponents
+        varianceComponents: analysis.varianceComponents || { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
       };
 
       // 캐시 업데이트

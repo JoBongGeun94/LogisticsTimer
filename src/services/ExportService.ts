@@ -156,7 +156,7 @@ class DataFormatter implements IDataFormatter {
       reproducibility: Number(webAppAnalysis.reproducibility) || 0,
       partVariation: Number(webAppAnalysis.partVariation) || 0,
       totalVariation: Number(webAppAnalysis.totalVariation) || 0,
-      deltaPair: Number(webAppAnalysis.deltaPair) || 0,
+      deltaPair: 0,
       isReliableForStandard: Boolean(webAppAnalysis.isReliableForStandard)
     };
 
@@ -211,10 +211,10 @@ class DataFormatter implements IDataFormatter {
     ];
 
     // 측정자별 성능 분석
-    const operatorAnalysis = this.generateOperatorAnalysis(lapTimes, session.operators || []);
+    const operatorAnalysis = this.generateOperatorAnalysis(lapTimes, [...(session.operators || [])]);
 
     // 대상자별 성능 분석
-    const targetAnalysis = this.generateTargetAnalysis(lapTimes, session.targets || []);
+    const targetAnalysis = this.generateTargetAnalysis(lapTimes, [...(session.targets || [])]);
 
     
 

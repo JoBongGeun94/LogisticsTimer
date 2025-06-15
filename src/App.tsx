@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import {
   Play, Pause, Square, Download, Plus, Users,
   Package, Clock, BarChart3, FileText, Calculator,
@@ -381,9 +381,8 @@ const DetailedAnalysisModal = memo<{
   analysis: any;
   theme: Theme;
   isDark: boolean;
-  lapTimes: LapTime[];
   statisticsAnalysis: any;
-}>(({ isVisible, onClose, analysis, theme, isDark, lapTimes, statisticsAnalysis }) => {
+}>(({ isVisible, onClose, analysis, theme, isDark, statisticsAnalysis }) => {
   // 성능 최적화: 분석 데이터 메모이제이션
   const memoizedAnalysis = useMemo(() => {
     if (!analysis || !statisticsAnalysis) return null;
@@ -647,6 +646,9 @@ const EnhancedLogisticsTimer = () => {
     resetAllSessions
   } = useSessionManager({ showToast });
 
+  // 통계 분석 훅
+  const statisticsAnalysis = useStatisticsAnalysis(lapTimes);
+
   // 랩타임 기록 콜백
   const handleLapRecorded = useCallback((newLap: LapTime) => {
     const updatedLaps = [...lapTimes, newLap];
@@ -674,54 +676,7 @@ const EnhancedLogisticsTimer = () => {
     showToast
   });
 
-  // 통계 분석 훅
-  const statisticsAnalysis = useStatisticsAnalysis(useMemo(() => {
-    try {
-      // AnalysisService를 통한 통합 계산 (중복 제거)
-      const analysis = AnalysisService.calculateGageRR(lapTimes);
-
-      return {
-        gaugeData: {
-          grr: Math.min(100, Math.max(0, analysis.gageRRPercent)),
-          cv: Math.max(0, analysis.cv),
-          q99: Math.max(0, analysis.q99),
-          isReliableForStandard: analysis.isReliableForStandard,
-          repeatability: analysis.repeatability,
-          reproducibility: analysis.reproducibility,
-          partVariation: analysis.partVariation,
-          totalVariation: analysis.totalVariation
-        },
-        iccValue: 0,
-        deltaPairValue: 0,
-        statisticsStatus: {
-          grr: 'info' as const,
-          icc: 'info' as const,
-          deltaPair: 'info' as const
-        }
-      };
-    } catch (error) {
-      console.error('통계 데이터 계산 오류:', error);
-      return {
-        gaugeData: {
-          grr: 0,
-          cv: 0,
-          q99: 0,
-          isReliableForStandard: false,
-          repeatability: 0,
-          reproducibility: 0,
-          partVariation: 0,
-          totalVariation: 0
-        },
-        iccValue: 0,
-        deltaPairValue: 0,
-        statisticsStatus: {
-          grr: 'info' as const,
-          icc: 'info' as const,
-          deltaPair: 'info' as const
-        }
-      };
-    }
-  }, [lapTimes]));
+  
 
   // 다크모드 적용
   useEffect(() => {
@@ -731,6 +686,19 @@ const EnhancedLogisticsTimer = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [isDark]);
+
+  // 리셋 함수 (기존 로직과 통합)
+  const resetTimer = useCallback(() => {
+    resetTimerLogic();
+    setLapTimes([]);
+    setAllLapTimes(prev => prev.filter(lap => lap.sessionId !== currentSession?.id));
+
+    if (currentSession) {
+      updateSessionLapTimes([]);
+    }
+
+    showToast('측정 기록이 모두 초기화되었습니다.', 'success');
+  }, [resetTimerLogic, currentSession, showToast, setAllLapTimes, updateSessionLapTimes]);
 
   // 키보드 이벤트
   useEffect(() => {
@@ -761,19 +729,6 @@ const EnhancedLogisticsTimer = () => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis, toggleTimer, recordLap, stopTimer, resetTimer]);
-
-  // 리셋 함수 (기존 로직과 통합)
-  const resetTimer = useCallback(() => {
-    resetTimerLogic();
-    setLapTimes([]);
-    setAllLapTimes(prev => prev.filter(lap => lap.sessionId !== currentSession?.id));
-
-    if (currentSession) {
-      updateSessionLapTimes([]);
-    }
-
-    showToast('측정 기록이 모두 초기화되었습니다.', 'success');
-  }, [resetTimerLogic, currentSession, showToast, setAllLapTimes, updateSessionLapTimes]);
 
   // 개별 측정 기록 삭제
   const deleteLapTime = useCallback((lapId: number) => {
@@ -959,7 +914,6 @@ const EnhancedLogisticsTimer = () => {
         analysis={analysis}
         theme={theme}
         isDark={isDark}
-        lapTimes={lapTimes}
         statisticsAnalysis={statisticsAnalysis}
       />
 
@@ -1694,55 +1648,6 @@ const EnhancedLogisticsTimer = () => {
   );
 };
 
-// 통계 카드 컴포넌트 (Single Responsibility Principle)
-const StatCard = memo<{
-  title: string;
-  value: string | number;
-  unit?: string;
-  icon: React.ComponentType<{ className?: string }>;
-  status: 'success' | 'warning' | 'error' | 'info';
-  theme: Theme;
-  isDark: boolean;
-  size?: 'sm' | 'md';
-}>(({ title, value, unit, icon: Icon, status, theme, isDark, size = 'md' }) => {
-  const colors = {
-    text: status === 'success' ? (isDark ? 'text-green-400' : 'text-green-600') :
-          status === 'warning' ? (isDark ? 'text-yellow-400' : 'text-yellow-600') :
-          status === 'error' ? (isDark ? 'text-red-400' : 'text-red-600') :
-          theme.textSecondary,
-    icon: status === 'success' ? (isDark ? 'text-green-400' : 'text-green-500') :
-          status === 'warning' ? (isDark ? 'text-yellow-400' : 'text-yellow-500') :
-          status === 'error' ? (isDark ? 'text-red-400' : 'text-red-500') :
-          theme.textMuted
-  };
 
-  const sizes = {
-    sm: {
-      icon: 'w-4 h-4',
-      title: 'text-xs',
-      value: 'text-sm'
-    },
-    md: {
-      icon: 'w-5 h-5',
-      title: 'text-sm',
-      value: 'text-lg'
-    }
-  };
-
-  return (
-    <div className={`rounded-lg p-3 ${theme.surface} shadow-sm border ${theme.border} flex flex-col`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Icon className={`${sizes[size].icon} ${colors.icon}`} />
-          <span className={`${sizes[size].title} font-medium ${theme.textSecondary}`}>{title}</span>
-        </div>
-        <div className={`${sizes[size].value} font-bold ${colors.text} font-mono`}>
-          {value}
-          {unit && <span className="text-xs font-normal ml-1">{unit}</span>}
-        </div>
-      </div>
-    </div>
-  );
-});
 
 export default EnhancedLogisticsTimer;

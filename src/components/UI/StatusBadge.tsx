@@ -1,4 +1,4 @@
-import React, { useMemo, memo } from 'react';
+import { useMemo, memo } from 'react';
 import { CheckCircle, AlertCircle, XCircle } from 'lucide-react';
 import { STATUS_COLORS } from '../../constants/themes';
 

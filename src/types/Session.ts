@@ -1,4 +1,4 @@
-import { LapTime } from './Timer';
+import { LapTime } from './LapTime';
 
 export interface SessionCore {
   id: string;

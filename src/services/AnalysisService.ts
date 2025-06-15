@@ -123,8 +123,8 @@ class StatisticsCalculator implements IStatisticsCalculator {
     let totalCount = 0;
     const means: number[] = [];
 
-    for (const [partKey, operators] of groupedData) {
-      for (const [operatorKey, measurements] of operators) {
+    for (const [, operators] of groupedData) {
+      for (const [, measurements] of operators) {
         if (measurements.length > 0) {
           const sum = measurements.reduce((acc, val) => acc + (isNaN(val) ? 0 : val), 0);
           const mean = sum / measurements.length;
@@ -138,8 +138,8 @@ class StatisticsCalculator implements IStatisticsCalculator {
     const grandMean = totalCount > 0 ? totalSum / totalCount : 0;
 
     let sumSquaredDeviations = 0;
-    for (const [partKey, operators] of groupedData) {
-      for (const [operatorKey, measurements] of operators) {
+    for (const [, operators] of groupedData) {
+      for (const [, measurements] of operators) {
         for (const measurement of measurements) {
           if (!isNaN(measurement)) {
             sumSquaredDeviations += Math.pow(measurement - grandMean, 2);
@@ -170,7 +170,7 @@ class ANOVACalculator implements IANOVACalculator {
     const operators: string[] = [];
 
     // 모든 측정자 수집
-    for (const [partKey, operatorMap] of groupedData) {
+    for (const [, operatorMap] of groupedData) {
       for (const operatorKey of operatorMap.keys()) {
         if (!operators.includes(operatorKey)) {
           operators.push(operatorKey);
@@ -186,8 +186,8 @@ class ANOVACalculator implements IANOVACalculator {
     // 측정 횟수 계산 및 균형성 검증
     let minRepeats = Infinity;
     let maxRepeats = 0;
-    for (const [partKey, operatorMap] of groupedData) {
-      for (const [operatorKey, measurements] of operatorMap) {
+    for (const [, operatorMap] of groupedData) {
+      for (const [, measurements] of operatorMap) {
         if (measurements.length > 0) {
           minRepeats = Math.min(minRepeats, measurements.length);
           maxRepeats = Math.max(maxRepeats, measurements.length);
@@ -209,7 +209,7 @@ class ANOVACalculator implements IANOVACalculator {
       let partCount = 0;
 
       if (groupedData.has(part)) {
-        for (const [operatorKey, measurements] of groupedData.get(part)!) {
+        for (const [, measurements] of groupedData.get(part)!) {
           partSum += measurements.reduce((sum, val) => sum + (isNaN(val) ? 0 : val), 0);
           partCount += measurements.length;
         }
@@ -227,7 +227,7 @@ class ANOVACalculator implements IANOVACalculator {
       let operatorSum = 0;
       let operatorCount = 0;
 
-      for (const [partKey, operatorMap] of groupedData) {
+      for (const [, operatorMap] of groupedData) {
         if (operatorMap.has(operator)) {
           const measurements = operatorMap.get(operator)!;
           operatorSum += measurements.reduce((sum, val) => sum + (isNaN(val) ? 0 : val), 0);
@@ -253,7 +253,7 @@ class ANOVACalculator implements IANOVACalculator {
             // 해당 part의 평균
             let partSum = 0;
             let partCount = 0;
-            for (const [opKey, opMeasurements] of groupedData.get(part)!) {
+            for (const [, opMeasurements] of groupedData.get(part)!) {
               partSum += opMeasurements.reduce((sum, val) => sum + val, 0);
               partCount += opMeasurements.length;
             }
@@ -262,7 +262,7 @@ class ANOVACalculator implements IANOVACalculator {
             // 해당 operator의 평균
             let operatorSum = 0;
             let operatorCount = 0;
-            for (const [partKey, operatorMap] of groupedData) {
+            for (const [, operatorMap] of groupedData) {
               if (operatorMap.has(operator)) {
                 const opMeasurements = operatorMap.get(operator)!;
                 operatorSum += opMeasurements.reduce((sum, val) => sum + val, 0);
@@ -279,8 +279,8 @@ class ANOVACalculator implements IANOVACalculator {
 
     // Total SS 계산
     let totalSS = 0;
-    for (const [partKey, operatorMap] of groupedData) {
-      for (const [operatorKey, measurements] of operatorMap) {
+    for (const [, operators] of groupedData) {
+      for (const [, measurements] of operators) {
         for (const measurement of measurements) {
           if (!isNaN(measurement)) {
             totalSS += Math.pow(measurement - grandMean, 2);
@@ -366,13 +366,13 @@ class GageRRCalculator implements IGageRRCalculator {
 
     // MSA-4 표준 계산 (물류현장 99.73% 신뢰구간)
     const repeatability = 6.0 * Math.sqrt(Math.max(0, varianceComponents.equipment));
-    
+
     // 재현성 = 6σ × √(측정자분산 + 상호작용분산)
     const reproducibilityVariance = Math.max(0, 
       varianceComponents.operator + varianceComponents.interaction
     );
     const reproducibility = 6.0 * Math.sqrt(reproducibilityVariance);
-    
+
     const partVariation = 6.0 * Math.sqrt(Math.max(0, varianceComponents.part));
     const interactionVariation = 6.0 * Math.sqrt(Math.max(0, varianceComponents.interaction));
 
@@ -419,11 +419,11 @@ class GageRRCalculator implements IGageRRCalculator {
     const MS_error = anova.equipmentMS;
     const k = nOperators;
     const n = nParts;
-    
+
     // 분모 계산 (상호작용 효과 포함)
     const numerator = MS_parts - MS_error;
     const denominator = MS_parts + (k - 1) * MS_error + k * Math.max(0, MS_operators - MS_error) / n;
-    
+
     const icc = denominator > 0 ? 
                 Math.max(0, Math.min(1, numerator / denominator)) : 0;
 
@@ -433,8 +433,8 @@ class GageRRCalculator implements IGageRRCalculator {
 
     if (groupedData) {
       // 모든 측정값의 합계와 개수 계산 (Grand Mean 구하기)
-      for (const [partKey, operatorMap] of groupedData) {
-        for (const [operatorKey, measurements] of operatorMap) {
+      for (const [, operatorMap] of groupedData) {
+        for (const [, measurements] of operatorMap) {
           for (const measurement of measurements) {
             if (!isNaN(measurement) && measurement > 0) {
               grandMeanSum += measurement;
@@ -545,6 +545,13 @@ class StatusEvaluator {
     if (gageRRPercent < 50) return 'marginal';
     return 'unacceptable';
   }
+
+  static getGRRStatus(gageRRPercent: number): 'excellent' | 'acceptable' | 'marginal' | 'unacceptable' {
+    if (gageRRPercent < 10) return 'excellent';
+    if (gageRRPercent < 30) return 'acceptable';
+    if (gageRRPercent < 50) return 'marginal';
+    return 'unacceptable';
+  }
 }
 
 /**
@@ -617,10 +624,10 @@ export class AnalysisService {
       const operators: string[] = [];
       let maxRepeats = 0;
 
-      for (const [partKey, operatorMap] of groupedData) {
-        for (const [operatorKey, measurements] of operatorMap) {
-          if (!operators.includes(operatorKey)) {
-            operators.push(operatorKey);
+      for (const [, operatorMap] of groupedData) {
+        for (const [, measurements] of operatorMap) {
+          if (!operators.includes(operatorMap)) {
+            operators.push(operatorMap);
           }
           maxRepeats = Math.max(maxRepeats, measurements.length);
         }
@@ -636,7 +643,7 @@ export class AnalysisService {
 
       return {
         ...metrics,
-        status: StatusEvaluator.determineStatus(metrics.gageRRPercent),
+        status: StatusEvaluator.getGRRStatus(metrics.gageRRPercent),
         anova,
         varianceComponents
       };
