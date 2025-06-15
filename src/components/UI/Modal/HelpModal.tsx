@@ -125,7 +125,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isVisible, onClose }) => {
                       <td className="py-2">제한적 사용, 개선 검토</td>
                     </tr>
                     <tr>
-                      <td className="py-2">> 50%</td>
+                      <td className="py-2">&gt; 50%</td>
                       <td className="py-2">
                         <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
                           불량

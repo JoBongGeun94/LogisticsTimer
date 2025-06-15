@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import {
   Play, Pause, Square, Download, Plus, Users,
   Package, Clock, BarChart3, FileText, Calculator,
   Zap, Target, RefreshCw, LogOut,
   Moon, Sun, PieChart, Info, CheckCircle,
   AlertCircle, XCircle, Timer, Activity,
-  Trash2, Filter, X, Minus, AlertTriangle, HelpCircle
+  Trash2, Filter, X, Minus, AlertTriangle
 } from 'lucide-react';
 
 // 타입 및 서비스 import
@@ -685,20 +685,74 @@ const EnhancedLogisticsTimer = () => {
     setToast({ message, type, isVisible: true });
   }, []);
 
-  // 세션 관리 훅
-  const {
-    sessions,
-    currentSession,
-    currentOperator,
-    currentTarget,
-    setCurrentOperator,
-    setCurrentTarget,
-    createSession: createSessionFromManager,
-    updateSessionLapTimes,
-    deleteSession,
-    switchToSession,
-    resetAllSessions
-  } = useSessionManager({ showToast });
+  // 세션 관리 상태 (임시 구현)
+  const [sessions, setSessions] = useLocalStorage<SessionData[]>('logisticsTimer_sessions', []);
+  const [currentSessionId, setCurrentSessionId] = useLocalStorage<string | null>('logisticsTimer_currentSession', null);
+  const [currentOperator, setCurrentOperator] = useState('');
+  const [currentTarget, setCurrentTarget] = useState('');
+  
+  const currentSession = useMemo(() => 
+    sessions.find(session => session.id === currentSessionId) || null, 
+    [sessions, currentSessionId]
+  );
+
+  // 세션 관리 함수들
+  const createSessionFromManager = useCallback((name: string, workType: string, operators: string[], targets: string[]) => {
+    if (!name.trim() || !workType || operators.some(op => !op.trim()) || targets.some(tg => !tg.trim())) {
+      showToast('모든 필드를 입력해주세요.', 'error');
+      return false;
+    }
+
+    const newSession: SessionData = {
+      id: Date.now().toString(),
+      name: name.trim(),
+      workType,
+      operators: operators.filter(op => op.trim()),
+      targets: targets.filter(tg => tg.trim()),
+      startTime: new Date().toLocaleString('ko-KR'),
+      lapTimes: []
+    };
+
+    setSessions(prev => [...prev, newSession]);
+    setCurrentSessionId(newSession.id);
+    setCurrentOperator(newSession.operators[0]);
+    setCurrentTarget(newSession.targets[0]);
+    showToast('새 세션이 생성되었습니다.', 'success');
+    return true;
+  }, [setSessions, setCurrentSessionId, showToast]);
+
+  const updateSessionLapTimes = useCallback((newLapTimes: LapTime[]) => {
+    if (!currentSession) return;
+    
+    setSessions(prev => prev.map(session => 
+      session.id === currentSession.id 
+        ? { ...session, lapTimes: newLapTimes }
+        : session
+    ));
+  }, [currentSession, setSessions]);
+
+  const deleteSession = useCallback((sessionId: string) => {
+    setSessions(prev => prev.filter(session => session.id !== sessionId));
+    if (currentSessionId === sessionId) {
+      setCurrentSessionId(null);
+      setLapTimes([]);
+    }
+    showToast('세션이 삭제되었습니다.', 'success');
+  }, [setSessions, currentSessionId, setCurrentSessionId, showToast]);
+
+  const switchToSession = useCallback((session: SessionData) => {
+    setCurrentSessionId(session.id);
+    setCurrentOperator(session.operators[0]);
+    setCurrentTarget(session.targets[0]);
+    showToast(`'${session.name}' 세션으로 전환되었습니다.`, 'success');
+  }, [setCurrentSessionId, showToast]);
+
+  const resetAllSessions = useCallback(() => {
+    setSessions([]);
+    setCurrentSessionId(null);
+    setLapTimes([]);
+    showToast('모든 세션이 삭제되었습니다.', 'success');
+  }, [setSessions, setCurrentSessionId, showToast]);
 
   // 랩타임 기록 콜백
   const handleLapRecorded = useCallback((newLap: LapTime) => {
@@ -711,21 +765,80 @@ const EnhancedLogisticsTimer = () => {
     statisticsAnalysis.updateStatistics(newLap, updatedLaps);
   }, [lapTimes, setAllLapTimes, updateSessionLapTimes]);
 
-  // 타이머 로직 훅
-  const {
-    currentTime,
-    isRunning,
-    toggleTimer,
-    stopTimer,
-    resetTimer: resetTimerLogic,
-    recordLap
-  } = useTimerLogic({
-    currentSession,
-    currentOperator,
-    currentTarget,
-    onLapRecorded: handleLapRecorded,
-    showToast
-  });
+  // 타이머 상태 (임시 구현)
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [startTime, setStartTime] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (isRunning) {
+      timerRef.current = setInterval(() => {
+        setCurrentTime(Date.now() - startTime);
+      }, 10);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isRunning, startTime]);
+
+  const toggleTimer = useCallback(() => {
+    if (!currentSession) {
+      showToast('활성 세션을 먼저 선택해주세요.', 'warning');
+      return;
+    }
+
+    if (isRunning) {
+      setIsRunning(false);
+    } else {
+      setStartTime(Date.now() - currentTime);
+      setIsRunning(true);
+    }
+  }, [currentSession, isRunning, currentTime, showToast]);
+
+  const stopTimer = useCallback(() => {
+    setIsRunning(false);
+    setCurrentTime(0);
+  }, []);
+
+  const resetTimerLogic = useCallback(() => {
+    setIsRunning(false);
+    setCurrentTime(0);
+  }, []);
+
+  const recordLap = useCallback(() => {
+    if (!currentSession || !currentOperator || !currentTarget) {
+      showToast('세션, 측정자, 대상자를 모두 선택해주세요.', 'warning');
+      return;
+    }
+
+    if (currentTime === 0) {
+      showToast('측정할 시간이 없습니다.', 'warning');
+      return;
+    }
+
+    const newLap: LapTime = {
+      id: Date.now(),
+      time: currentTime,
+      operator: currentOperator,
+      target: currentTarget,
+      sessionId: currentSession.id,
+      timestamp: new Date().toLocaleString('ko-KR')
+    };
+
+    handleLapRecorded(newLap);
+    setCurrentTime(0);
+    setIsRunning(false);
+    showToast('측정이 완료되었습니다.', 'success');
+  }, [currentSession, currentOperator, currentTarget, currentTime, handleLapRecorded, showToast]);
 
   // 통계 분석 훅
   const statisticsAnalysis = useStatisticsAnalysis(lapTimes);
@@ -872,14 +985,19 @@ const EnhancedLogisticsTimer = () => {
 
   // 상세분석 다운로드
   const downloadDetailedAnalysis = useCallback(() => {
-    const validation = ValidationService.validateGageRRAnalysis(lapTimes);
-    if (!validation.isValid) {
-      showToast(validation.message!, 'warning');
+    // 기본 검증 로직
+    if (lapTimes.length < 6) {
+      showToast('분석을 위해서는 최소 6회 측정이 필요합니다.', 'warning');
       return;
     }
 
     if (!currentSession) {
       showToast('활성 세션이 없습니다.', 'error');
+      return;
+    }
+
+    if (!canAnalyze.canAnalyze) {
+      showToast(canAnalyze.message, 'warning');
       return;
     }
 
@@ -895,7 +1013,7 @@ const EnhancedLogisticsTimer = () => {
       console.error('분석 오류:', error);
       showToast('분석 중 오류가 발생했습니다.', 'error');
     }
-  }, [lapTimes, currentSession, showToast]);
+  }, [lapTimes, currentSession, showToast, canAnalyze]);
 
   // 필터링된 측정 기록 (요구사항 8번)
   const filteredLapTimes = useMemo(() => {
@@ -907,8 +1025,8 @@ const EnhancedLogisticsTimer = () => {
 
   // Gage R&R 분석
   const analysis = useMemo(() => {
-    const validation = ValidationService.validateGageRRAnalysis(lapTimes);
-    if (!validation.isValid) return null;
+    // 기본 검증 로직
+    if (lapTimes.length < 6 || !canAnalyze.canAnalyze) return null;
 
     try {
       return AnalysisService.calculateGageRR(lapTimes, 'none');
@@ -916,7 +1034,7 @@ const EnhancedLogisticsTimer = () => {
       console.error('분석 오류:', error);
       return null;
     }
-  }, [lapTimes]);
+  }, [lapTimes, canAnalyze]);
 
   // 분석 가능 여부 확인 (요구사항 6번)
   const canAnalyze = useMemo(() => {
