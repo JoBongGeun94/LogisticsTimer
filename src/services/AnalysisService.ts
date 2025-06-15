@@ -364,17 +364,26 @@ class GageRRCalculator implements IGageRRCalculator {
   calculate(anova: ANOVAResult, nParts: number = 5, nOperators: number = 2, nRepeats: number = 5, groupedData?: Map<string, Map<string, number[]>>): GageRRMetrics {
     const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
 
-    // 표준편차 계산 (올바른 공식)
-    const repeatability = Math.sqrt(Math.max(0, varianceComponents.equipment));
-    const reproducibility = Math.sqrt(Math.max(0, varianceComponents.operator));
-    const partVariation = Math.sqrt(Math.max(0, varianceComponents.part));
-    const interactionVariation = Math.sqrt(Math.max(0, varianceComponents.interaction));
+    // MSA-4 표준에 따른 올바른 계산
+    // 반복성 = 6.0 * σ_equipment (99.73% 신뢰구간)
+    const repeatability = 6.0 * Math.sqrt(Math.max(0, varianceComponents.equipment));
+    
+    // 재현성 = 6.0 * σ_reproducibility (측정자 + 상호작용)
+    const reproducibilityVariance = Math.max(0, 
+      varianceComponents.operator + varianceComponents.interaction
+    );
+    const reproducibility = 6.0 * Math.sqrt(reproducibilityVariance);
+    
+    // 부품간 변동 = 6.0 * σ_part
+    const partVariation = 6.0 * Math.sqrt(Math.max(0, varianceComponents.part));
+    
+    // 상호작용 변동 (별도 계산용)
+    const interactionVariation = 6.0 * Math.sqrt(Math.max(0, varianceComponents.interaction));
 
-    // Total Gage R&R 계산
+    // Total Gage R&R = √(반복성² + 재현성²)
     const gageRR = Math.sqrt(
       Math.pow(repeatability, 2) + 
-      Math.pow(reproducibility, 2) + 
-      Math.pow(interactionVariation, 2)
+      Math.pow(reproducibility, 2)
     );
 
     // Total Variation 계산
@@ -407,16 +416,22 @@ class GageRRCalculator implements IGageRRCalculator {
   private calculateWorkTimeMetrics(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number, workType: string = '기타', groupedData: Map<string, Map<string, number[]>>) {
     const varianceComponents = this.calculateVarianceComponents(anova, nParts, nOperators, nRepeats);
 
-    // ICC(2,1) 계산 - 올바른 공식 적용 (MSA-4 표준)
-    // ICC(2,1) = (MS_between - MS_within) / (MS_between + (k-1) * MS_within)
-    // MS_between = partMS, MS_within = equipmentMS, k = nOperators
-    const MS_between = anova.partMS;
-    const MS_within = anova.equipmentMS;
+    // ICC(2,1) 계산 - MSA-4 표준 완전 준수
+    // ICC(2,1) = (MS_parts - MS_error) / (MS_parts + (k-1)*MS_error + k*(MS_operators - MS_error)/n)
+    // 여기서 k = nOperators, n = nParts
+    const MS_parts = anova.partMS;
+    const MS_operators = anova.operatorMS;
+    const MS_interaction = anova.interactionMS;
+    const MS_error = anova.equipmentMS;
     const k = nOperators;
+    const n = nParts;
     
-    const icc_denominator = MS_between + (k - 1) * MS_within;
-    const icc = icc_denominator > 0 ? 
-                Math.max(0, Math.min(1, (MS_between - MS_within) / icc_denominator)) : 0;
+    // MSA 표준 ICC(2,1) 공식 적용
+    const numerator = MS_parts - MS_error;
+    const denominator = MS_parts + (k - 1) * MS_error + k * (MS_operators - MS_error) / n;
+    
+    const icc = denominator > 0 ? 
+                Math.max(0, Math.min(1, numerator / denominator)) : 0;
 
     // Grand Mean 계산 - ANOVA에서 사용된 전체 평균 (올바른 CV 계산을 위함)
     let grandMeanSum = 0;
