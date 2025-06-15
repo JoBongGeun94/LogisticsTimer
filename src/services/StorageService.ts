@@ -248,101 +248,128 @@ class StorageFactory {
  * 🔧 통합 저장소 서비스 (Facade Pattern + 캐싱 최적화)
  */
 export class StorageService {
-  private static keyManager = StorageFactory.createKeyManager();
-  private static operations = StorageFactory.createOperations();
+  private static readonly CACHE_PREFIX = 'logistics_timer_cache_';
+  private static readonly CACHE_EXPIRY = 30 * 60 * 1000; // 30분
 
-  static saveData<T>(keyType: string, data: T): boolean {
+  static setCache<T>(key: string, data: T): void {
     try {
-      const key = this.keyManager.getKey(keyType);
-      return this.operations.save(key, data);
+      const cacheKey = this.CACHE_PREFIX + key;
+      const cacheData = {
+        data,
+        timestamp: Date.now(),
+        expiry: Date.now() + this.CACHE_EXPIRY
+      };
+
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
     } catch (error) {
-      console.error(`Failed to save data for key type ${keyType}:`, error);
-      return false;
+      console.warn('캐시 저장 실패:', error);
     }
   }
 
-  static loadData<T>(keyType: string): T | null {
+  static getCache<T>(key: string): T | null {
     try {
-      const key = this.keyManager.getKey(keyType);
-      return this.operations.load<T>(key);
+      const cacheKey = this.CACHE_PREFIX + key;
+      const cached = localStorage.getItem(cacheKey);
+
+      if (!cached) return null;
+
+      const cacheData = JSON.parse(cached);
+
+      // 만료 확인
+      if (Date.now() > cacheData.expiry) {
+        localStorage.removeItem(cacheKey);
+        return null;
+      }
+
+      return cacheData.data;
     } catch (error) {
-      console.error(`Failed to load data for key type ${keyType}:`, error);
+      console.warn('캐시 로드 실패:', error);
       return null;
     }
   }
 
-  static removeData(keyType: string): boolean {
+  static clearCache(key?: string): void {
     try {
-      const key = this.keyManager.getKey(keyType);
-      return this.operations.remove(key);
-    } catch (error) {
-      console.error(`Failed to remove data for key type ${keyType}:`, error);
-      return false;
-    }
-  }
-
-  static clearAllData(): boolean {
-    try {
-      return this.operations.clear();
-    } catch (error) {
-      console.error('Failed to clear all data:', error);
-      return false;
-    }
-  }
-
-  // 🔧 캐시 관리 메서드 추가
-  static invalidateCache(keyType?: string): void {
-    try {
-      if (keyType) {
-        const key = this.keyManager.getKey(keyType);
-        this.operations.invalidateCache(key);
+      if (key) {
+        const cacheKey = this.CACHE_PREFIX + key;
+        localStorage.removeItem(cacheKey);
       } else {
-        this.operations.invalidateCache();
+        // 모든 캐시 제거
+        Object.keys(localStorage)
+          .filter(k => k.startsWith(this.CACHE_PREFIX))
+          .forEach(k => localStorage.removeItem(k));
       }
     } catch (error) {
-      console.error('Failed to invalidate cache:', error);
+      console.warn('캐시 정리 실패:', error);
     }
   }
 
-  // 직접 키 접근을 위한 유틸리티 메서드 (Open/Closed Principle)
-  static saveDataWithKey<T>(key: string, data: T): boolean {
-    return this.operations.save(key, data);
-  }
-
-  static loadDataWithKey<T>(key: string): T | null {
-    return this.operations.load<T>(key);
-  }
-
-  static removeDataWithKey(key: string): boolean {
-    return this.operations.remove(key);
-  }
-
+  // 🔧 캐시 무효화 구현 - 전역 분석 캐시 초기화
   static invalidateCache(): void {
     try {
-      // 🔧 모든 캐시 항목 무효화
-      const cacheKeys = [
-        'analysisCache',
-        'statisticsCache',
-        'gageRRCache',
-        'lapTimesCache',
-        'sessionCache'
-      ];
+      // 분석 관련 캐시 무효화
+      const analysisKeys = ['analysisCache', 'statisticsCache', 'gageRRCache'];
 
-      cacheKeys.forEach(key => {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.removeItem(key);
+      analysisKeys.forEach(key => {
+        const cacheKey = this.CACHE_PREFIX + key;
+        localStorage.removeItem(cacheKey);
+      });
+
+      // 직접 설정된 분석 캐시도 제거
+      localStorage.removeItem('analysisCache');
+
+      console.log('🔄 전역 분석 캐시 무효화 완료');
+    } catch (error) {
+      console.warn('캐시 무효화 실패:', error);
+    }
+  }
+
+  // 🔧 세션별 캐시 무효화
+  static invalidateSessionCache(sessionId: string): void {
+    try {
+      const sessionKeys = [`session_${sessionId}`, `analysis_${sessionId}`, `statistics_${sessionId}`];
+
+      sessionKeys.forEach(key => {
+        const cacheKey = this.CACHE_PREFIX + key;
+        localStorage.removeItem(cacheKey);
+      });
+
+      console.log(`🔄 세션 ${sessionId} 캐시 무효화 완료`);
+    } catch (error) {
+      console.warn('세션 캐시 무효화 실패:', error);
+    }
+  }
+
+  // 🔧 만료된 캐시 정리
+  static cleanExpiredCache(): void {
+    try {
+      const now = Date.now();
+      const keysToRemove: string[] = [];
+
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith(this.CACHE_PREFIX)) {
+          try {
+            const cached = localStorage.getItem(key);
+            if (cached) {
+              const cacheData = JSON.parse(cached);
+              if (now > cacheData.expiry) {
+                keysToRemove.push(key);
+              }
+            }
+          } catch (error) {
+            // 파싱 오류가 있는 캐시도 제거
+            keysToRemove.push(key);
+          }
         }
       });
 
-      // 🔧 캐시 무효화 타임스탬프 기록
-      const invalidationTimestamp = Date.now();
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem('cacheInvalidatedAt', invalidationTimestamp.toString());
-      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
 
-      console.log(`🗑️ 전역 캐시 무효화 완료: ${cacheKeys.length}개 항목 삭제`);
+      if (keysToRemove.length > 0) {
+        console.log(`🔄 만료된 캐시 ${keysToRemove.length}개 정리 완료`);
+      }
     } catch (error) {
-      console.error('캐시 무효화 실패:', error);
+      console.warn('만료된 캐시 정리 실패:', error);
     }
   }
 }

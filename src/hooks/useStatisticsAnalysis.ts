@@ -98,23 +98,26 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
   // 🔧 통합 데이터 동기화 시스템 - 실시간과 상세분석 완전 동기화
   const gaugeData = useMemo((): GaugeData => {
-    // 측정자 및 대상자 변경 시 캐시 초기화
-    const currentOperator = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.operator : '';
-    const currentTarget = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.target : '';
+    // 🔧 유효한 측정값 필터링 (null, undefined, 0 이하 값 제거)
+    const validLapTimes = lapTimes.filter(lap => 
+      lap && 
+      typeof lap.time === 'number' && 
+      lap.time > 0 && 
+      lap.operator && 
+      lap.target
+    );
+
+    // 측정자 및 대상자 변경 감지
+    const currentOperator = validLapTimes.length > 0 ? validLapTimes[validLapTimes.length - 1]?.operator : '';
+    const currentTarget = validLapTimes.length > 0 ? validLapTimes[validLapTimes.length - 1]?.target : '';
 
     // 측정자 또는 대상자 변경 감지
     const operatorChanged = currentOperator && currentOperator !== currentOperatorRef.current;
     const targetChanged = currentTarget && currentTarget !== currentTargetRef.current;
 
     if (operatorChanged || targetChanged) {
-      // 🔧 전역 캐시 무효화 (StorageService와 동기화)
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.removeItem('analysisCache');
-        }
-      } catch (error) {
-        console.warn('캐시 무효화 실패:', error);
-      }
+      // 🔧 StorageService를 통한 전역 캐시 무효화
+      StorageService.invalidateCache();
 
       analysisCache.current = { dataHash: '', result: {
         grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
@@ -202,7 +205,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     const dataElements = validLapTimes.map(lap => 
       `${lap.time}_${lap.operator}_${lap.target}_${lap.timestamp}`
     ).join('|');
-    
+
     const timestamp = latestLap ? new Date(latestLap.timestamp).getTime() : 0;
     const structuralInfo = `${validLapTimes.length}-${uniqueOperators}-${uniqueTargets}`;
     const contentHash = this.simpleHash(dataElements);
@@ -219,7 +222,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     try {
       // 🔧 통합 분석 실행 - 실시간과 상세분석 완전 동기화
       const analysisStartTime = performance.now();
-      
+
       // 🔧 동일한 AnalysisService 메서드 사용으로 완전 동기화 보장
       const analysis = AnalysisService.calculateGageRR(validLapTimes);
       const analysisEndTime = performance.now();
@@ -360,15 +363,15 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
 
         // 🔧 원자적 상태 업데이트 - 모든 상태를 동시에 변경
         const updatePromises = [];
-        
+
         if (iccUpdate !== iccValue) {
           updatePromises.push(() => setIccValue(iccUpdate));
         }
-        
+
         if (deltaPairUpdate !== deltaPairValue) {
           updatePromises.push(() => setDeltaPairValue(deltaPairUpdate));
         }
-        
+
         if (showRetakeUpdate !== showRetakeModal) {
           updatePromises.push(() => setShowRetakeModal(showRetakeUpdate));
         }
