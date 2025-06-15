@@ -80,22 +80,37 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
   }});
 
-  // 측정자 변경 감지를 위한 현재 측정자 추적
+  // 측정자 및 대상자 변경 감지를 위한 현재 상태 추적
   const currentOperatorRef = useRef<string>('');
+  const currentTargetRef = useRef<string>('');
   
   // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
   const gaugeData = useMemo((): GaugeData => {
-    // 측정자 변경 시 캐시 초기화
+    // 측정자 및 대상자 변경 시 캐시 초기화
     const currentOperator = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.operator : '';
-    if (currentOperator && currentOperator !== currentOperatorRef.current) {
+    const currentTarget = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.target : '';
+    
+    // 측정자 또는 대상자 변경 감지
+    const operatorChanged = currentOperator && currentOperator !== currentOperatorRef.current;
+    const targetChanged = currentTarget && currentTarget !== currentTargetRef.current;
+    
+    if (operatorChanged || targetChanged) {
       analysisCache.current = { dataHash: '', result: {
         grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
         totalVariation: 0, status: 'info', cv: 0, q99: 0, 
         isReliableForStandard: false, 
         varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
       } as GaugeData };
-      currentOperatorRef.current = currentOperator;
-      console.log(`🔄 측정자 변경 감지: ${currentOperatorRef.current} → 분석 캐시 초기화`);
+      
+      if (operatorChanged) {
+        currentOperatorRef.current = currentOperator;
+        console.log(`🔄 측정자 변경 감지: ${currentOperatorRef.current} → 분석 캐시 초기화`);
+      }
+      
+      if (targetChanged) {
+        currentTargetRef.current = currentTarget;
+        console.log(`🎯 대상자 변경 감지: ${currentTargetRef.current} → 분석 캐시 초기화`);
+      }
     }
     if (lapTimes.length < 3) {
       return {
@@ -152,8 +167,11 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
     }
 
-    // 성능 최적화: 해시 기반 캐시 활용
-    const dataHash = `${lapTimes.length}-${lapTimes[lapTimes.length - 1]?.time}-${lapTimes[lapTimes.length - 1]?.operator}-${lapTimes[lapTimes.length - 1]?.target}`;
+    // 성능 최적화: 해시 기반 캐시 활용 (측정자, 대상자 변경 포함)
+    const latestLap = lapTimes[lapTimes.length - 1];
+    const uniqueOperators = [...new Set(lapTimes.map(lap => lap.operator))].sort().join(',');
+    const uniqueTargets = [...new Set(lapTimes.map(lap => lap.target))].sort().join(',');
+    const dataHash = `${lapTimes.length}-${latestLap?.time || 0}-${latestLap?.operator || ''}-${latestLap?.target || ''}-${uniqueOperators}-${uniqueTargets}`;
 
     if (analysisCache.current.dataHash === dataHash) {
       return analysisCache.current.result;
@@ -225,7 +243,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         }
       };
     }
-  }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, calculator]);
+  }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, lapTimes[lapTimes.length - 1]?.operator, lapTimes[lapTimes.length - 1]?.target, calculator]);
 
   // 통계 업데이트 - AnalysisService 기반으로 통합
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
