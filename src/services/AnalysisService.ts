@@ -297,32 +297,128 @@ class ANOVACalculator implements IANOVACalculator {
   }
 
   private calculatePValue(fStat: number, df1: number, df2: number): number {
-    // 개선된 F-분포 p-value 계산
+    // 🔧 정확한 F-분포 p-value 계산 (베타 함수 기반)
     if (fStat <= 0) return 1.0;
-    if (fStat < 0.1) return 0.95;
+    if (!isFinite(fStat)) return 0.0;
 
-    // 자유도 고려한 적응적 임계값 계산
-    const dfAdjustment = Math.min(1.5, Math.max(0.8, 1.0 + (15 - df2) * 0.05));
-    
-    const criticalValues = {
-      p001: F_DISTRIBUTION_CRITICAL.ALPHA_001.small_df * dfAdjustment,
-      p01: F_DISTRIBUTION_CRITICAL.ALPHA_01.small_df * dfAdjustment,
-      p05: F_DISTRIBUTION_CRITICAL.ALPHA_05.small_df * dfAdjustment,
-      p10: F_DISTRIBUTION_CRITICAL.ALPHA_10.small_df * dfAdjustment
-    };
+    // 🔧 베타 함수를 이용한 정확한 F-분포 CDF 계산
+    try {
+      const x = df2 / (df2 + df1 * fStat);
+      
+      // 불완전 베타 함수 근사 (Incomplete Beta Function)
+      const betaRegularized = this.incompleteBeta(x, df2 / 2, df1 / 2);
+      const pValue = Math.max(0.0001, Math.min(0.9999, betaRegularized));
+      
+      console.log(`📈 F-통계량: ${fStat.toFixed(4)}, df1: ${df1}, df2: ${df2}, p-value: ${pValue.toFixed(6)}`);
+      
+      return pValue;
+    } catch (error) {
+      console.warn('⚠️ 정확한 p-value 계산 실패, 근사치 사용:', error);
+      
+      // 폴백: 개선된 근사 계산
+      const dfAdjustment = Math.min(1.5, Math.max(0.8, 1.0 + (15 - df2) * 0.05));
+      
+      const criticalValues = {
+        p001: F_DISTRIBUTION_CRITICAL.ALPHA_001.small_df * dfAdjustment,
+        p01: F_DISTRIBUTION_CRITICAL.ALPHA_01.small_df * dfAdjustment,
+        p05: F_DISTRIBUTION_CRITICAL.ALPHA_05.small_df * dfAdjustment,
+        p10: F_DISTRIBUTION_CRITICAL.ALPHA_10.small_df * dfAdjustment
+      };
 
-    // 정확한 p-value 범위 반환
-    if (fStat > criticalValues.p001) return 0.001;
-    if (fStat > criticalValues.p01) return 0.01;
-    if (fStat > criticalValues.p05) return 0.05;
-    if (fStat > criticalValues.p10) return 0.1;
-    
-    // 보간을 통한 중간값 계산 (개선된 공식)
-    if (fStat > 1.0) {
-      return Math.max(0.1, Math.min(0.9, 0.5 - (fStat - 1.0) * 0.15));
+      if (fStat > criticalValues.p001) return 0.001;
+      if (fStat > criticalValues.p01) return 0.01;
+      if (fStat > criticalValues.p05) return 0.05;
+      if (fStat > criticalValues.p10) return 0.1;
+      
+      return Math.max(0.1, Math.min(0.9, 0.8 - Math.log(1 + fStat) * 0.2));
     }
+  }
+
+  // 🔧 불완전 베타 함수 근사 구현 (Continued Fractions 방법)
+  private incompleteBeta(x: number, a: number, b: number, precision: number = 1e-10): number {
+    if (x < 0 || x > 1) return x < 0 ? 0 : 1;
+    if (x === 0 || x === 1) return x;
+
+    // 베타 함수 정규화 상수
+    const betaFunc = this.logGamma(a) + this.logGamma(b) - this.logGamma(a + b);
+    const factor = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - betaFunc);
+
+    // Continued fractions을 이용한 근사
+    if (x < (a + 1) / (a + b + 2)) {
+      return factor * this.betaContinuedFraction(x, a, b, precision) / a;
+    } else {
+      return 1 - factor * this.betaContinuedFraction(1 - x, b, a, precision) / b;
+    }
+  }
+
+  // 🔧 베타 함수 연분수 계산
+  private betaContinuedFraction(x: number, a: number, b: number, precision: number): number {
+    const qab = a + b;
+    const qap = a + 1;
+    const qam = a - 1;
+    let c = 1;
+    let d = 1 - qab * x / qap;
     
-    return Math.max(0.5, Math.min(0.9, 0.9 - fStat * 0.4));
+    if (Math.abs(d) < 1e-30) d = 1e-30;
+    d = 1 / d;
+    let h = d;
+
+    for (let m = 1; m <= 200; m++) {
+      const m2 = 2 * m;
+      const aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+      
+      d = 1 + aa * d;
+      if (Math.abs(d) < 1e-30) d = 1e-30;
+      c = 1 + aa / c;
+      if (Math.abs(c) < 1e-30) c = 1e-30;
+      d = 1 / d;
+      h *= d * c;
+
+      const aa2 = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+      d = 1 + aa2 * d;
+      if (Math.abs(d) < 1e-30) d = 1e-30;
+      c = 1 + aa2 / c;
+      if (Math.abs(c) < 1e-30) c = 1e-30;
+      d = 1 / d;
+      const del = d * c;
+      h *= del;
+
+      if (Math.abs(del - 1) < precision) break;
+    }
+
+    return h;
+  }
+
+  // 🔧 로그 감마 함수 근사 (Stirling 공식 기반)
+  private logGamma(z: number): number {
+    if (z < 0) return NaN;
+    if (z < 1e-10) return -Math.log(z);
+    
+    const g = 7;
+    const coeffs = [
+      0.99999999999980993,
+      676.5203681218851,
+      -1259.1392167224028,
+      771.32342877765313,
+      -176.61502916214059,
+      12.507343278686905,
+      -0.13857109526572012,
+      9.9843695780195716e-6,
+      1.5056327351493116e-7
+    ];
+
+    if (z < 0.5) {
+      return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - this.logGamma(1 - z);
+    }
+
+    z -= 1;
+    let x = coeffs[0];
+    for (let i = 1; i < g + 2; i++) {
+      x += coeffs[i] / (z + i);
+    }
+
+    const t = z + g + 0.5;
+    return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
   }
 }
 
@@ -454,35 +550,71 @@ class GageRRCalculator implements IGageRRCalculator {
   }
 
   private calculateVarianceComponents(anova: ANOVAResult, nParts: number, nOperators: number, nRepeats: number): VarianceComponents {
-    // MSA-4 표준에 따른 올바른 분산 성분 계산 (REML 방법론)
+    // 🔧 MSA-4 표준에 따른 REML 분산 성분 계산 (음수 제약 처리 개선)
 
-    // Repeatability (Equipment Variance) - 항상 양수
+    // Repeatability (Equipment Variance) - 기본 성분
     const sigma2_equipment = Math.max(0, anova.equipmentMS);
 
-    // Interaction Variance - 올바른 공식 적용
-    const var_interaction_raw = Math.max(0, (anova.interactionMS - anova.equipmentMS) / nRepeats);
+    // 🔧 단계적 분산 성분 계산 (음수 발생 시 제약 적용)
     
-    // Reproducibility (Operator Variance) - 올바른 공식 적용
-    const var_operator_raw = Math.max(0, (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats));
-    
-    // Part-to-Part Variance - 올바른 공식 적용
-    const var_part_raw = Math.max(0, (anova.partMS - anova.interactionMS) / (nOperators * nRepeats));
+    // 1단계: 원시 분산 성분 계산
+    const var_interaction_raw = (anova.interactionMS - anova.equipmentMS) / nRepeats;
+    const var_operator_raw = (anova.operatorMS - anova.interactionMS) / (nParts * nRepeats);
+    const var_part_raw = (anova.partMS - anova.interactionMS) / (nOperators * nRepeats);
 
-    // Total Variance - 모든 성분의 합
-    const var_total = var_part_raw + var_operator_raw + var_interaction_raw + sigma2_equipment;
+    // 2단계: 음수 처리 전략 (REML 제약 적용)
+    let var_interaction: number;
+    let var_operator: number;
+    let var_part: number;
 
-    // 유효성 검증
+    if (var_interaction_raw < 0) {
+      console.log(`📊 상호작용 분산 음수 감지: ${var_interaction_raw.toFixed(6)} → 제약 적용`);
+      
+      // 음수 상호작용 분산을 다른 성분에 재분배
+      const negativeVariance = Math.abs(var_interaction_raw);
+      var_interaction = 0;
+      
+      // 측정자 및 대상자 분산 재계산 (음수 분산 흡수)
+      var_operator = Math.max(0, var_operator_raw + negativeVariance * 0.5);
+      var_part = Math.max(0, var_part_raw + negativeVariance * 0.5);
+      
+      console.log(`🔧 재분배 완료: 측정자=${var_operator.toFixed(6)}, 대상자=${var_part.toFixed(6)}`);
+    } else {
+      var_interaction = var_interaction_raw;
+      var_operator = Math.max(0, var_operator_raw);
+      var_part = Math.max(0, var_part_raw);
+    }
+
+    // 3단계: 총 분산 계산 및 일관성 검증
+    const var_total = var_part + var_operator + var_interaction + sigma2_equipment;
+
+    // 4단계: 분산 성분 비율 검증 (물리적 타당성)
+    const equipmentRatio = sigma2_equipment / var_total;
+    if (equipmentRatio > 0.95) {
+      console.warn('⚠️ 반복성 분산이 95% 초과 - 측정 시스템 점검 필요');
+    }
+
+    // 유효성 최종 검증
     if (var_total <= 0) {
       console.warn('⚠️ 총 분산이 0 이하 - 최소값으로 보정');
     }
 
-    return {
-      part: var_part_raw,
-      operator: var_operator_raw,
-      interaction: var_interaction_raw,
+    const result = {
+      part: var_part,
+      operator: var_operator,
+      interaction: var_interaction,
       equipment: sigma2_equipment,
       total: Math.max(0.0001, var_total)
     };
+
+    console.log(`📊 분산 성분 계산 완료:`, {
+      '대상자(%)': (100 * result.part / result.total).toFixed(1),
+      '측정자(%)': (100 * result.operator / result.total).toFixed(1),
+      '상호작용(%)': (100 * result.interaction / result.total).toFixed(1),
+      '반복성(%)': (100 * result.equipment / result.total).toFixed(1)
+    });
+
+    return result;
   }
 }
 

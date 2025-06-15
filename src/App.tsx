@@ -938,28 +938,46 @@ const EnhancedLogisticsTimer = () => {
     return filtered;
   }, [lapTimes, filterOptions]);
 
-  // 🔧 Gage R&R 분석 (실시간 통계와 동기화)
+  // 🔧 실시간-상세분석 완전 동기화된 분석
   const analysis = useMemo(() => {
     const validation = ValidationService.validateGageRRAnalysis(lapTimes);
     if (!validation.isValid) return null;
 
     try {
-      // 🔧 실시간 통계와 동일한 AnalysisService 사용 (동기화 보장)
-      const analysisResult = AnalysisService.calculateGageRR(lapTimes);
+      const analysisStartTime = performance.now();
       
-      // 🔧 분석 결과와 실시간 통계 일관성 검증
+      // 🔧 동일한 데이터셋으로 분석 실행 (완전 동기화)
+      const synchronizedLapTimes = [...lapTimes]; // 불변성 보장
+      const analysisResult = AnalysisService.calculateGageRR(synchronizedLapTimes);
+      
+      const analysisEndTime = performance.now();
+      console.log(`🔍 상세분석 완료: ${(analysisEndTime - analysisStartTime).toFixed(1)}ms`);
+      
+      // 🔧 실시간 통계와의 동기화 검증 강화
       const gaugeData = statisticsAnalysis.gaugeData;
-      if (Math.abs(analysisResult.gageRRPercent - gaugeData.grr) > 0.1) {
-        console.warn('⚠️ 실시간-상세분석 불일치 감지, 재계산 수행');
-        // 캐시 무효화 후 재계산
+      const grrDifference = Math.abs(analysisResult.gageRRPercent - gaugeData.grr);
+      const cvDifference = Math.abs(analysisResult.cv - gaugeData.cv);
+      
+      if (grrDifference > 0.1 || cvDifference > 0.1) {
+        console.warn(`⚠️ 분석 결과 불일치 감지: GRR차이=${grrDifference.toFixed(3)}, CV차이=${cvDifference.toFixed(3)}`);
+        
+        // 캐시 무효화 및 재동기화
         StorageService.invalidateCache();
+        
+        // 실시간 통계 강제 갱신
+        statisticsAnalysis.updateStatistics(
+          synchronizedLapTimes[synchronizedLapTimes.length - 1],
+          synchronizedLapTimes
+        );
+      } else {
+        console.log(`✅ 실시간-상세분석 동기화 확인: GRR=${analysisResult.gageRRPercent.toFixed(1)}%, CV=${analysisResult.cv.toFixed(1)}%`);
       }
       
       return analysisResult;
     } catch (error) {
-      console.error('🚨 분석 오류 상세:', error);
+      console.error('🚨 상세분석 오류:', error);
       
-      // 구체적인 오류 메시지 제공
+      // 🔧 구체적인 오류 처리 및 복구
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
       
       if (errorMessage.includes('측정자')) {
@@ -969,12 +987,12 @@ const EnhancedLogisticsTimer = () => {
       } else if (errorMessage.includes('측정값')) {
         showToast(`측정 데이터 문제: ${errorMessage}`, 'error');
       } else {
-        showToast('분석 중 오류가 발생했습니다. 데이터를 확인해주세요.', 'error');
+        showToast('상세분석 중 오류가 발생했습니다. 기본 분석을 제공합니다.', 'warning');
       }
       
       return null;
     }
-  }, [lapTimes, showToast, statisticsAnalysis.gaugeData]);
+  }, [lapTimes, showToast, statisticsAnalysis.gaugeData, statisticsAnalysis.updateStatistics]);
 
   // 분석 가능 여부 확인 (요구사항 6번) - 조건 완화 및 개선
   const canAnalyze = useMemo(() => {

@@ -81,8 +81,9 @@ class StorageValidator implements IStorageValidator {
  * 🔧 캐싱된 저장소 작업 구현체 (성능 최적화 + 동기화 보장)
  */
 class CachedLocalStorageOperations implements ICachedStorageOperations {
-  private cache = new Map<string, { data: any; timestamp: number }>();
-  private readonly CACHE_TTL = 5 * 60 * 1000; // 5분 TTL
+  private cache = new Map<string, { data: any; timestamp: number; accessCount: number }>();
+  private readonly CACHE_TTL = 10 * 60 * 1000; // 🔧 10분 TTL로 연장 (성능 최적화)
+  private readonly MAX_CACHE_SIZE = 50; // 🔧 최대 캐시 크기 제한
 
   constructor(private validator: IStorageValidator) {}
 
@@ -177,14 +178,45 @@ class CachedLocalStorageOperations implements ICachedStorageOperations {
       return null;
     }
 
+    // 🔧 LRU 갱신 (접근 횟수 증가)
+    cached.accessCount++;
+    cached.timestamp = now; // 액세스 시간 갱신
+
     return cached.data as T;
   }
 
   setCachedData<T>(key: string, data: T): void {
+    // 🔧 캐시 크기 관리 (LRU 방식으로 제거)
+    if (this.cache.size >= this.MAX_CACHE_SIZE) {
+      this.evictLeastRecentlyUsed();
+    }
+
     this.cache.set(key, {
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      accessCount: 1
     });
+  }
+
+  // 🔧 LRU 캐시 제거 로직
+  private evictLeastRecentlyUsed(): void {
+    let lruKey = '';
+    let oldestTime = Date.now();
+    let lowestAccess = Infinity;
+
+    for (const [key, value] of this.cache.entries()) {
+      if (value.timestamp < oldestTime || 
+         (value.timestamp === oldestTime && value.accessCount < lowestAccess)) {
+        oldestTime = value.timestamp;
+        lowestAccess = value.accessCount;
+        lruKey = key;
+      }
+    }
+
+    if (lruKey) {
+      this.cache.delete(lruKey);
+      console.log(`🗑️ LRU 캐시 제거: ${lruKey}`);
+    }
   }
 
   invalidateCache(key?: string): void {

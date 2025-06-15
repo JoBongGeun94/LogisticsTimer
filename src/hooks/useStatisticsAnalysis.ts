@@ -167,26 +167,33 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
     }
 
-    // 🔧 개선된 해시 기반 캐싱 - 완전한 데이터 무결성 보장
+    // 🔧 실시간-상세분석 동기화를 위한 통합 해시 계산
     const latestLap = lapTimes[lapTimes.length - 1];
     const uniqueOperators = [...new Set(lapTimes.map(lap => lap.operator))].sort().join(',');
     const uniqueTargets = [...new Set(lapTimes.map(lap => lap.target))].sort().join(',');
     
-    // 완전한 데이터 해시 계산 (모든 측정값 포함)
+    // 완전한 데이터 해시 계산 (측정값 순서와 필터 상태 포함)
     const timeValues = lapTimes.map(lap => lap.time).join(',');
     const operatorSequence = lapTimes.map(lap => lap.operator).join(',');
     const targetSequence = lapTimes.map(lap => lap.target).join(',');
-    const dataHash = `${lapTimes.length}-${timeValues}-${operatorSequence}-${targetSequence}-${uniqueOperators}-${uniqueTargets}`;
+    const timestamp = latestLap ? new Date(latestLap.timestamp).getTime() : 0;
+    const dataHash = `${lapTimes.length}-${timeValues}-${operatorSequence}-${targetSequence}-${uniqueOperators}-${uniqueTargets}-${timestamp}`;
 
+    // 🔧 캐시 검증 및 동기화 상태 확인
     if (analysisCache.current.dataHash === dataHash) {
       return analysisCache.current.result;
     }
 
     try {
-      // 🔧 AnalysisService를 통한 통합 계산 (실시간-상세분석 동기화)
+      // 🔧 동기화된 분석 실행 - 실시간과 상세분석 통일
+      const analysisStartTime = performance.now();
       const analysis = AnalysisService.calculateGageRR(lapTimes);
+      const analysisEndTime = performance.now();
+      
+      console.log(`📊 분석 완료: ${(analysisEndTime - analysisStartTime).toFixed(1)}ms`);
 
-      const result: GaugeData = {
+      // 🔧 원자적 결과 생성 (모든 속성을 한번에 설정)
+      const result: GaugeData = Object.freeze({
         grr: Math.min(100, Math.max(0, analysis.gageRRPercent)),
         repeatability: analysis.repeatability,
         reproducibility: analysis.reproducibility,
@@ -208,10 +215,10 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
           outlierMethod: 'IQR',
           preprocessingApplied: false
         }
-      };
+      });
 
       // 🔧 원자적 캐시 업데이트 (레이스 컨디션 방지)
-      analysisCache.current = { dataHash, result };
+      analysisCache.current = Object.freeze({ dataHash, result });
 
       return result;
     } catch (error) {
