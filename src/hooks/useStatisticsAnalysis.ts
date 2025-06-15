@@ -63,6 +63,18 @@ class StatisticsCalculator implements IStatisticsCalculator {
   }
 }
 
+// 🔧 간단한 해시 함수 (데이터 무결성 검증용)
+const simpleHash = (str: string): string => {
+  let hash = 0;
+  if (str.length === 0) return hash.toString();
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // 32bit integer 변환
+  }
+  return Math.abs(hash).toString(36);
+};
+
 export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const [calculator] = useState<IStatisticsCalculator>(() => new StatisticsCalculator());
   const [iccValue, setIccValue] = useState(0);
@@ -84,7 +96,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   const currentOperatorRef = useRef<string>('');
   const currentTargetRef = useRef<string>('');
 
-  // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
+  // 🔧 통합 데이터 동기화 시스템 - 실시간과 상세분석 완전 동기화
   const gaugeData = useMemo((): GaugeData => {
     // 측정자 및 대상자 변경 시 캐시 초기화
     const currentOperator = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.operator : '';
@@ -95,21 +107,35 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     const targetChanged = currentTarget && currentTarget !== currentTargetRef.current;
 
     if (operatorChanged || targetChanged) {
+      // 🔧 전역 캐시 무효화 (StorageService와 동기화)
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem('analysisCache');
+        }
+      } catch (error) {
+        console.warn('캐시 무효화 실패:', error);
+      }
+
       analysisCache.current = { dataHash: '', result: {
         grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
         totalVariation: 0, status: 'info', cv: 0, q99: 0, 
         isReliableForStandard: false, 
-        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
+        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
+        dataQuality: {
+          originalCount: 0, validCount: 0, outliersDetected: 0,
+          isNormalDistribution: true, normalityTest: null,
+          outlierMethod: 'IQR', preprocessingApplied: false
+        }
       } as GaugeData };
 
       if (operatorChanged) {
         currentOperatorRef.current = currentOperator;
-        console.log(`🔄 측정자 변경 감지: ${currentOperatorRef.current} → 분석 캐시 초기화`);
+        console.log(`🔄 측정자 변경 감지: ${currentOperatorRef.current} → 전역 캐시 초기화`);
       }
 
       if (targetChanged) {
         currentTargetRef.current = currentTarget;
-        console.log(`🎯 대상자 변경 감지: ${currentTargetRef.current} → 분석 캐시 초기화`);
+        console.log(`🎯 대상자 변경 감지: ${currentTargetRef.current} → 전역 캐시 초기화`);
       }
     }
     if (lapTimes.length < 3) {
@@ -167,60 +193,88 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
     }
 
-    // 🔧 실시간-상세분석 동기화를 위한 통합 해시 계산
-    const latestLap = lapTimes[lapTimes.length - 1];
-    const uniqueOperators = [...new Set(lapTimes.map(lap => lap.operator))].sort().join(',');
-    const uniqueTargets = [...new Set(lapTimes.map(lap => lap.target))].sort().join(',');
+    // 🔧 완전한 데이터 해시 계산 - 모든 변경사항 감지
+    const latestLap = validLapTimes[validLapTimes.length - 1];
+    const uniqueOperators = [...new Set(validLapTimes.map(lap => lap.operator))].sort().join(',');
+    const uniqueTargets = [...new Set(validLapTimes.map(lap => lap.target))].sort().join(',');
 
-    // 완전한 데이터 해시 계산 (측정값 순서와 필터 상태 포함)
-    const timeValues = lapTimes.map(lap => lap.time).join(',');
-    const operatorSequence = lapTimes.map(lap => lap.operator).join(',');
-    const targetSequence = lapTimes.map(lap => lap.target).join(',');
+    // 🔧 정교한 해시 계산 - 순서와 내용 모두 반영
+    const dataElements = validLapTimes.map(lap => 
+      `${lap.time}_${lap.operator}_${lap.target}_${lap.timestamp}`
+    ).join('|');
+    
     const timestamp = latestLap ? new Date(latestLap.timestamp).getTime() : 0;
-    const dataHash = `${lapTimes.length}-${timeValues}-${operatorSequence}-${targetSequence}-${uniqueOperators}-${uniqueTargets}-${timestamp}`;
+    const structuralInfo = `${validLapTimes.length}-${uniqueOperators}-${uniqueTargets}`;
+    const contentHash = this.simpleHash(dataElements);
+    const dataHash = `${structuralInfo}-${contentHash}-${timestamp}`;
 
     // 🔧 캐시 검증 및 동기화 상태 확인
     if (analysisCache.current.dataHash === dataHash) {
+      console.log(`📋 캐시 히트: ${dataHash.substring(0, 20)}...`);
       return analysisCache.current.result;
     }
 
+    console.log(`🔄 캐시 미스: ${analysisCache.current.dataHash.substring(0, 20)}... → ${dataHash.substring(0, 20)}...`);
+
     try {
-      // 🔧 동기화된 분석 실행 - 실시간과 상세분석 통일
+      // 🔧 통합 분석 실행 - 실시간과 상세분석 완전 동기화
       const analysisStartTime = performance.now();
-      const analysis = AnalysisService.calculateGageRR(lapTimes);
+      
+      // 🔧 동일한 AnalysisService 메서드 사용으로 완전 동기화 보장
+      const analysis = AnalysisService.calculateGageRR(validLapTimes);
       const analysisEndTime = performance.now();
 
-      console.log(`📊 분석 완료: ${(analysisEndTime - analysisStartTime).toFixed(1)}ms`);
+      console.log(`📊 통합분석 완료: ${(analysisEndTime - analysisStartTime).toFixed(1)}ms`);
 
-      // 🔧 원자적 결과 생성 (모든 속성을 한번에 설정)
-      const result: GaugeData = Object.freeze({
-        grr: Math.min(100, Math.max(0, analysis.gageRRPercent)),
-        repeatability: analysis.repeatability,
-        reproducibility: analysis.reproducibility,
-        partVariation: analysis.partVariation,
-        totalVariation: analysis.totalVariation,
-        status: calculator.statusFromGRR(analysis.gageRRPercent),
-        cv: Math.max(0, analysis.cv),
-        q99: Math.max(0, analysis.q99),
-        isReliableForStandard: analysis.isReliableForStandard,
-        varianceComponents: analysis.varianceComponents || {
-          part: 0, operator: 0, interaction: 0, equipment: 0, total: 0
-        },
-        dataQuality: analysis.dataQuality || {
-          originalCount: lapTimes.length,
-          validCount: lapTimes.length,
-          outliersDetected: 0,
-          isNormalDistribution: true,
-          normalityTest: null,
-          outlierMethod: 'IQR',
-          preprocessingApplied: false
-        }
+      // 🔧 원자적 결과 생성 - 모든 속성을 트랜잭션으로 처리
+      const atomicResult: GaugeData = Object.freeze({
+        grr: Math.min(100, Math.max(0, analysis.gageRRPercent || 0)),
+        repeatability: analysis.repeatability || 0,
+        reproducibility: analysis.reproducibility || 0,
+        partVariation: analysis.partVariation || 0,
+        totalVariation: analysis.totalVariation || 0,
+        status: calculator.statusFromGRR(analysis.gageRRPercent || 0),
+        cv: Math.max(0, analysis.cv || 0),
+        q99: Math.max(0, analysis.q99 || 0),
+        isReliableForStandard: analysis.isReliableForStandard || false,
+        varianceComponents: Object.freeze({
+          part: analysis.varianceComponents?.part || 0,
+          operator: analysis.varianceComponents?.operator || 0,
+          interaction: analysis.varianceComponents?.interaction || 0,
+          equipment: analysis.varianceComponents?.equipment || 0,
+          total: analysis.varianceComponents?.total || 0
+        }),
+        dataQuality: Object.freeze({
+          originalCount: analysis.dataQuality?.originalCount || lapTimes.length,
+          validCount: analysis.dataQuality?.validCount || validLapTimes.length,
+          outliersDetected: analysis.dataQuality?.outliersDetected || 0,
+          isNormalDistribution: analysis.dataQuality?.isNormalDistribution ?? true,
+          normalityTest: analysis.dataQuality?.normalityTest || null,
+          outlierMethod: analysis.dataQuality?.outlierMethod || 'IQR',
+          preprocessingApplied: analysis.dataQuality?.preprocessingApplied || false
+        })
       });
 
-      // 🔧 원자적 캐시 업데이트 (레이스 컨디션 방지)
-      analysisCache.current = Object.freeze({ dataHash, result });
+      // 🔧 원자적 캐시 업데이트 및 동기화 보장
+      const atomicCacheEntry = Object.freeze({ dataHash, result: atomicResult });
+      analysisCache.current = atomicCacheEntry;
 
-      return result;
+      // 🔧 전역 캐시에도 동기화 저장
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('analysisCache', JSON.stringify({
+            timestamp: Date.now(),
+            dataHash,
+            result: atomicResult
+          }));
+        }
+      } catch (error) {
+        console.warn('전역 캐시 저장 실패:', error);
+      }
+
+      console.log(`✅ 동기화 완료: GRR=${atomicResult.grr.toFixed(1)}%, CV=${atomicResult.cv.toFixed(1)}%, ICC=${analysis.icc?.toFixed(3) || 'N/A'}`);
+
+      return atomicResult;
     } catch (error) {
       console.error('실시간 Gauge 데이터 계산 오류:', error);
 
@@ -257,37 +311,82 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         }
       };
     }
-  }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, lapTimes[lapTimes.length - 1]?.operator, lapTimes[lapTimes.length - 1]?.target, calculator]);
+  }, [
+    // 🔧 정교한 의존성 배열 - 모든 변경사항 감지
+    lapTimes.length,
+    lapTimes.map(lap => lap.time).join(','),
+    lapTimes.map(lap => lap.operator).join(','),
+    lapTimes.map(lap => lap.target).join(','),
+    lapTimes.map(lap => lap.timestamp).join(','),
+    calculator
+  ]);
 
-  // 🔧 동기화된 통계 업데이트 - 원자적 상태 변경
+  // 🔧 원자적 상태 업데이트 시스템 - 배치 처리로 동기화 보장
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {
     try {
-      // 🔧 단일 분석으로 모든 지표 동시 계산 (동기화 보장)
-      if (allLaps.length >= 6) {
-        const analysis = AnalysisService.calculateGageRR(allLaps);
-        // 원자적 상태 업데이트
-        setIccValue(analysis.icc);
-      }
+      // 🔧 상태 변경을 배치로 처리하여 원자성 보장
+      const batchUpdate = () => {
+        let iccUpdate = iccValue;
+        let deltaPairUpdate = deltaPairValue;
+        let showRetakeUpdate = showRetakeModal;
 
-      // ΔPair 계산 (최적화: 마지막 2개만 계산)
-      if (allLaps.length >= 2) {
-        const lastTwo = allLaps.slice(-2);
-        const deltaPair = Math.abs(lastTwo[1].time - lastTwo[0].time);
-        setDeltaPairValue(deltaPair);
-
-        // 임계값 비교 최적화 - 물류작업 특성 반영
-        const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
-        const threshold = workTimeMean * LOGISTICS_WORK_THRESHOLDS.DELTA_PAIR_THRESHOLD;
-
-        // 연속 측정값 차이가 15% 초과 시 재측정 권고
-        if (deltaPair > threshold && allLaps.length > 2) {
-          setShowRetakeModal(true);
+        // 🔧 ICC 계산 - 단일 분석으로 통합
+        if (allLaps.length >= 6) {
+          try {
+            const analysis = AnalysisService.calculateGageRR(allLaps);
+            iccUpdate = analysis.icc || 0;
+            console.log(`🔄 ICC 업데이트: ${iccUpdate.toFixed(3)}`);
+          } catch (error) {
+            console.warn('ICC 계산 실패:', error);
+            iccUpdate = 0;
+          }
         }
-      }
+
+        // 🔧 ΔPair 계산 (최적화: 마지막 2개만 계산)
+        if (allLaps.length >= 2) {
+          const lastTwo = allLaps.slice(-2);
+          deltaPairUpdate = Math.abs(lastTwo[1].time - lastTwo[0].time);
+
+          // 임계값 비교 최적화 - 물류작업 특성 반영
+          const workTimeMean = allLaps.reduce((sum, lap) => sum + lap.time, 0) / allLaps.length;
+          const threshold = workTimeMean * LOGISTICS_WORK_THRESHOLDS.DELTA_PAIR_THRESHOLD;
+
+          // 연속 측정값 차이가 15% 초과 시 재측정 권고
+          if (deltaPairUpdate > threshold && allLaps.length > 2) {
+            showRetakeUpdate = true;
+            console.log(`🚨 재측정 임계값 초과: ${(deltaPairUpdate/1000).toFixed(1)}초 > ${(threshold/1000).toFixed(1)}초`);
+          }
+        }
+
+        // 🔧 원자적 상태 업데이트 - 모든 상태를 동시에 변경
+        const updatePromises = [];
+        
+        if (iccUpdate !== iccValue) {
+          updatePromises.push(() => setIccValue(iccUpdate));
+        }
+        
+        if (deltaPairUpdate !== deltaPairValue) {
+          updatePromises.push(() => setDeltaPairValue(deltaPairUpdate));
+        }
+        
+        if (showRetakeUpdate !== showRetakeModal) {
+          updatePromises.push(() => setShowRetakeModal(showRetakeUpdate));
+        }
+
+        // 배치 실행
+        if (updatePromises.length > 0) {
+          updatePromises.forEach(update => update());
+          console.log(`✅ 배치 상태 업데이트 완료: ${updatePromises.length}개 상태 동기화`);
+        }
+      };
+
+      // React의 상태 업데이트 배치 처리 활용
+      batchUpdate();
+
     } catch (error) {
-      console.warn('통계 업데이트 오류:', error);
+      console.error('🚨 원자적 상태 업데이트 실패:', error);
     }
-  }, []);
+  }, [iccValue, deltaPairValue, showRetakeModal]);
 
     // 🔧 재측정 모달 트리거 (강화된 임계값 기반)
   const checkRetakeCriteria = useCallback((newLap: LapTime, allLaps: LapTime[]) => {

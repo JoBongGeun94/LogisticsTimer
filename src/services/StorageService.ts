@@ -1,4 +1,3 @@
-
 /**
  * 저장소 키 관리 인터페이스 (Interface Segregation Principle)
  */
@@ -95,10 +94,10 @@ class CachedLocalStorageOperations implements ICachedStorageOperations {
 
       const serializedData = JSON.stringify(data);
       localStorage.setItem(key, serializedData);
-      
+
       // 🔧 캐시 동기화 - 저장 시 즉시 캐시 업데이트
       this.setCachedData(key, data);
-      
+
       return true;
     } catch (error) {
       console.error(`Failed to save data for key ${key}:`, error);
@@ -121,12 +120,12 @@ class CachedLocalStorageOperations implements ICachedStorageOperations {
       // 캐시 미스 시 localStorage에서 로드
       const serializedData = localStorage.getItem(key);
       if (serializedData === null) return null;
-      
+
       const data = JSON.parse(serializedData) as T;
-      
+
       // 🔧 로드된 데이터를 캐시에 저장
       this.setCachedData(key, data);
-      
+
       return data;
     } catch (error) {
       console.error(`Failed to load data for key ${key}:`, error);
@@ -141,10 +140,10 @@ class CachedLocalStorageOperations implements ICachedStorageOperations {
       }
 
       localStorage.removeItem(key);
-      
+
       // 🔧 캐시에서도 제거
       this.cache.delete(key);
-      
+
       return true;
     } catch (error) {
       console.error(`Failed to remove data for key ${key}:`, error);
@@ -155,10 +154,10 @@ class CachedLocalStorageOperations implements ICachedStorageOperations {
   clear(): boolean {
     try {
       localStorage.clear();
-      
+
       // 🔧 캐시도 전체 클리어
       this.invalidateCache();
-      
+
       return true;
     } catch (error) {
       console.error('Failed to clear all data:', error);
@@ -316,5 +315,34 @@ export class StorageService {
 
   static removeDataWithKey(key: string): boolean {
     return this.operations.remove(key);
+  }
+
+  static invalidateCache(): void {
+    try {
+      // 🔧 모든 캐시 항목 무효화
+      const cacheKeys = [
+        'analysisCache',
+        'statisticsCache',
+        'gageRRCache',
+        'lapTimesCache',
+        'sessionCache'
+      ];
+
+      cacheKeys.forEach(key => {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(key);
+        }
+      });
+
+      // 🔧 캐시 무효화 타임스탬프 기록
+      const invalidationTimestamp = Date.now();
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('cacheInvalidatedAt', invalidationTimestamp.toString());
+      }
+
+      console.log(`🗑️ 전역 캐시 무효화 완료: ${cacheKeys.length}개 항목 삭제`);
+    } catch (error) {
+      console.error('캐시 무효화 실패:', error);
+    }
   }
 }
