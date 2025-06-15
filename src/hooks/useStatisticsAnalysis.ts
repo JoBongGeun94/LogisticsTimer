@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, startTransition } from 'react';
 import { LapTime } from '../types';
 import { LOGISTICS_WORK_THRESHOLDS } from '../constants/analysis';
 import { AnalysisService } from '../services/AnalysisService';
@@ -210,7 +210,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
     const timestamp = latestLap ? new Date(latestLap.timestamp).getTime() : 0;
     const structuralInfo = `${validLapTimes.length}-${uniqueOperators}-${uniqueTargets}`;
     const contentHash = simpleHash(dataElements);
-    const dataHash = `${structuralInfo}-${contentHash}-${timestamp}`;
+    const dataHash = simpleHash(dataElements);
 
     // 🔧 캐시 검증 및 동기화 상태 확인
     if (analysisCache.current.dataHash === dataHash) {

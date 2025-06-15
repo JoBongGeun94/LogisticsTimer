@@ -93,7 +93,25 @@ class CachedLocalStorageOperations implements ICachedStorageOperations {
       }
 
       const serializedData = JSON.stringify(data);
-      localStorage.setItem(key, serializedData);
+      
+      // 🔧 로컬스토리지 용량 검사 및 예외 처리
+      try {
+        localStorage.setItem(key, serializedData);
+      } catch (quotaError) {
+        if (quotaError.name === 'QuotaExceededError' || quotaError.message.includes('quota')) {
+          console.warn('로컬스토리지 용량 초과, 캐시 정리 시도');
+          // 만료된 캐시 정리 후 재시도
+          StorageService.cleanExpiredCache();
+          try {
+            localStorage.setItem(key, serializedData);
+          } catch (retryError) {
+            console.error('캐시 정리 후에도 저장 실패:', retryError);
+            return false;
+          }
+        } else {
+          throw quotaError;
+        }
+      }
 
       // 🔧 캐시 동기화 - 저장 시 즉시 캐시 업데이트
       this.setCachedData(key, data);
@@ -276,10 +294,18 @@ export class StorageService {
       // 🔧 안전한 JSON 파싱 
       let cacheData;
       try {
+        if (!cached || cached.trim().length === 0) {
+          localStorage.removeItem(cacheKey);
+          return null;
+        }
         cacheData = JSON.parse(cached);
       } catch (parseError) {
         console.warn('캐시 파싱 실패:', parseError);
-        localStorage.removeItem(cacheKey); // 손상된 캐시 제거
+        try {
+          localStorage.removeItem(cacheKey); // 손상된 캐시 제거
+        } catch (removeError) {
+          console.warn('손상된 캐시 제거 실패:', removeError);
+        }
         return null;
       }
 

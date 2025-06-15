@@ -655,6 +655,16 @@ export class AnalysisService {
   private static anovaCalculator = AnalysisFactory.createANOVACalculator();
   private static gageRRCalculator = AnalysisFactory.createGageRRCalculator();
 
+  // 🔧 작업유형별 배수 함수 정의
+  private static getWorkTypeMultiplier(workType: string): number {
+    const multipliers: Record<string, number> = {
+      '물자검수팀': 1.2,
+      '저장관리팀': 1.0,
+      '포장관리팀': 1.3
+    };
+    return multipliers[workType] || 1.0;
+  }
+
   static calculateGageRR(lapTimes: LapTime[]): GageRRResult {
     try {
       // 엣지 케이스 처리 강화 - 3개부터 기본 분석 허용

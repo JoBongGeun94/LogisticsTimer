@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition } from 'react';
 import {
   Play, Pause, Square, Download, Plus, Users,
   Package, Clock, BarChart3, FileText, Calculator,
@@ -445,17 +445,37 @@ const DetailedAnalysisModal = memo<{
     if (!analysis || !statisticsAnalysis || !statisticsAnalysis.gaugeData) return null;
     
     try {
-      return {
-        ...analysis,
+      // 🔧 깊은 복사 방지 및 참조 안정성 보장
+      const stableResult = {
+        gageRRPercent: analysis.gageRRPercent || 0,
+        status: analysis.status || 'info',
         iccValue: statisticsAnalysis.iccValue || 0,
         deltaPairValue: statisticsAnalysis.deltaPairValue || 0,
-        gaugeData: statisticsAnalysis.gaugeData
+        gaugeData: {
+          grr: statisticsAnalysis.gaugeData.grr || 0,
+          cv: statisticsAnalysis.gaugeData.cv || 0,
+          q99: statisticsAnalysis.gaugeData.q99 || 0,
+          repeatability: statisticsAnalysis.gaugeData.repeatability || 0,
+          reproducibility: statisticsAnalysis.gaugeData.reproducibility || 0,
+          partVariation: statisticsAnalysis.gaugeData.partVariation || 0,
+          totalVariation: statisticsAnalysis.gaugeData.totalVariation || 0,
+          isReliableForStandard: statisticsAnalysis.gaugeData.isReliableForStandard || false,
+          dataQuality: statisticsAnalysis.gaugeData.dataQuality || null
+        }
       };
+      return stableResult;
     } catch (error) {
       console.error('메모이제이션 오류:', error);
       return null;
     }
-  }, [analysis, statisticsAnalysis?.iccValue, statisticsAnalysis?.deltaPairValue, statisticsAnalysis?.gaugeData]);
+  }, [
+    analysis?.gageRRPercent, 
+    analysis?.status,
+    statisticsAnalysis?.iccValue, 
+    statisticsAnalysis?.deltaPairValue, 
+    statisticsAnalysis?.gaugeData?.grr,
+    statisticsAnalysis?.gaugeData?.cv
+  ]);
 
   if (!isVisible) return null;
 
@@ -739,14 +759,19 @@ const EnhancedLogisticsTimer = () => {
 
   // 랩타임 기록 콜백
   const handleLapRecorded = useCallback((newLap: LapTime) => {
+    // 🔧 원자적 상태 업데이트 - 배치 처리로 순서 보장
     const updatedLaps = [...lapTimes, newLap];
-    setLapTimes(updatedLaps);
-    setAllLapTimes(prev => [...prev, newLap]);
-    updateSessionLapTimes(updatedLaps);
-
-    // 통계 업데이트
-    statisticsAnalysis.updateStatistics(newLap, updatedLaps);
-  }, [lapTimes, setAllLapTimes, updateSessionLapTimes]);
+    
+    // React 18의 자동 배치 활용
+    startTransition(() => {
+      setLapTimes(updatedLaps);
+      setAllLapTimes(prev => [...prev, newLap]);
+      updateSessionLapTimes(updatedLaps);
+      
+      // 통계 업데이트
+      statisticsAnalysis.updateStatistics(newLap, updatedLaps);
+    });
+  }, [lapTimes, setAllLapTimes, updateSessionLapTimes, statisticsAnalysis]);
 
   // 타이머 로직 훅
   const {
@@ -802,9 +827,14 @@ const EnhancedLogisticsTimer = () => {
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isRunning, currentSession, currentOperator, currentTarget, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis]);
+    // 🔧 이벤트 리스너 중복 방지 및 안전한 제거
+    const currentHandler = handleKeyPress;
+    window.addEventListener('keydown', currentHandler, { passive: false });
+    
+    return () => {
+      window.removeEventListener('keydown', currentHandler);
+    };
+  }, [isRunning, showNewSessionModal, selectedSessionHistory, showLanding, showDetailedAnalysis, toggleTimer, recordLap, stopTimer, resetTimer]);
 
   // 리셋 함수 (기존 로직과 통합)
   const resetTimer = useCallback(() => {
@@ -1392,7 +1422,7 @@ const EnhancedLogisticsTimer = () => {
           <button
             onClick={() => setShowDetailedAnalysis(true)}
             disabled={lapTimes.length < 3}
-            className="bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-allowed flex items-center justify-center space-x-2 transition-colors"
+            className="bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
           >
             <Info className="w-4 h-4" />
             <span>상세</span>
