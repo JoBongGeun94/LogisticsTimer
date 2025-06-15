@@ -83,43 +83,30 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
   // 측정자 및 대상자 변경 감지를 위한 현재 상태 추적
   const currentOperatorRef = useRef<string>('');
   const currentTargetRef = useRef<string>('');
-  const currentSessionRef = useRef<string>('');
   
   // 게이지 데이터 계산 - AnalysisService만 사용 (중복 제거 및 성능 최적화)
   const gaugeData = useMemo((): GaugeData => {
-    // 세션, 측정자, 대상자 변경 감지 강화
+    // 측정자 및 대상자 변경 시 캐시 초기화
     const currentOperator = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.operator : '';
     const currentTarget = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.target : '';
-    const currentSession = lapTimes.length > 0 ? lapTimes[lapTimes.length - 1]?.sessionId : '';
     
-    // 변경 감지 로직 강화
-    const sessionChanged = currentSession && currentSession !== currentSessionRef.current;
+    // 측정자 또는 대상자 변경 감지
     const operatorChanged = currentOperator && currentOperator !== currentOperatorRef.current;
     const targetChanged = currentTarget && currentTarget !== currentTargetRef.current;
     
-    // 세션, 측정자, 대상자 중 하나라도 변경 시 즉시 캐시 초기화
-    if (sessionChanged || operatorChanged || targetChanged) {
+    if (operatorChanged || targetChanged) {
       analysisCache.current = { dataHash: '', result: {
         grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
         totalVariation: 0, status: 'info', cv: 0, q99: 0, 
         isReliableForStandard: false, 
-        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
-        dataQuality: {
-          originalCount: 0, validCount: 0, outliersDetected: 0,
-          isNormalDistribution: true, normalityTest: null,
-          outlierMethod: 'IQR', preprocessingApplied: false
-        }
+        varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 }
       } as GaugeData };
       
-      // 참조값 업데이트
-      if (sessionChanged) {
-        currentSessionRef.current = currentSession;
-        console.log(`🔄 세션 변경 감지: ${currentSessionRef.current} → 분석 캐시 초기화`);
-      }
       if (operatorChanged) {
         currentOperatorRef.current = currentOperator;
-        console.log(`👤 측정자 변경 감지: ${currentOperatorRef.current} → 분석 캐시 초기화`);
+        console.log(`🔄 측정자 변경 감지: ${currentOperatorRef.current} → 분석 캐시 초기화`);
       }
+      
       if (targetChanged) {
         currentTargetRef.current = currentTarget;
         console.log(`🎯 대상자 변경 감지: ${currentTargetRef.current} → 분석 캐시 초기화`);
@@ -180,12 +167,11 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       };
     }
 
-    // 성능 최적화: 해시 기반 캐시 활용 (세션, 측정자, 대상자 변경 포함)
+    // 성능 최적화: 해시 기반 캐시 활용 (측정자, 대상자 변경 포함)
     const latestLap = lapTimes[lapTimes.length - 1];
     const uniqueOperators = [...new Set(lapTimes.map(lap => lap.operator))].sort().join(',');
     const uniqueTargets = [...new Set(lapTimes.map(lap => lap.target))].sort().join(',');
-    const uniqueSessions = [...new Set(lapTimes.map(lap => lap.sessionId))].sort().join(',');
-    const dataHash = `${lapTimes.length}-${latestLap?.time || 0}-${latestLap?.operator || ''}-${latestLap?.target || ''}-${latestLap?.sessionId || ''}-${uniqueOperators}-${uniqueTargets}-${uniqueSessions}`;
+    const dataHash = `${lapTimes.length}-${latestLap?.time || 0}-${latestLap?.operator || ''}-${latestLap?.target || ''}-${uniqueOperators}-${uniqueTargets}`;
 
     if (analysisCache.current.dataHash === dataHash) {
       return analysisCache.current.result;
@@ -228,31 +214,12 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
       console.warn(`📊 분석 실패 원인: ${errorMessage}`);
       
-      // 안전한 폴백 통계 계산 (에러 상황에서도 기본 정보 제공)
-      const validTimes = lapTimes
-        .filter(lap => lap && typeof lap.time === 'number' && lap.time > 0)
-        .map(lap => lap.time);
-      
-      if (validTimes.length === 0) {
-        console.warn('📊 유효한 측정 데이터가 없습니다.');
-        return {
-          grr: 0, repeatability: 0, reproducibility: 0, partVariation: 0, 
-          totalVariation: 0, status: 'error' as const, cv: 0, q99: 0, 
-          isReliableForStandard: false, 
-          varianceComponents: { part: 0, operator: 0, interaction: 0, equipment: 0, total: 0 },
-          dataQuality: {
-            originalCount: lapTimes.length, validCount: 0, outliersDetected: 0,
-            isNormalDistribution: false, normalityTest: null,
-            outlierMethod: 'IQR', preprocessingApplied: false
-          }
-        };
-      }
-      
-      const mean = validTimes.reduce((sum, time) => sum + time, 0) / validTimes.length;
-      const variance = validTimes.length > 1 ? 
-        validTimes.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / (validTimes.length - 1) : 0;
-      const std = Math.sqrt(variance);
-      const fallbackStats = { mean, std, variance };
+      // 오류 정보를 포함한 기본 통계 반환 (폴백 매커니즘)
+      const times = lapTimes.map(lap => lap.time).filter(time => typeof time === 'number' && time > 0);
+      const fallbackStats = times.length > 0 ? {
+        mean: times.reduce((sum, time) => sum + time, 0) / times.length,
+        std: Math.sqrt(times.reduce((sum, time) => sum + Math.pow(time - (times.reduce((s, t) => s + t, 0) / times.length), 2), 0) / Math.max(1, times.length - 1))
+      } : { mean: 0, std: 0 };
       
       return {
         grr: 0,
@@ -276,14 +243,7 @@ export const useStatisticsAnalysis = (lapTimes: LapTime[]) => {
         }
       };
     }
-  }, [
-    lapTimes.length, 
-    lapTimes[lapTimes.length - 1]?.time, 
-    lapTimes[lapTimes.length - 1]?.operator, 
-    lapTimes[lapTimes.length - 1]?.target,
-    lapTimes[lapTimes.length - 1]?.sessionId,
-    calculator
-  ]);
+  }, [lapTimes.length, lapTimes[lapTimes.length - 1]?.time, lapTimes[lapTimes.length - 1]?.operator, lapTimes[lapTimes.length - 1]?.target, calculator]);
 
   // 통계 업데이트 - AnalysisService 기반으로 통합
   const updateStatistics = useCallback((newLap: LapTime, allLaps: LapTime[]) => {

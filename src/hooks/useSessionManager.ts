@@ -86,16 +86,9 @@ export const useSessionManager = ({ showToast }: UseSessionManagerProps) => {
   }, [currentSession, showToast, setSessions]);
 
   const switchToSession = useCallback((session: SessionData) => {
-    // 상태 업데이트를 순차적으로 처리하여 동기화 보장
-    const updateStates = () => {
-      setCurrentSession(session);
-      setCurrentOperator(session.operators[0] || '');
-      setCurrentTarget(session.targets[0] || '');
-    };
-    
-    // React 18의 자동 배치를 활용하여 한 번에 처리
-    updateStates();
-    
+    setCurrentSession(session);
+    setCurrentOperator(session.operators[0]);
+    setCurrentTarget(session.targets[0]);
     showToast('세션이 활성화되었습니다.', 'success');
   }, [showToast]);
 
